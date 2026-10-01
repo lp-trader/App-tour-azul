@@ -9,10 +9,10 @@ const html = `<!DOCTYPE html>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Tour Azul | Tu escapada perfecta desde Barquisimeto y Cabudare</title>
-  <meta name="description" content="Reserva tus viajes y excursiones con Tour Azul. Cayo Sombrero, Varadero, Colonia Tovar, Mérida y más con selección interactiva de asientos.">
+  <title>Tour Azul | Tu escapada perfecta desde Barquisimeto, Cabudare y Yaracuy</title>
+  <meta name="description" content="Reserva tus viajes y excursiones con Tour Azul. Salidas desde Barquisimeto, Cabudare y Yaracuy a los mejores destinos de Venezuela con selección interactiva de asientos.">
   <meta property="og:title" content="Tour Azul | Tu escapada perfecta">
-  <meta property="og:description" content="Salidas desde Barquisimeto y Cabudare a los mejores destinos de Venezuela. Reserva con 5 € por persona.">
+  <meta property="og:description" content="Salidas desde Barquisimeto, Cabudare y Yaracuy a los mejores destinos de Venezuela. Reserva con 5 € por persona.">
   <meta property="og:type" content="website">
   <link rel="icon" type="image/svg+xml" href="${logoBase64}">
 
@@ -145,7 +145,7 @@ const html = `<!DOCTYPE html>
           Tu escapada perfecta
         </p>
         <p class="text-sky-100 text-base md:text-lg font-medium tracking-wide">
-          Salimos desde Barquisimeto y Cabudare
+          Salimos desde Barquisimeto, Cabudare y Yaracuy
         </p>
 
         <!-- CTA Button -->
@@ -220,12 +220,39 @@ const html = `<!DOCTYPE html>
       </div>
 
       <!-- FILTRO POR DESTINOS -->
-      <div class="mb-8">
+      <div class="mb-4">
         <div class="flex items-center gap-2 overflow-x-auto no-scrollbar py-2 px-1" id="destination-filters"></div>
       </div>
 
+      <!-- AVISO DE VIAJES POR DÍA SELECCIONADO (Encima de la lista de viajes) -->
+      <div id="selected-date-banner" class="hidden mb-4">
+        <div class="bg-gradient-to-r from-sky-50 via-blue-50/80 to-sky-50 border border-sky-200/90 rounded-2xl p-3 md:p-3.5 flex items-center justify-between shadow-xs">
+          <div class="flex items-center gap-2.5">
+            <span class="flex h-2.5 w-2.5 relative shrink-0">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-tour-blue opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-tour-blue"></span>
+            </span>
+            <span id="selected-date-text" class="text-xs md:text-sm font-bold text-tour-navy">
+              2 viajes disponibles el 3 de octubre
+            </span>
+          </div>
+          <button onclick="clearDateFilter()" class="text-[11px] md:text-xs font-bold text-tour-blue hover:text-blue-800 bg-white px-2.5 py-1 rounded-xl border border-sky-200 shadow-xs flex items-center gap-1 transition active:scale-95 cursor-pointer">
+            <i data-lucide="x" class="w-3.5 h-3.5"></i>
+            <span>Ver todos</span>
+          </button>
+        </div>
+      </div>
+
       <!-- GRID DE TARJETAS DE VIAJE -->
-      <div id="trips-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+      <div id="trips-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6"></div>
+
+      <!-- AVISO DESLIZA PARA VER MÁS (Debajo del último viaje en móvil) -->
+      <div id="scroll-more-container" class="hidden pt-4 pb-2 text-center md:hidden">
+        <div class="inline-flex items-center gap-1.5 py-2 px-4 rounded-full bg-tour-navy/95 backdrop-blur-md text-white text-xs font-bold shadow-lg border border-sky-400/30 animate-bounce">
+          <span>Desliza para ver más</span>
+          <i data-lucide="chevron-down" class="w-4 h-4 text-tour-yellow"></i>
+        </div>
+      </div>
     </section>
 
     <!-- SECCIÓN CÓMO FUNCIONA -->
@@ -292,6 +319,12 @@ const html = `<!DOCTYPE html>
     </section>
   </main>
 
+  <!-- INDICADOR FLOTANTE DESLIZA PARA VER MÁS (MÓVIL) -->
+  <div id="floating-scroll-cue" class="hidden fixed bottom-24 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 py-2 px-4 rounded-full bg-tour-navy/95 backdrop-blur-md text-white text-xs font-bold shadow-2xl border border-sky-300/40 animate-bounce transition-all duration-300 pointer-events-none md:hidden">
+    <span>Desliza para ver más</span>
+    <i data-lucide="chevron-down" class="w-4 h-4 text-tour-yellow"></i>
+  </div>
+
   <!-- BOTÓN FLOTANTE WHATSAPP -->
   <a id="btn-whatsapp-float" href="https://wa.me/584126571155" target="_blank" rel="noopener noreferrer" class="fixed bottom-6 right-6 z-40 flex items-center gap-2.5 px-4 py-3 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white shadow-2xl hover:scale-105 active:scale-95 transition-all group border-2 border-white/80" title="Contactar al WhatsApp de Tour Azul (0412-657-1155)">
     <div class="relative">
@@ -315,7 +348,7 @@ const html = `<!DOCTYPE html>
         <span class="font-title font-black italic text-lg text-tour-navy">TOUR AZUL</span>
       </div>
       <p class="text-xs text-slate-500 max-w-md mx-auto">
-        Salidas programadas desde Barquisimeto (C.C. Metrópolis / Monumental) y Cabudare (Redoma). Tu mejor experiencia turística en Venezuela.
+        Salidas programadas desde Barquisimeto (C.C. Metrópolis / Monumental), Cabudare (Redoma) y Yaracuy (Chivacoa / San Felipe). Tu mejor experiencia turística en Venezuela.
       </p>
 
       <div class="pt-1 flex flex-wrap items-center justify-center gap-2 text-xs">
@@ -351,7 +384,7 @@ const html = `<!DOCTYPE html>
 
       <div>
         <p id="modal-det-fechas" class="text-sm font-semibold text-tour-blue"></p>
-        <span class="text-xs text-slate-400">Salidas desde Barquisimeto & Cabudare</span>
+        <span class="text-xs text-slate-400">Salidas desde Barquisimeto, Cabudare & Yaracuy</span>
       </div>
 
       <!-- Precios Box -->
@@ -982,12 +1015,79 @@ ${rateClientCode}
       state.filtroFecha = (state.filtroFecha === dateIso) ? null : dateIso;
       renderCalendar();
       renderTrips();
+
+      // Scroll automático y suave al inicio de la lista de viajes de ese día
+      if (state.filtroFecha) {
+        setTimeout(() => {
+          const target = document.getElementById("selected-date-banner") || document.getElementById("trips-grid");
+          if (target) {
+            const yOffset = -24;
+            const y = target.getBoundingClientRect().top + window.pageYOffset + yOffset;
+            window.scrollTo({ top: Math.max(0, y), behavior: "smooth" });
+          }
+        }, 80);
+      }
+    };
+
+    window.clearDateFilter = function() {
+      state.filtroFecha = null;
+      renderCalendar();
+      renderTrips();
     };
 
     function formatDateString(iso) {
       const [y, m, d] = iso.split("-");
       return \`\${d}/\${m}/\${y}\`;
     }
+
+    function getFechaHumanaCorta(iso) {
+      if (!iso) return "";
+      const parts = iso.split("-");
+      const d = parseInt(parts[2], 10);
+      const m = parseInt(parts[1], 10);
+      const meses = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+      const mes = meses[m - 1] || "octubre";
+      return \`\${d} de \${mes}\`;
+    }
+
+    let scrollCueDismissed = false;
+
+    function updateScrollCue(count) {
+      const floatCue = document.getElementById("floating-scroll-cue");
+      const inlineCue = document.getElementById("scroll-more-container");
+      if (!floatCue) return;
+
+      // Solo si se eligió un día y hay MÁS de 1 viaje (count > 1)
+      if (state.filtroFecha && count > 1) {
+        scrollCueDismissed = false;
+        floatCue.classList.remove("hidden");
+        floatCue.style.opacity = "1";
+        if (inlineCue) inlineCue.classList.remove("hidden");
+        lucide.createIcons();
+      } else {
+        floatCue.classList.add("hidden");
+        if (inlineCue) inlineCue.classList.add("hidden");
+      }
+    }
+
+    // Desaparecer flecha y aviso al hacer scroll o llegar al final
+    window.addEventListener("scroll", () => {
+      const floatCue = document.getElementById("floating-scroll-cue");
+      if (!floatCue || floatCue.classList.contains("hidden") || scrollCueDismissed) return;
+
+      const banner = document.getElementById("selected-date-banner");
+      if (!banner) return;
+      const bannerRect = banner.getBoundingClientRect();
+
+      // Si el usuario scrollea hacia abajo o llega cerca del final
+      if (bannerRect.top < -60 || (window.innerHeight + window.scrollY >= document.body.offsetHeight - 180)) {
+        scrollCueDismissed = true;
+        floatCue.style.opacity = "0";
+        setTimeout(() => {
+          if (scrollCueDismissed) floatCue.classList.add("hidden");
+        }, 300);
+      }
+    }, { passive: true });
 
     function renderTrips() {
       const container = document.getElementById("trips-grid");
@@ -999,6 +1099,21 @@ ${rateClientCode}
       if (state.filtroFecha) {
         filtered = filtered.filter(v => v.salidas.some(s => s.fecha === state.filtroFecha));
       }
+
+      // Actualizar aviso justo encima de la lista de viajes
+      const dateBanner = document.getElementById("selected-date-banner");
+      const dateBannerText = document.getElementById("selected-date-text");
+      if (state.filtroFecha && dateBanner && dateBannerText) {
+        const fechaTexto = getFechaHumanaCorta(state.filtroFecha);
+        const count = filtered.length;
+        dateBannerText.textContent = \`\${count} viaje\${count === 1 ? '' : 's'} disponible\${count === 1 ? '' : 's'} el \${fechaTexto}\`;
+        dateBanner.classList.remove("hidden");
+      } else if (dateBanner) {
+        dateBanner.classList.add("hidden");
+      }
+
+      // Actualizar avisos de desliza para ver más
+      updateScrollCue(filtered.length);
 
       if (filtered.length === 0) {
         container.innerHTML = \`
@@ -1018,7 +1133,7 @@ ${rateClientCode}
         let bsPriceHtml = "";
         if (state.tasaDisponible && state.tasaBCV > 0) {
           const bsValue = formatVzla(trip.precio * state.tasaBCV);
-          bsPriceHtml = \`<span class="text-tour-yellow text-[11px] font-semibold block mt-0.5">≈ Bs. \${bsValue}</span>\`;
+          bsPriceHtml = \`<span class="text-tour-yellow text-[10px] md:text-[11px] font-semibold block mt-0.5">≈ Bs. \${bsValue}</span>\`;
         }
 
         const mockCupos = Math.max(4, 31 - (trip.destino.length % 15 + 10));
@@ -1030,67 +1145,67 @@ ${rateClientCode}
         }
 
         const fechasChipsHtml = trip.salidas.map((s, idx) => \`
-          <button type="button" onclick="setTripSelectedDate('\${trip.id}', \${idx}, event)" class="px-2.5 py-1 rounded-lg text-[11px] font-bold transition shadow-sm \${idx === 0 ? 'bg-white text-tour-navy shadow' : 'bg-black/40 text-white hover:bg-black/60'}">
+          <button type="button" onclick="setTripSelectedDate('\${trip.id}', \${idx}, event)" class="px-2 py-0.5 md:px-2.5 md:py-1 rounded-lg text-[10px] md:text-[11px] font-bold transition shadow-sm \${idx === 0 ? 'bg-white text-tour-navy shadow' : 'bg-black/40 text-white hover:bg-black/60'}">
             \${s.fechaTexto.split(" ")[0]} \${s.fechaTexto.split(" ")[1]}
           </button>
         \`).join("");
 
         return \`
-          <div class="group bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-2xl border border-sky-100 flex flex-col transition-all duration-300 hover:-translate-y-1.5">
-            <div class="relative h-64 w-full overflow-hidden bg-sky-900">
+          <div class="group bg-white rounded-2xl md:rounded-3xl overflow-hidden shadow-sm hover:shadow-2xl border border-sky-100 flex flex-col transition-all duration-300 hover:-translate-y-1">
+            <div class="relative h-44 sm:h-52 md:h-64 w-full overflow-hidden bg-sky-900">
               <img src="\${encodeURI(trip.imagenUrl)}" alt="\${trip.destino}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" onerror="this.style.opacity='0.25';" />
-              <div class="absolute inset-0 bg-gradient-to-t from-[#0B2A6B]/90 via-[#0B2A6B]/30 to-transparent pointer-events-none"></div>
+              <div class="absolute inset-0 bg-gradient-to-t from-[#0B2A6B]/90 via-[#0B2A6B]/25 to-transparent pointer-events-none"></div>
 
-              <div class="absolute top-4 left-4 flex flex-col gap-1.5 items-start">
-                <span class="px-3 py-1 rounded-full bg-tour-yellow text-tour-navy font-bold text-xs shadow-sm uppercase tracking-wide">
+              <div class="absolute top-3 left-3 md:top-4 md:left-4 flex flex-col gap-1 items-start">
+                <span class="px-2.5 py-0.5 md:px-3 md:py-1 rounded-full bg-tour-yellow text-tour-navy font-bold text-[10px] md:text-xs shadow-sm uppercase tracking-wide">
                   \${trip.tipo}
                 </span>
                 \${trip.etiquetaEspecial ? \`
-                  <span class="px-2.5 py-0.5 rounded-full bg-rose-500 text-white font-bold text-[10px] shadow-sm uppercase tracking-wider">
+                  <span class="px-2 py-0.5 rounded-full bg-rose-500 text-white font-bold text-[9px] md:text-[10px] shadow-sm uppercase tracking-wider">
                     \${trip.etiquetaEspecial}
                   </span>
                 \` : ''}
               </div>
 
-              <div class="absolute top-4 right-4 bg-tour-blue/95 border border-white/30 backdrop-blur-md rounded-2xl px-3.5 py-2 text-right shadow-lg">
-                <span class="text-white font-title font-black text-2xl tracking-tight block leading-none">\${trip.precio} €</span>
+              <div class="absolute top-3 right-3 md:top-4 md:right-4 bg-tour-blue/95 border border-white/30 backdrop-blur-md rounded-xl md:rounded-2xl px-2.5 py-1.5 md:px-3.5 md:py-2 text-right shadow-lg">
+                <span class="text-white font-title font-black text-xl md:text-2xl tracking-tight block leading-none">\${trip.precio} €</span>
                 \${bsPriceHtml}
               </div>
 
-              <div class="absolute bottom-4 inset-x-4 space-y-1.5">
-                <h3 class="font-title font-black italic text-2xl md:text-3xl uppercase text-white drop-shadow-md tracking-tight leading-none">
+              <div class="absolute bottom-3 inset-x-3 md:bottom-4 md:inset-x-4 space-y-1">
+                <h3 class="font-title font-black italic text-xl md:text-2xl lg:text-3xl uppercase text-white drop-shadow-md tracking-tight leading-none">
                   \${trip.destino}
                 </h3>
-                <p class="text-sky-200 text-xs font-medium">
+                <p class="text-sky-200 text-[11px] md:text-xs font-medium">
                   \${trip.salidas[0].fechaTexto}
                 </p>
                 \${trip.salidas.length > 1 ? \`
-                  <div class="flex items-center gap-1.5 pt-1">
+                  <div class="flex items-center gap-1.5 pt-0.5">
                     \${fechasChipsHtml}
                   </div>
                 \` : ''}
               </div>
             </div>
 
-            <div class="p-4 flex-grow space-y-2.5">
-              <p class="text-xs text-slate-600 line-clamp-2 leading-relaxed font-normal">\${trip.descripcion || ''}</p>
-              <div class="flex items-center justify-between text-xs pt-1">
+            <div class="p-3 md:p-4 flex-grow space-y-2">
+              <p class="text-[11px] md:text-xs text-slate-600 line-clamp-2 leading-relaxed font-normal">\${trip.descripcion || ''}</p>
+              <div class="flex items-center justify-between text-[11px] md:text-xs pt-0.5">
                 <span class="text-slate-500">Ocupación del bus</span>
-                <span class="px-2 py-0.5 rounded-full border text-[11px] \${cuposClass}">
+                <span class="px-2 py-0.5 rounded-full border text-[10px] md:text-[11px] \${cuposClass}">
                   \${cuposText}
                 </span>
               </div>
-              <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
-                <div class="bg-tour-caribe h-2 rounded-full" style="width: \${Math.round((31 - mockCupos) / 31 * 100)}%"></div>
+              <div class="w-full bg-slate-100 rounded-full h-1.5 md:h-2 overflow-hidden">
+                <div class="bg-tour-caribe h-full rounded-full" style="width: \${Math.round((31 - mockCupos) / 31 * 100)}%"></div>
               </div>
             </div>
 
-            <div class="p-4 pt-0 grid grid-cols-2 gap-2">
-              <button onclick="openDetallesModal('\${trip.id}')" class="py-3 px-3 rounded-2xl border-2 border-tour-blue text-tour-blue font-bold text-xs hover:bg-sky-50 active:scale-95 transition flex items-center justify-center gap-1">
+            <div class="p-3 md:p-4 pt-0 grid grid-cols-2 gap-2">
+              <button onclick="openDetallesModal('\${trip.id}')" class="py-2.5 md:py-3 px-2 md:px-3 rounded-xl md:rounded-2xl border-2 border-tour-blue text-tour-blue font-bold text-xs hover:bg-sky-50 active:scale-95 transition flex items-center justify-center gap-1">
                 <i data-lucide="eye" class="w-3.5 h-3.5"></i>
                 <span>Detalles</span>
               </button>
-              <button onclick="startBooking('\${trip.id}', 0)" class="py-3 px-3 rounded-2xl bg-tour-blue hover:bg-blue-700 text-white font-title font-black uppercase text-xs tracking-wider shadow-md hover:shadow-lg active:scale-95 transition flex items-center justify-center gap-1">
+              <button onclick="startBooking('\${trip.id}', 0)" class="py-2.5 md:py-3 px-2 md:px-3 rounded-xl md:rounded-2xl bg-tour-blue hover:bg-blue-700 text-white font-title font-black uppercase text-xs tracking-wider shadow-md hover:shadow-lg active:scale-95 transition flex items-center justify-center gap-1">
                 <span>Reserva ya</span>
                 <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
               </button>
@@ -1473,8 +1588,14 @@ ${rateClientCode}
             </div>
             <div class="md:col-span-2">
               <label class="block text-slate-600 font-medium mb-1">Punto de Recogida * (mínimo 10 caracteres)</label>
-              <textarea id="lead-pickup" rows="2" required placeholder="Ej. Monumental de Barquisimeto frente a la pasarela" class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-tour-blue focus:outline-none text-xs">\${state.titular.recogida}</textarea>
-              <span class="text-[10px] text-slate-400">Escribe la dirección lo más claro posible, el chofer te recogerá según lo que escribas.</span>
+              <textarea id="lead-pickup" rows="2" required placeholder="Ej. Barquisimeto (Monumental), Cabudare (Redoma) o Yaracuy (Chivacoa / San Felipe)" class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-tour-blue focus:outline-none text-xs">\${state.titular.recogida}</textarea>
+              <span class="text-[10px] text-slate-400">Salidas desde Barquisimeto, Cabudare y Yaracuy. Puedes seleccionar un punto o escribirlo:</span>
+              <div class="flex flex-wrap gap-1.5 pt-1.5">
+                <button type="button" onclick="document.getElementById('lead-pickup').value='Barquisimeto: C.C. Metrópolis / Monumental'; document.getElementById('lead-pickup').dispatchEvent(new Event('input'));" class="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-sky-50 text-tour-blue border border-sky-200 hover:bg-sky-100 transition cursor-pointer">📍 Barquisimeto</button>
+                <button type="button" onclick="document.getElementById('lead-pickup').value='Cabudare: Redoma de Agua Viva'; document.getElementById('lead-pickup').dispatchEvent(new Event('input'));" class="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-sky-50 text-tour-blue border border-sky-200 hover:bg-sky-100 transition cursor-pointer">📍 Cabudare</button>
+                <button type="button" onclick="document.getElementById('lead-pickup').value='Yaracuy: Pasarela / Peaje de Chivacoa'; document.getElementById('lead-pickup').dispatchEvent(new Event('input'));" class="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-sky-50 text-tour-blue border border-sky-200 hover:bg-sky-100 transition cursor-pointer">📍 Yaracuy (Chivacoa)</button>
+                <button type="button" onclick="document.getElementById('lead-pickup').value='Yaracuy: San Felipe (Redoma / Autopista)'; document.getElementById('lead-pickup').dispatchEvent(new Event('input'));" class="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-sky-50 text-tour-blue border border-sky-200 hover:bg-sky-100 transition cursor-pointer">📍 Yaracuy (San Felipe)</button>
+              </div>
             </div>
           </div>
         </div>
