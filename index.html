@@ -2820,20 +2820,87 @@
       };
 
       document.getElementById("btn-share-whatsapp").onclick = () => {
-        if (!state.reservaFinal) return;
-        const totalBsText = state.reservaFinal.tasaBCV > 0 ? ` (Bs. ${formatVzla(state.reservaFinal.montoAbonadoEur * state.reservaFinal.tasaBCV)})` : "";
-        const msg = `¡Hola Tour Azul! Acabo de realizar mi reserva:
+        if (!state.reservaFinal) {
+          alert("La reserva aún no ha sido procesada.");
+          return;
+        }
 
-*ID:* ${state.reservaFinal.idReserva}
-*Destino:* ${state.reservaFinal.destino}
-*Fecha:* ${state.selectedSalida.fechaTexto}
-*Asientos:* ${state.reservaFinal.asientos.join(", ")}
-*Titular:* ${state.reservaFinal.titular.nombre}
-*Método:* ${state.reservaFinal.tipoPago}
-*Total:* ${state.reservaFinal.montoAbonadoEur} €${totalBsText}
+        const r = state.reservaFinal;
+        const idReserva = r.idReserva || "No indicado";
+        const destino = r.destino || "No indicado";
+        const fechaViaje = (state.selectedSalida && state.selectedSalida.fechaTexto) || r.fechaViaje || "No indicado";
+        const unidad = r.bus || "No indicado";
 
-¡Por favor confirmen mi ticket!`;
-        window.open(`https://wa.me/${WHATSAPP_NUMERO}?text=${encodeURIComponent(msg)}`, "_blank");
+        // 👥 PASAJEROS: 1 línea por pasajero
+        const listaPasajeros = [];
+        const leadSeat = (r.asientos && r.asientos[0]) ? r.asientos[0] : "No indicado";
+        const leadName = (r.titular && r.titular.nombre) ? r.titular.nombre : "No indicado";
+        const leadPickup = (r.titular && r.titular.recogida) ? r.titular.recogida : "No indicado";
+        listaPasajeros.push("1. " + leadName + " - Asiento " + leadSeat + " - Recogida: " + leadPickup);
+
+        if (Array.isArray(r.acompanantes)) {
+          r.acompanantes.forEach((comp, idx) => {
+            const compSeat = (r.asientos && r.asientos[idx + 1]) ? r.asientos[idx + 1] : "No indicado";
+            const compName = (comp && comp.nombre) ? comp.nombre : "No indicado";
+            const compPickup = (comp && comp.recogida) ? comp.recogida : leadPickup;
+            listaPasajeros.push((idx + 2) + ". " + compName + " - Asiento " + compSeat + " - Recogida: " + compPickup);
+          });
+        }
+
+        const nl = String.fromCharCode(10);
+        const pasajerosTexto = listaPasajeros.join(nl);
+
+        // 💳 PAGO: Método, montos, referencia y estado
+        const esEfectivo = (r.tipoPago === "Efectivo");
+        const metodoPago = esEfectivo ? "Efectivo en dólares" : (r.tipoPago || "No indicado");
+
+        let montoPagado = "No indicado";
+        if (typeof r.montoAbonadoEur === "number") {
+          if (!esEfectivo && r.montoPagadoBs > 0) {
+            montoPagado = r.montoAbonadoEur + " € (Bs. " + formatVzla(r.montoPagadoBs) + ")";
+          } else if (!esEfectivo && r.tasaBCV > 0) {
+            montoPagado = r.montoAbonadoEur + " € (Bs. " + formatVzla(r.montoAbonadoEur * r.tasaBCV) + ")";
+          } else {
+            montoPagado = r.montoAbonadoEur + " €";
+          }
+        }
+
+        const saldoPendiente = (typeof r.saldoPendienteEur === "number") ? (r.saldoPendienteEur + " €") : "0 €";
+
+        let referenciaTexto = "No indicado";
+        let estadoTexto = "Pendiente de pago";
+
+        if (esEfectivo) {
+          referenciaTexto = "Sin referencia (efectivo)";
+          estadoTexto = "Pendiente de pago";
+        } else {
+          // Si es Pago Móvil, tomar solo los últimos 4 dígitos
+          const rawRef = (r.referenciaPagoMovil || "").trim();
+          referenciaTexto = rawRef.length > 0 ? rawRef.slice(-4) : "No indicado";
+          estadoTexto = (r.saldoPendienteEur === 0) ? "Pagado completo" : "Abonado";
+        }
+
+        const mensajeWhatsApp = [
+          "🎫 NUEVA RESERVA - TOUR AZUL",
+          "",
+          "N° de reserva: " + idReserva,
+          "Destino: " + destino,
+          "Fecha: " + fechaViaje,
+          "Unidad: " + unidad,
+          "",
+          "👥 PASAJEROS",
+          pasajerosTexto,
+          "",
+          "💳 PAGO",
+          "Método de pago: " + metodoPago,
+          "Monto pagado: " + montoPagado,
+          "Saldo pendiente: " + saldoPendiente,
+          "Referencia (últimos 4 dígitos): " + referenciaTexto,
+          "Estado: " + estadoTexto
+        ].join(nl);
+
+        const url = "https://wa.me/" + WHATSAPP_NUMERO + "?text=" + encodeURIComponent(mensajeWhatsApp);
+        window.open(url, "_blank");
       };
 
       const floatWa = document.getElementById("btn-whatsapp-float");
