@@ -1,0 +1,6 @@
+{
+  "name": "Tour Azul - Reservas y Excursiones",
+  "description": "Plataforma oficial de reservas y turismo de Tour Azul en Venezuela. Escapadas a los mejores cayos, playas y destinos con selección interactiva de asientos de autobús y confirmación instantánea.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
