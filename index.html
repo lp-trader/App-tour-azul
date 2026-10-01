@@ -1894,13 +1894,9 @@
           bsPriceHtml = `<span class="text-tour-yellow text-[10px] md:text-[11px] font-semibold block mt-0.5">≈ Bs. ${bsValue}</span>`;
         }
 
-        const mockCupos = Math.max(4, 31 - (trip.destino.length % 15 + 10));
-        let cuposText = `${mockCupos} cupos disponibles`;
-        let cuposClass = "text-emerald-600 bg-emerald-50 border-emerald-200";
-        if (mockCupos <= 6) {
-          cuposText = "¡Últimos cupos!";
-          cuposClass = "text-amber-700 bg-amber-50 border-amber-200 font-bold animate-pulse";
-        }
+        const mockCupos = 31;
+        let cuposText = "31 cupos disponibles";
+        let cuposClass = "text-emerald-600 bg-emerald-50 border-emerald-200 font-bold";
 
         const fechasChipsHtml = trip.salidas.map((s, idx) => `
           <button type="button" onclick="setTripSelectedDate('${trip.id}', ${idx}, event)" class="px-2 py-0.5 md:px-2.5 md:py-1 rounded-lg text-[10px] md:text-[11px] font-bold transition shadow-sm ${idx === 0 ? 'bg-white text-tour-navy shadow' : 'bg-black/40 text-white hover:bg-black/60'}">
@@ -2150,8 +2146,8 @@
 
     async function loadBusSeats() {
       if (!WEBHOOK_URL) {
-        state.asientosOcupados = [3, 4, 11, 12, 19, 28];
-        state.asientosBloqueados = [15];
+        state.asientosOcupados = [];
+        state.asientosBloqueados = [];
         renderBusSeatsUI();
         return;
       }
@@ -2163,7 +2159,9 @@
         state.asientosBloqueados = data.bloqueados || [];
         renderBusSeatsUI();
       } catch (e) {
-        console.error("Error al cargar asientos:", e);
+        state.asientosOcupados = [];
+        state.asientosBloqueados = [];
+        renderBusSeatsUI();
       }
     }
 
