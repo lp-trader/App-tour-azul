@@ -202,13 +202,15 @@
 
         <div id="calendar-days" class="grid grid-cols-7 gap-1.5 text-sm"></div>
 
-        <div id="calendar-filter-bar" class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs hidden">
-          <div class="flex items-center gap-2 text-tour-navy font-medium">
-            <span class="w-2.5 h-2.5 rounded-full bg-tour-caribe"></span>
-            <span id="calendar-filter-text">Filtrando por fecha</span>
+        <!-- BARRA INFERIOR DEL CALENDARIO: BOTÓN SIEMPRE VISIBLE -->
+        <div class="mt-4 pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-xs">
+          <div class="flex items-center gap-2 text-slate-600 font-medium">
+            <span id="calendar-status-dot" class="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></span>
+            <span id="calendar-status-text">Mostrando todos los viajes del mes</span>
           </div>
-          <button id="btn-clear-date-filter" class="text-tour-blue hover:underline font-bold">
-            Ver todos los viajes
+          <button id="btn-always-see-all" onclick="clearDateFilter()" class="px-3.5 py-1.5 rounded-xl bg-sky-50 hover:bg-sky-100 active:scale-95 text-tour-blue font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs">
+            <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+            <span>Ver todos los viajes</span>
           </button>
         </div>
       </div>
@@ -218,21 +220,24 @@
         <div class="flex items-center gap-2 overflow-x-auto no-scrollbar py-2 px-1" id="destination-filters"></div>
       </div>
 
-      <!-- AVISO DE VIAJES POR DÍA SELECCIONADO (Encima de la lista de viajes) -->
-      <div id="selected-date-banner" class="hidden mb-4">
-        <div class="bg-gradient-to-r from-sky-50 via-blue-50/80 to-sky-50 border border-sky-200/90 rounded-2xl p-3 md:p-3.5 flex items-center justify-between shadow-xs">
-          <div class="flex items-center gap-2.5">
-            <span class="flex h-2.5 w-2.5 relative shrink-0">
-              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-tour-blue opacity-75"></span>
-              <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-tour-blue"></span>
-            </span>
-            <span id="selected-date-text" class="text-xs md:text-sm font-bold text-tour-navy">
-              2 viajes disponibles el 3 de octubre
-            </span>
+      <!-- ETIQUETA CHIP DE FILTRO POR FECHA (Encima de la lista de viajes) -->
+      <div id="selected-date-banner" class="hidden mb-5">
+        <div class="flex flex-wrap items-center justify-between gap-3 bg-white/95 border border-sky-200/90 rounded-2xl p-3 md:p-3.5 shadow-xs">
+          <div class="flex items-center gap-2">
+            <!-- Chip "Mostrando: [día y mes]" con X a la derecha -->
+            <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-sky-50 border border-sky-200 text-tour-navy text-xs md:text-sm font-bold shadow-xs">
+              <span class="w-2 h-2 rounded-full bg-tour-blue shrink-0"></span>
+              <span>Mostrando: <strong class="text-tour-blue" id="selected-date-chip-label">3 de octubre</strong></span>
+              <button onclick="clearDateFilter()" title="Eliminar filtro" class="ml-1 p-0.5 rounded-full text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer flex items-center justify-center">
+                <i data-lucide="x" class="w-4 h-4"></i>
+              </button>
+            </div>
+            <span id="selected-date-count" class="text-xs text-slate-500 font-medium hidden sm:inline"></span>
           </div>
-          <button onclick="clearDateFilter()" class="text-[11px] md:text-xs font-bold text-tour-blue hover:text-blue-800 bg-white px-2.5 py-1 rounded-xl border border-sky-200 shadow-xs flex items-center gap-1 transition active:scale-95 cursor-pointer">
-            <i data-lucide="x" class="w-3.5 h-3.5"></i>
-            <span>Ver todos</span>
+
+          <button onclick="clearDateFilter()" class="text-xs font-bold text-tour-blue hover:text-blue-800 hover:underline flex items-center gap-1 transition cursor-pointer">
+            <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+            <span>Ver todos los viajes</span>
           </button>
         </div>
       </div>
@@ -1667,13 +1672,9 @@
 
     function renderHeroChips() {
       const container = document.getElementById("hero-chips");
-      const popular = [
-        "Cayo Muerto", "Varadero", "Cayo Azul", "Cayo Boca Seca",
-        "Colonia Tovar", "Cayo Sombrero", "Cayo Sal", "Isla Larga",
-        "Choroní", "Crazy Bus Halloween", "Mérida Teleférico"
-      ];
+      const popular = [...new Set(VIAJES.map(v => v.destino))].slice(0, 10);
       container.innerHTML = popular.map((dest, i) => `
-        <button onclick="scrollToDestination('${dest}')" class="px-3.5 py-1.5 rounded-full bg-white/20 hover:bg-white text-white hover:text-tour-navy border border-white/30 text-xs font-bold transition shadow-sm backdrop-blur-md active:scale-95" style="animation: float ${3.5 + (i % 3) * 0.7}s ease-in-out infinite; animation-delay: ${(i * 0.2)}s">
+        <button onclick="scrollToDestination('${dest}')" class="px-3.5 py-1.5 rounded-full bg-white/20 hover:bg-white text-white hover:text-tour-navy border border-white/30 text-xs font-bold transition shadow-sm backdrop-blur-md active:scale-95 cursor-pointer" style="animation: float ${3.5 + (i % 3) * 0.7}s ease-in-out infinite; animation-delay: ${(i * 0.2)}s">
           ${dest}
         </button>
       `).join("");
@@ -1730,6 +1731,7 @@
         const dayStr = String(day).padStart(2, "0");
         const dateIso = `${state.anioCalendario}-${monthStr}-${dayStr}`;
 
+        // Datos reales dinámicos de salidas desde VIAJES
         const departures = [];
         VIAJES.forEach(v => {
           v.salidas.forEach(s => {
@@ -1737,54 +1739,81 @@
           });
         });
 
-        const hasTrips = departures.length > 0;
+        const countTrips = departures.length;
+        const hasTrips = countTrips > 0;
         const isSelected = state.filtroFecha === dateIso;
 
-        let bgClass = "bg-slate-50 text-slate-700 hover:bg-slate-100";
-        if (hasTrips) {
-          bgClass = "bg-sky-50 text-tour-blue font-bold border border-sky-200 hover:bg-sky-100";
-        }
-        if (isSelected) {
-          bgClass = "bg-tour-blue text-white font-black shadow-md border-tour-blue";
-        }
+        if (!hasTrips) {
+          // Día sin viajes: gris claro y no seleccionable
+          htmlDays += `
+            <div class="h-10 rounded-xl flex flex-col items-center justify-center text-slate-300 bg-slate-50/50 cursor-default select-none pointer-events-none border border-transparent">
+              <span class="text-xs font-medium">${day}</span>
+            </div>
+          `;
+        } else {
+          // Día con viajes: seleccionable con 1 punto si 1 viaje o 2 puntos si 2 viajes
+          let bgClass = "bg-sky-50 text-tour-blue font-bold border border-sky-200 hover:bg-sky-100 hover:border-sky-300 cursor-pointer";
+          if (isSelected) {
+            bgClass = "bg-tour-blue text-white font-black shadow-md border-tour-blue";
+          }
 
-        htmlDays += `
-          <button onclick="selectCalendarDate('${dateIso}', ${hasTrips})" class="h-10 rounded-xl relative flex flex-col items-center justify-center transition active:scale-95 ${bgClass}">
-            <span>${day}</span>
-            ${hasTrips && !isSelected ? '<span class="w-1.5 h-1.5 rounded-full bg-tour-caribe mt-0.5"></span>' : ''}
-          </button>
-        `;
+          const dotColor = isSelected ? "bg-white" : "bg-tour-caribe";
+          let dotsHtml = "";
+          if (countTrips === 1) {
+            dotsHtml = `<div class="flex items-center justify-center mt-0.5"><span class="w-1.5 h-1.5 rounded-full ${dotColor}"></span></div>`;
+          } else {
+            dotsHtml = `<div class="flex items-center gap-1 justify-center mt-0.5"><span class="w-1.5 h-1.5 rounded-full ${dotColor}"></span><span class="w-1.5 h-1.5 rounded-full ${dotColor}"></span></div>`;
+          }
+
+          htmlDays += `
+            <button type="button" onclick="selectCalendarDate('${dateIso}', true)" class="h-10 rounded-xl relative flex flex-col items-center justify-center transition active:scale-95 ${bgClass}" title="${day} de ${monthNames[state.mesCalendario]} (${countTrips} viaje${countTrips > 1 ? 's' : ''})">
+              <span class="text-xs">${day}</span>
+              ${dotsHtml}
+            </button>
+          `;
+        }
       }
 
       daysContainer.innerHTML = htmlDays;
 
-      const filterBar = document.getElementById("calendar-filter-bar");
-      const filterText = document.getElementById("calendar-filter-text");
-      if (state.filtroFecha) {
-        filterBar.classList.remove("hidden");
-        filterText.textContent = `Filtrando por fecha: ${formatDateString(state.filtroFecha)}`;
-      } else {
-        filterBar.classList.add("hidden");
+      // Actualizar la barra inferior del calendario que siempre está visible
+      const statusDot = document.getElementById("calendar-status-dot");
+      const statusText = document.getElementById("calendar-status-text");
+      if (statusDot && statusText) {
+        if (state.filtroFecha) {
+          statusDot.className = "w-2.5 h-2.5 rounded-full bg-tour-blue shrink-0 animate-pulse";
+          statusText.innerHTML = `Filtrando por: <strong class="text-tour-blue">${getFechaHumanaCorta(state.filtroFecha)}</strong>`;
+        } else {
+          statusDot.className = "w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0";
+          statusText.textContent = "Mostrando todos los viajes del mes";
+        }
       }
+
+      lucide.createIcons();
     }
 
     window.selectCalendarDate = function(dateIso, hasTrips) {
-      if (!hasTrips) return;
-      state.filtroFecha = (state.filtroFecha === dateIso) ? null : dateIso;
+      // 2. Si el usuario toca otra vez el día que ya está seleccionado, se deselecciona y se muestran todos los viajes
+      if (state.filtroFecha === dateIso) {
+        state.filtroFecha = null;
+        renderCalendar();
+        renderTrips();
+        return;
+      }
+
+      state.filtroFecha = dateIso;
       renderCalendar();
       renderTrips();
 
       // Scroll automático y suave al inicio de la lista de viajes de ese día
-      if (state.filtroFecha) {
-        setTimeout(() => {
-          const target = document.getElementById("selected-date-banner") || document.getElementById("trips-grid");
-          if (target) {
-            const yOffset = -24;
-            const y = target.getBoundingClientRect().top + window.pageYOffset + yOffset;
-            window.scrollTo({ top: Math.max(0, y), behavior: "smooth" });
-          }
-        }, 80);
-      }
+      setTimeout(() => {
+        const target = document.getElementById("selected-date-banner") || document.getElementById("trips-grid");
+        if (target) {
+          const yOffset = -24;
+          const y = target.getBoundingClientRect().top + window.pageYOffset + yOffset;
+          window.scrollTo({ top: Math.max(0, y), behavior: "smooth" });
+        }
+      }, 80);
     };
 
     window.clearDateFilter = function() {
@@ -1806,6 +1835,19 @@
       const meses = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
       const mes = meses[m - 1] || "octubre";
       return `${d} de ${mes}`;
+    }
+
+    function getNextTripDate(fromIso) {
+      const allDates = [];
+      VIAJES.forEach(v => {
+        v.salidas.forEach(s => {
+          if (s.fecha && !allDates.includes(s.fecha)) {
+            allDates.push(s.fecha);
+          }
+        });
+      });
+      allDates.sort();
+      return allDates.find(d => d > fromIso) || (allDates.length > 0 ? allDates[0] : null);
     }
 
     let scrollCueDismissed = false;
@@ -1858,13 +1900,17 @@
         filtered = filtered.filter(v => v.salidas.some(s => s.fecha === state.filtroFecha));
       }
 
-      // Actualizar aviso justo encima de la lista de viajes
+      // 1. Etiqueta tipo chip "Mostrando: [día y mes]" con X a la derecha encima de la lista de viajes
       const dateBanner = document.getElementById("selected-date-banner");
-      const dateBannerText = document.getElementById("selected-date-text");
-      if (state.filtroFecha && dateBanner && dateBannerText) {
+      const chipLabel = document.getElementById("selected-date-chip-label");
+      const countLabel = document.getElementById("selected-date-count");
+      if (state.filtroFecha && dateBanner) {
         const fechaTexto = getFechaHumanaCorta(state.filtroFecha);
         const count = filtered.length;
-        dateBannerText.textContent = `${count} viaje${count === 1 ? '' : 's'} disponible${count === 1 ? '' : 's'} el ${fechaTexto}`;
+        if (chipLabel) chipLabel.textContent = fechaTexto;
+        if (countLabel) {
+          countLabel.textContent = `(${count} viaje${count === 1 ? '' : 's'} disponible${count === 1 ? '' : 's'})`;
+        }
         dateBanner.classList.remove("hidden");
       } else if (dateBanner) {
         dateBanner.classList.add("hidden");
@@ -1873,16 +1919,47 @@
       // Actualizar avisos de desliza para ver más
       updateScrollCue(filtered.length);
 
+      // 4. Si se selecciona un día sin viajes (o filtro sin resultados)
       if (filtered.length === 0) {
-        container.innerHTML = `
-          <div class="col-span-full py-16 text-center space-y-3">
-            <i data-lucide="compass" class="w-12 h-12 text-slate-300 mx-auto"></i>
-            <h3 class="font-title font-bold text-lg text-tour-navy">No encontramos viajes con estos filtros</h3>
-            <button onclick="resetFilters()" class="px-5 py-2 rounded-xl bg-tour-blue text-white text-xs font-bold">
-              Ver todos los viajes
-            </button>
-          </div>
-        `;
+        if (state.filtroFecha) {
+          const fechaHumana = getFechaHumanaCorta(state.filtroFecha);
+          const nextIso = getNextTripDate(state.filtroFecha);
+          const nextFechaTexto = nextIso ? getFechaHumanaCorta(nextIso) : "";
+
+          container.innerHTML = `
+            <div class="col-span-full py-12 px-4 text-center space-y-4 max-w-lg mx-auto bg-white rounded-3xl border border-sky-100 p-6 shadow-sm">
+              <div class="w-14 h-14 mx-auto rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                <i data-lucide="calendar-x" class="w-7 h-7"></i>
+              </div>
+              <div class="space-y-1">
+                <h3 class="font-title font-bold text-lg text-tour-navy">No hay viajes el ${fechaHumana}</h3>
+                <p class="text-xs text-slate-500">Puedes consultar la siguiente salida programada o ver la cartelera completa del mes.</p>
+              </div>
+              <div class="flex flex-col sm:flex-row items-center justify-center gap-2.5 pt-2">
+                ${nextIso ? `
+                  <button type="button" onclick="selectCalendarDate('${nextIso}', true)" class="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-tour-blue text-white text-xs font-bold shadow-md hover:bg-blue-700 transition flex items-center justify-center gap-1.5 cursor-pointer">
+                    <i data-lucide="calendar" class="w-3.5 h-3.5"></i>
+                    <span>Ver próximo viaje (${nextFechaTexto})</span>
+                  </button>
+                ` : ''}
+                <button type="button" onclick="clearDateFilter()" class="w-full sm:w-auto px-5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer">
+                  <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+                  <span>Ver todos los viajes</span>
+                </button>
+              </div>
+            </div>
+          `;
+        } else {
+          container.innerHTML = `
+            <div class="col-span-full py-16 text-center space-y-3">
+              <i data-lucide="compass" class="w-12 h-12 text-slate-300 mx-auto"></i>
+              <h3 class="font-title font-bold text-lg text-tour-navy">No encontramos viajes con estos filtros</h3>
+              <button onclick="resetFilters()" class="px-5 py-2 rounded-xl bg-tour-blue text-white text-xs font-bold cursor-pointer">
+                Ver todos los viajes
+              </button>
+            </div>
+          `;
+        }
         lucide.createIcons();
         return;
       }
@@ -2725,18 +2802,31 @@
 
     function setupEventListeners() {
       document.getElementById("btn-month-prev").onclick = () => {
-        state.mesCalendario = 9;
-        renderCalendar();
-      };
-      document.getElementById("btn-month-next").onclick = () => {
-        state.mesCalendario = 10;
-        renderCalendar();
-      };
-      document.getElementById("btn-clear-date-filter").onclick = () => {
+        if (state.mesCalendario > 0) {
+          state.mesCalendario--;
+        } else {
+          state.mesCalendario = 11;
+          state.anioCalendario--;
+        }
         state.filtroFecha = null;
         renderCalendar();
         renderTrips();
       };
+      document.getElementById("btn-month-next").onclick = () => {
+        if (state.mesCalendario < 11) {
+          state.mesCalendario++;
+        } else {
+          state.mesCalendario = 0;
+          state.anioCalendario++;
+        }
+        state.filtroFecha = null;
+        renderCalendar();
+        renderTrips();
+      };
+      const clearBtn = document.getElementById("btn-clear-date-filter");
+      if (clearBtn) {
+        clearBtn.onclick = clearDateFilter;
+      }
 
       document.getElementById("btn-close-detalles").onclick = closeDetallesModal;
       document.getElementById("btn-close-wizard").onclick = closeWizard;
