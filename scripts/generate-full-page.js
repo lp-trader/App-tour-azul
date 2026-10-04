@@ -1,6 +1,7 @@
 import fs from 'fs';
 import { TRIPS } from './data.js';
 import { rateClientCode } from './rate-client-code.js';
+import { opinionsHtmlSection, opinionsModalsHtml, opinionsClientCode } from './opinions-module.js';
 
 const logoBase64 = fs.readFileSync('logo-base64.txt', 'utf8').trim();
 
@@ -107,12 +108,21 @@ const html = `<!DOCTYPE html>
         <span class="font-title font-black italic tracking-tight text-xl text-tour-navy">TOUR AZUL</span>
       </a>
 
-      <!-- Pill BCV Tasa del Día (con Skeleton Inicial) -->
-      <div id="bcv-pill-container" class="flex items-center gap-2">
-        <div class="animate-pulse flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 border border-slate-200 text-xs text-slate-400 shadow-sm">
-          <span class="text-sm">🇻🇪</span>
-          <span class="text-slate-500 font-medium">Tasa BCV Euro:</span>
-          <div class="h-3.5 w-24 bg-slate-300 rounded"></div>
+      <!-- Acciones de Cabecera -->
+      <div class="flex items-center gap-2">
+        <button type="button" onclick="openPoliticasModal()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-tour-navy hover:text-tour-blue hover:bg-sky-50 transition border border-sky-100 cursor-pointer shadow-2xs">
+          <i data-lucide="scroll-text" class="w-3.5 h-3.5 text-tour-blue"></i>
+          <span class="hidden sm:inline">Políticas de Reserva</span>
+          <span class="sm:hidden">Políticas</span>
+        </button>
+
+        <!-- Pill BCV Tasa del Día (con Skeleton Inicial) -->
+        <div id="bcv-pill-container" class="flex items-center gap-2">
+          <div class="animate-pulse flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 border border-slate-200 text-xs text-slate-400 shadow-sm">
+            <span class="text-sm">🇻🇪</span>
+            <span class="text-slate-500 font-medium hidden md:inline">Tasa BCV Euro:</span>
+            <div class="h-3.5 w-20 md:w-24 bg-slate-300 rounded"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -260,6 +270,8 @@ const html = `<!DOCTYPE html>
       </div>
     </section>
 
+${opinionsHtmlSection}
+
     <!-- SECCIÓN CÓMO FUNCIONA -->
     <section class="bg-gradient-to-b from-[#F8FDFF] to-sky-50/60 py-16 border-t border-sky-100">
       <div class="max-w-6xl mx-auto px-4">
@@ -357,7 +369,13 @@ const html = `<!DOCTYPE html>
       </p>
 
       <div class="pt-1 flex flex-wrap items-center justify-center gap-2 text-xs">
-        <span class="text-slate-500">¿Dudas o preguntas?</span>
+        <button type="button" onclick="openPoliticasModal()" class="inline-flex items-center gap-1.5 font-bold text-tour-blue hover:text-blue-800 bg-sky-50 hover:bg-sky-100 px-3.5 py-1.5 rounded-full border border-sky-200 shadow-2xs transition cursor-pointer">
+          <i data-lucide="scroll-text" class="w-4 h-4 text-tour-blue"></i>
+          <span>Políticas de Reserva y Viaje 📜</span>
+        </button>
+
+        <span class="text-slate-300 hidden sm:inline">·</span>
+
         <a href="https://wa.me/584126571155?text=%C2%A1Hola%20Tour%20Azul!%20Tengo%20una%20duda." target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 font-bold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-3.5 py-1.5 rounded-full border border-emerald-200 shadow-sm transition">
           <i data-lucide="message-circle" class="w-4 h-4 text-emerald-600"></i>
           <span>WhatsApp: 0412-657-1155</span>
@@ -425,13 +443,26 @@ const html = `<!DOCTYPE html>
         </div>
       </div>
 
-      <!-- Política de Cancelación Destacada -->
-      <div class="rounded-2xl p-3.5 bg-amber-50 border border-amber-200 text-amber-900 text-xs">
-        <div class="flex items-center gap-2 font-bold mb-1">
-          <i data-lucide="alert-circle" class="w-4 h-4 text-amber-600"></i>
-          <span>Política de cancelación</span>
+      <!-- Políticas de Reserva y Condiciones -->
+      <div class="rounded-2xl p-3.5 bg-amber-50/90 border border-amber-200 text-amber-950 text-xs space-y-2">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-1.5 font-bold text-tour-navy">
+            <i data-lucide="scroll-text" class="w-4 h-4 text-amber-700"></i>
+            <span>Políticas de Reserva y Viaje 📜</span>
+          </div>
+          <button type="button" onclick="openPoliticasModal()" class="text-[11px] font-bold text-tour-blue hover:text-blue-800 hover:underline cursor-pointer">
+            Ver las 7 normas
+          </button>
         </div>
-        <p>Las cancelaciones deben realizarse con al menos 24 horas de antelación al viaje.</p>
+        <ul class="text-[11px] text-slate-700 space-y-1 list-disc list-inside">
+          <li><strong>Tolerancia puntual:</strong> 15 min en punto de encuentro (No Show sin reembolso).</li>
+          <li><strong>Reembolso directo:</strong> Con 4+ días de anticipación (monto exacto en Bs recibido).</li>
+          <li><strong>Saldo a favor:</strong> Con 72 hrs de anticipación (válido 60 días continuos).</li>
+          <li><strong>Cesión de cupo:</strong> Mínimo 48 hrs con datos completos del nuevo pasajero.</li>
+        </ul>
+        <div class="pt-1 border-t border-amber-200/60 text-[10.5px] text-amber-800 font-semibold">
+          Al reservar acepta automáticamente las políticas y condiciones de Tour Azul ✅
+        </div>
       </div>
 
       <!-- Action Button -->
@@ -572,7 +603,7 @@ const html = `<!DOCTYPE html>
 
           <div id="passengers-forms" class="space-y-4"></div>
 
-          <div class="p-3.5 bg-sky-50 rounded-2xl border border-sky-100 flex items-center justify-between">
+          <div id="toggle-separate-pickup-box" class="p-3.5 bg-sky-50 rounded-2xl border border-sky-100 flex items-center justify-between">
             <div class="text-xs pr-2">
               <span class="font-bold text-tour-navy block">¿Algún acompañante se recoge en otro punto?</span>
               <span class="text-[11px] text-slate-500">Activa si las personas del grupo abordan en paradas distintas.</span>
@@ -694,9 +725,25 @@ const html = `<!DOCTYPE html>
 
           <div id="summary-card" class="bg-sky-50/70 border border-sky-100 rounded-2xl p-4 space-y-3 text-xs"></div>
 
-          <div class="rounded-2xl p-3 bg-amber-50 border border-amber-200 text-amber-900 text-xs">
-            <span class="font-bold block mb-0.5">Política de cancelación:</span>
-            <span>Las cancelaciones deben realizarse con al menos 24 horas de antelación al viaje.</span>
+          <div class="rounded-2xl p-3.5 bg-amber-50/90 border border-amber-200 text-amber-950 text-xs space-y-2">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-1.5 font-bold text-tour-navy">
+                <i data-lucide="shield-check" class="w-4 h-4 text-amber-700"></i>
+                <span>Políticas de Reserva y Viaje 📜</span>
+              </div>
+              <button type="button" onclick="openPoliticasModal()" class="text-[11px] font-bold text-tour-blue hover:text-blue-800 hover:underline cursor-pointer">
+                Leer las 7 normas
+              </button>
+            </div>
+            <ul class="text-[11px] text-slate-700 space-y-1 list-disc list-inside">
+              <li><strong>Tolerancia:</strong> 15 min en punto de salida (No Show sin reembolso).</li>
+              <li><strong>Reembolsos directos:</strong> Mínimo 4 días antes (mismo monto en Bs recibido).</li>
+              <li><strong>Saldo a favor:</strong> Mínimo 72 hrs antes (vigencia de 60 días continuos).</li>
+              <li><strong>Cesión de cupo:</strong> Mínimo 48 hrs con datos del nuevo pasajero.</li>
+            </ul>
+            <div class="pt-1 border-t border-amber-200/60 text-[10.5px] text-amber-900 font-bold flex items-center gap-1">
+              <span>Al estar reservando con nosotros acepta automáticamente las políticas y condiciones de reserva ✅</span>
+            </div>
           </div>
         </div>
 
@@ -788,9 +835,12 @@ const html = `<!DOCTYPE html>
           <span>⚠️ Pendiente de pago: Entrega <strong id="ticket-saldo-efectivo">-- $</strong> al abordar la unidad.</span>
         </div>
 
-        <div class="p-2.5 rounded-xl bg-yellow-50 border-2 border-tour-yellow text-slate-800 text-[11px] text-center font-medium shadow-sm">
-          <span class="font-bold text-tour-navy block text-xs">Política de cancelación</span>
-          <span>Las cancelaciones deben realizarse con al menos 24 horas de antelación al viaje.</span>
+        <div class="p-2.5 rounded-xl bg-amber-50/80 border border-amber-300 text-slate-800 text-[11px] text-center font-medium shadow-2xs space-y-0.5">
+          <span class="font-bold text-tour-navy block text-xs">Políticas de Reserva y Viaje 📜</span>
+          <span class="text-slate-600 block text-[10.5px]">15 min de tolerancia en punto de salida. Aplican condiciones oficiales de reembolso y saldos de Tour Azul.</span>
+          <button type="button" onclick="openPoliticasModal()" class="text-tour-blue font-bold hover:underline inline-block text-[11px] cursor-pointer pt-0.5">
+            Ver las 7 políticas completas
+          </button>
         </div>
       </div>
 
@@ -811,6 +861,178 @@ const html = `<!DOCTYPE html>
       </div>
     </div>
   </div>
+
+  <!-- MODAL DE POLÍTICAS DE RESERVA Y VIAJE -->
+  <div id="modal-politicas" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden items-center justify-center p-3 md:p-4">
+    <div class="bg-white rounded-3xl max-w-2xl w-full max-h-[92vh] flex flex-col shadow-2xl overflow-hidden animate-float relative border border-sky-100">
+      
+      <!-- Encabezado del Modal -->
+      <div class="p-4 md:p-5 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-sky-50 via-blue-50/50 to-white">
+        <div class="flex items-center gap-2.5">
+          <div class="w-10 h-10 rounded-2xl bg-tour-blue/10 text-tour-blue flex items-center justify-center">
+            <i data-lucide="scroll-text" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h3 class="font-title font-black uppercase text-tour-navy text-base md:text-lg leading-tight">
+              Políticas de Reserva y Viaje 📜
+            </h3>
+            <span class="text-xs text-slate-500 font-medium">Tour Azul · Condiciones oficiales de servicio</span>
+          </div>
+        </div>
+        <button id="btn-close-politicas" onclick="closePoliticasModal()" class="p-2 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 transition cursor-pointer">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Contenido Scrolleable con las 7 Políticas Oficiales -->
+      <div class="p-4 md:p-6 overflow-y-auto space-y-4 text-xs leading-relaxed text-slate-700">
+        
+        <!-- 1️⃣ Tolerancia y Presentación en el Punto de Salida (No Show) -->
+        <div class="p-4 rounded-2xl bg-sky-50/60 border border-sky-100 space-y-2">
+          <div class="flex items-center gap-2">
+            <span class="px-2 py-0.5 rounded-lg bg-tour-blue text-white font-black text-xs">1</span>
+            <h4 class="font-title font-bold text-tour-navy text-sm uppercase">Tolerancia y Presentación en el Punto de Salida (No Show)</h4>
+          </div>
+          <ul class="space-y-1.5 pl-1">
+            <li class="flex items-start gap-2">
+              <span class="text-amber-500 font-bold shrink-0">⭐️</span>
+              <span><strong>Puntualidad:</strong> Es responsabilidad de cada viajero estar presente en el punto de encuentro a la hora convocada.</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-amber-500 font-bold shrink-0">⭐️</span>
+              <span><strong>Tiempo de espera:</strong> Se otorgará un margen máximo de <strong>15 minutos de tolerancia</strong> en el punto de salida.</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-amber-500 font-bold shrink-0">⭐️</span>
+              <span><strong>Inasistencia (No Show):</strong> Cumplidos los 15 minutos de tolerancia, la unidad iniciará el recorrido. La inasistencia sin el debido aviso previo dentro de los plazos establecidos se considerará <em>No Show</em>, lo que conlleva la pérdida total del cupo sin derecho a reembolso, abono ni reprogramación.</span>
+            </li>
+          </ul>
+        </div>
+
+        <!-- 2️⃣ ¿No puedes ir al viaje? (Solicitud de Reembolso Directo) -->
+        <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+          <div class="flex items-center gap-2">
+            <span class="px-2 py-0.5 rounded-lg bg-tour-blue text-white font-black text-xs">2</span>
+            <h4 class="font-title font-bold text-tour-navy text-sm uppercase">¿No puedes ir al viaje? (Solicitud de Reembolso Directo)</h4>
+          </div>
+          <ul class="space-y-1.5 pl-1">
+            <li class="flex items-start gap-2">
+              <span class="text-amber-500 font-bold shrink-0">⭐️</span>
+              <span><strong>Plazo:</strong> Si no puedes asistir al viaje o alguno de tus compañeros no puede ir, debes notificarlo y solicitar el reembolso con <strong>4 días o más de anticipación</strong> a la fecha fijada para la salida.</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-amber-500 font-bold shrink-0">⭐️</span>
+              <span><strong>Monto del Reembolso:</strong> La devolución del dinero se realizará estrictamente por el <strong>mismo monto exacto en Bolívares (VES)</strong> que fue abonado o recibido en su momento de pago. No se calculará ni ajustará la devolución a la tasa de cambio vigente al momento del reembolso ni a diferencias cambiarias posteriores, motivado a los gastos administrativos y a las reservas logísticas operativas previamente ejecutadas para el tour.</span>
+            </li>
+          </ul>
+        </div>
+
+        <!-- 3️⃣ Saldo a Favor y Abono para Futuros Viajes -->
+        <div class="p-4 rounded-2xl bg-amber-50/70 border border-amber-200 space-y-2">
+          <div class="flex items-center gap-2">
+            <span class="px-2 py-0.5 rounded-lg bg-amber-600 text-white font-black text-xs">3</span>
+            <h4 class="font-title font-bold text-amber-950 text-sm uppercase">Saldo a Favor y Abono para Futuros Viajes</h4>
+          </div>
+          <ul class="space-y-1.5 pl-1">
+            <li class="flex items-start gap-2">
+              <span class="text-amber-600 font-bold shrink-0">⭐️</span>
+              <span><strong>Plazo:</strong> Si notificas que no podrás asistir con <strong>3 días (72 horas) de anticipación</strong>, el monto pagado no será reembolsable en efectivo ni transferencia.</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-amber-600 font-bold shrink-0">⭐️</span>
+              <span><strong>Vigencia del Saldo:</strong> El 100% de lo abonado quedará como un saldo a favor a tu nombre para ser utilizado en cualquiera de nuestras salidas programadas dentro de los siguientes <strong>60 días (2 meses) continuos</strong>. Pasado este tiempo, el saldo perderá su validez.</span>
+            </li>
+          </ul>
+        </div>
+
+        <!-- 4️⃣ Transferencia de Cupo a Terceros -->
+        <div class="p-4 rounded-2xl bg-sky-50/60 border border-sky-100 space-y-2">
+          <div class="flex items-center gap-2">
+            <span class="px-2 py-0.5 rounded-lg bg-tour-blue text-white font-black text-xs">4</span>
+            <h4 class="font-title font-bold text-tour-navy text-sm uppercase">Transferencia de Cupo a Terceros</h4>
+          </div>
+          <ul class="space-y-1.5 pl-1">
+            <li class="flex items-start gap-2">
+              <span class="text-amber-500 font-bold shrink-0">⭐️</span>
+              <span><strong>Plazo:</strong> Puedes transferir o ceder tu cupo a otra persona notificando con un mínimo de <strong>48 horas de anticipación</strong> al viaje.</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-amber-500 font-bold shrink-0">⭐️</span>
+              <span><strong>Sin reembolso:</strong> No se realizará devolución de dinero a la persona que ya no puede ir.</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-tour-blue font-bold shrink-0">✨</span>
+              <span><strong>Requisito:</strong> Debes enviar los datos de identidad completos del nuevo pasajero para autorizar su abordaje.</span>
+            </li>
+          </ul>
+        </div>
+
+        <!-- 5️⃣ Notificaciones a Menos de 24 Horas del Viaje -->
+        <div class="p-4 rounded-2xl bg-emerald-50/70 border border-emerald-200 space-y-2">
+          <div class="flex items-center gap-2">
+            <span class="px-2 py-0.5 rounded-lg bg-emerald-600 text-white font-black text-xs">5</span>
+            <h4 class="font-title font-bold text-emerald-950 text-sm uppercase">Notificaciones a Menos de 24 Horas del Viaje ✅</h4>
+          </div>
+          <p class="text-slate-700">
+            A menos de 24 horas de la salida, todos los costos logísticos, de transporte, hospedaje y permisos se encuentran 100% liquidados y pagados por la agencia, por lo que no aplican reembolsos en dinero ni saldos a favor automáticos.
+          </p>
+          <p class="font-bold text-emerald-900 pt-0.5">Para ayudarte a no perder tu inversión, te ofrecemos las siguientes alternativas:</p>
+          <ul class="space-y-1.5 pl-1">
+            <li class="flex items-start gap-2">
+              <span class="text-emerald-600 font-bold shrink-0">✨</span>
+              <span><strong>Transferencia Express de Cupo:</strong> Puedes cederle tu puesto a un familiar, amigo o conocido notificando sus datos antes de la salida para que viaje en tu lugar.</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-emerald-600 font-bold shrink-0">✨</span>
+              <span><strong>Gestión por Lista de Espera:</strong> Intentaremos ofrecer tu cupo a los pasajeros que tengamos en lista de espera. Si logramos reubicar y vender tu asiento con éxito antes de la partida, te otorgaremos el saldo a favor correspondiente para una próxima salida.</span>
+            </li>
+          </ul>
+        </div>
+
+        <!-- 6️⃣ Casos de Fuerza Mayor -->
+        <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+          <div class="flex items-center gap-2">
+            <span class="px-2 py-0.5 rounded-lg bg-slate-700 text-white font-black text-xs">6</span>
+            <h4 class="font-title font-bold text-tour-navy text-sm uppercase">Casos de Fuerza Mayor</h4>
+          </div>
+          <p class="pl-1">
+            ⭐️ En situaciones imprevistas debidamente justificadas (emergencias médicas con soporte médico/legal, accidentes o imprevistos graves), notifica inmediatamente a nuestro equipo de atención al cliente. Debido a los compromisos operativos previamente cancelados, no se realizarán reembolsos en metálico a última hora, pero evaluaremos la congelación del saldo a favor según la disponibilidad de la agencia.
+          </p>
+        </div>
+
+        <!-- 7️⃣ Modificaciones por la Agencia -->
+        <div class="p-4 rounded-2xl bg-sky-50/60 border border-sky-100 space-y-2">
+          <div class="flex items-center gap-2">
+            <span class="px-2 py-0.5 rounded-lg bg-tour-blue text-white font-black text-xs">7</span>
+            <h4 class="font-title font-bold text-tour-navy text-sm uppercase">Modificaciones por la Agencia</h4>
+          </div>
+          <p class="pl-1">
+            ⭐️ Ante situaciones ajenas a nuestro control (condiciones climáticas extremas, cierres de vía, desastres naturales o causas de fuerza mayor) que comprometan la seguridad de los viajeros, la agencia reprogramará la salida o mantendrá el saldo a favor de los pasajeros para la nueva fecha fijada.
+          </p>
+        </div>
+
+        <!-- Aceptación Automática -->
+        <div class="p-3.5 rounded-2xl bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 border border-emerald-300 text-emerald-900 font-bold text-center text-xs shadow-xs">
+          Al estar reservando con nosotros acepta automáticamente las políticas y condiciones de reserva ✅
+        </div>
+
+      </div>
+
+      <!-- Footer del Modal -->
+      <div class="p-4 border-t border-slate-100 bg-slate-50/80 flex items-center justify-between gap-3">
+        <a href="https://wa.me/584126571155?text=%C2%A1Hola%20Tour%20Azul!%20Tengo%20una%20consulta%20sobre%20las%20pol%C3%ADticas%20de%20reserva." target="_blank" rel="noopener noreferrer" class="text-emerald-700 hover:text-emerald-800 font-bold text-xs flex items-center gap-1.5">
+          <i data-lucide="message-circle" class="w-4 h-4"></i>
+          <span>Consultar por WhatsApp</span>
+        </a>
+        <button onclick="closePoliticasModal()" class="px-5 py-2.5 rounded-xl bg-tour-blue hover:bg-blue-700 text-white font-bold text-xs transition shadow-sm cursor-pointer">
+          Entendido y de acuerdo
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+${opinionsModalsHtml}
 
   <!-- SPINNER OVERLAY ELEGANTE -->
   <div id="loading-overlay" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden items-center justify-center">
@@ -849,16 +1071,34 @@ const html = `<!DOCTYPE html>
       asientosOcupados: [],
       asientosBloqueados: [],
       asientosSeleccionados: [],
+      passengers: [],
+      otroPunto: false,
+      get titular() {
+        return this.passengers[0] || { nombre: "", cedula: "", edad: "", telefono: "", correo: "", recogida: "" };
+      },
+      set titular(val) {
+        if (!this.passengers[0]) {
+          this.passengers[0] = { nombre: "", cedula: "", edad: "", telefono: "", correo: "", recogida: "" };
+        }
+        Object.assign(this.passengers[0], val);
+      },
+      get acompanantes() {
+        return this.passengers.slice(1);
+      },
+      set acompanantes(val) {
+        const lead = this.passengers[0] || { nombre: "", cedula: "", edad: "", telefono: "", correo: "", recogida: "" };
+        this.passengers = [lead, ...val];
+      },
       timerBloqueo: null,
       segundosRestantesTimer: MINUTOS_BLOQUEO_ASIENTO * 60,
       tipoAbono: "full",
       metodoPago: "Pago Móvil",
-      titular: { nombre: "", cedula: "", edad: "", telefono: "", correo: "", recogida: "" },
-      acompanantes: [],
       reservaFinal: null
     };
 
 ${rateClientCode}
+
+${opinionsClientCode}
 
     function getBeachSvgFallback() {
       return \`<svg class="w-full h-full object-cover" viewBox="0 0 600 400" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
@@ -910,6 +1150,7 @@ ${rateClientCode}
       renderCalendar();
       renderTrips();
       setupEventListeners();
+      initOpinionsSystem();
     });
 
     function renderHeroChips() {
@@ -1360,6 +1601,23 @@ ${rateClientCode}
       document.getElementById("modal-detalles").classList.remove("flex");
     }
 
+    window.openPoliticasModal = function() {
+      const modal = document.getElementById("modal-politicas");
+      if (modal) {
+        modal.classList.remove("hidden");
+        modal.classList.add("flex");
+        lucide.createIcons();
+      }
+    };
+
+    window.closePoliticasModal = function() {
+      const modal = document.getElementById("modal-politicas");
+      if (modal) {
+        modal.classList.add("hidden");
+        modal.classList.remove("flex");
+      }
+    };
+
     let currentStep = 1;
 
     window.startBooking = function(tripId, salidaIndex = 0) {
@@ -1371,6 +1629,8 @@ ${rateClientCode}
       state.selectedBus = state.selectedSalida.buses[0] || "Bus 1";
       state.busesDisponibles = state.selectedSalida.buses || ["Bus 1"];
       state.asientosSeleccionados = [];
+      state.passengers = [];
+      state.otroPunto = false;
       state.tipoAbono = "full";
       state.metodoPago = state.tasaDisponible ? "Pago Móvil" : "Efectivo";
 
@@ -1380,12 +1640,20 @@ ${rateClientCode}
       goToStep(2);
       loadBusSeats();
 
+      if (state.seatPollingInterval) clearInterval(state.seatPollingInterval);
+      state.seatPollingInterval = setInterval(() => {
+        if (currentStep === 2 && document.getElementById("modal-wizard") && !document.getElementById("modal-wizard").classList.contains("hidden")) {
+          loadBusSeats();
+        }
+      }, 20000);
+
       document.getElementById("modal-wizard").classList.remove("hidden");
       document.getElementById("modal-wizard").classList.add("flex");
     };
 
     function closeWizard() {
       if (state.timerBloqueo) clearInterval(state.timerBloqueo);
+      if (state.seatPollingInterval) clearInterval(state.seatPollingInterval);
       document.getElementById("modal-wizard").classList.add("hidden");
       document.getElementById("modal-wizard").classList.remove("flex");
     }
@@ -1579,6 +1847,49 @@ ${rateClientCode}
       \`;
     }
 
+    function syncPassengersWithSeats() {
+      const numNeeded = state.asientosSeleccionados.length;
+      if (numNeeded === 0) return;
+
+      // Asegurar que exista al menos el pasajero titular
+      if (state.passengers.length === 0) {
+        state.passengers.push({
+          seat: state.asientosSeleccionados[0],
+          nombre: "",
+          cedula: "",
+          edad: "",
+          telefono: "",
+          correo: "",
+          recogida: ""
+        });
+      }
+
+      // Si se agregaron asientos, añadir acompañantes vacíos conservando los ya escritos
+      while (state.passengers.length < numNeeded) {
+        const nextSeat = state.asientosSeleccionados[state.passengers.length];
+        const defaultPickup = (state.passengers[0] && state.passengers[0].recogida) ? state.passengers[0].recogida : "";
+        state.passengers.push({
+          seat: nextSeat,
+          nombre: "",
+          edad: "",
+          cedula: "",
+          recogida: defaultPickup
+        });
+      }
+
+      // Si se redujeron asientos, quitar solo los que dejaron de existir
+      if (state.passengers.length > numNeeded) {
+        state.passengers = state.passengers.slice(0, numNeeded);
+      }
+
+      // Sincronizar número de asiento según el orden actual
+      state.asientosSeleccionados.forEach((seatNum, i) => {
+        if (state.passengers[i]) {
+          state.passengers[i].seat = seatNum;
+        }
+      });
+    }
+
     window.toggleSeat = function(num) {
       if (state.asientosOcupados.includes(num) || state.asientosBloqueados.includes(num)) return;
       if (navigator.vibrate) navigator.vibrate(20);
@@ -1591,6 +1902,7 @@ ${rateClientCode}
       }
 
       state.asientosSeleccionados.sort((a, b) => a - b);
+      syncPassengersWithSeats();
       renderBusSeatsUI();
       updateWizardBottomTotal();
 
@@ -1623,19 +1935,157 @@ ${rateClientCode}
       }, 1000);
     }
 
+    function escapeAttr(str) {
+      if (str === null || str === undefined) return "";
+      return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function handleToggleSeparatePickup(isSeparate) {
+      state.otroPunto = Boolean(isSeparate);
+      const leadPickup = (state.passengers[0] && state.passengers[0].recogida) ? state.passengers[0].recogida : (document.getElementById("lead-pickup")?.value || "");
+
+      const numComps = Math.max(0, state.asientosSeleccionados.length - 1);
+      for (let i = 0; i < numComps; i++) {
+        const wrap = document.getElementById(\`comp-pickup-wrap-\${i}\`);
+        const input = document.getElementById(\`comp-pickup-\${i}\`);
+        if (wrap) {
+          if (state.otroPunto) {
+            wrap.classList.remove("hidden");
+            // Al activar: aparece el campo prellenado con el punto del titular si está vacío y editable
+            if (input && (!input.value || !input.value.trim())) {
+              input.value = leadPickup;
+              if (state.passengers[i + 1]) {
+                state.passengers[i + 1].recogida = leadPickup;
+              }
+            }
+          } else {
+            // Al desactivar: se ocultan los campos y todos usan el punto del titular, pero se conserva lo que se escribió
+            wrap.classList.add("hidden");
+          }
+        }
+      }
+    }
+
+    function bindPassengerRealtimeEvents() {
+      // Titular (index 0)
+      const leadName = document.getElementById("lead-name");
+      if (leadName) leadName.oninput = (e) => { state.passengers[0].nombre = e.target.value; };
+      const leadCedula = document.getElementById("lead-cedula");
+      if (leadCedula) leadCedula.oninput = (e) => { state.passengers[0].cedula = e.target.value; };
+      const leadAge = document.getElementById("lead-age");
+      if (leadAge) leadAge.oninput = (e) => { state.passengers[0].edad = e.target.value; };
+      const leadPhone = document.getElementById("lead-phone");
+      if (leadPhone) leadPhone.oninput = (e) => { state.passengers[0].telefono = e.target.value; };
+      const leadEmail = document.getElementById("lead-email");
+      if (leadEmail) leadEmail.oninput = (e) => { state.passengers[0].correo = e.target.value; };
+      const leadPickup = document.getElementById("lead-pickup");
+      if (leadPickup) {
+        leadPickup.oninput = (e) => {
+          state.passengers[0].recogida = e.target.value;
+          // Si el interruptor de otro punto no está activo, sincronizar los acompañantes
+          if (!state.otroPunto) {
+            for (let i = 1; i < state.passengers.length; i++) {
+              state.passengers[i].recogida = e.target.value;
+              const cInput = document.getElementById(\`comp-pickup-\${i - 1}\`);
+              if (cInput && (!cInput.value || !cInput.value.trim())) {
+                cInput.value = e.target.value;
+              }
+            }
+          }
+        };
+      }
+
+      // Acompañantes (index 1..N)
+      const numComps = Math.max(0, state.asientosSeleccionados.length - 1);
+      for (let i = 0; i < numComps; i++) {
+        const compIdx = i;
+        const pIdx = i + 1;
+        const cName = document.getElementById(\`comp-name-\${compIdx}\`);
+        if (cName) cName.oninput = (e) => {
+          if (state.passengers[pIdx]) state.passengers[pIdx].nombre = e.target.value;
+        };
+        const cAge = document.getElementById(\`comp-age-\${compIdx}\`);
+        if (cAge) cAge.oninput = (e) => {
+          if (state.passengers[pIdx]) state.passengers[pIdx].edad = e.target.value;
+        };
+        const cCed = document.getElementById(\`comp-cedula-\${compIdx}\`);
+        if (cCed) cCed.oninput = (e) => {
+          if (state.passengers[pIdx]) state.passengers[pIdx].cedula = e.target.value;
+        };
+        const cPick = document.getElementById(\`comp-pickup-\${compIdx}\`);
+        if (cPick) cPick.oninput = (e) => {
+          if (state.passengers[pIdx]) state.passengers[pIdx].recogida = e.target.value;
+        };
+      }
+    }
+
+    window.selectLeadPickup = function(text) {
+      const el = document.getElementById("lead-pickup");
+      if (el) {
+        el.value = text;
+        state.passengers[0].recogida = text;
+        if (!state.otroPunto) {
+          for (let i = 1; i < state.passengers.length; i++) {
+            state.passengers[i].recogida = text;
+            const cInput = document.getElementById(\`comp-pickup-\${i - 1}\`);
+            if (cInput && (!cInput.value || !cInput.value.trim())) {
+              cInput.value = text;
+            }
+          }
+        }
+      }
+    };
+
     function renderStep3() {
+      syncPassengersWithSeats();
+
       const container = document.getElementById("passengers-forms");
-      const separatePickup = document.getElementById("toggle-separate-pickup").checked;
-      
-      const leadSeat = state.asientosSeleccionados[0];
-      const compSeats = state.asientosSeleccionados.slice(1);
+      const togglePickupBox = document.getElementById("toggle-separate-pickup-box");
+      const togglePickup = document.getElementById("toggle-separate-pickup");
+
+      const numTotal = state.asientosSeleccionados.length;
+      const numComps = Math.max(0, numTotal - 1);
+
+      // Mostrar el interruptor solo si hay 2 o más pasajeros (titular + al menos 1 acompañante)
+      if (togglePickupBox) {
+        if (numComps > 0) {
+          togglePickupBox.classList.remove("hidden");
+        } else {
+          togglePickupBox.classList.add("hidden");
+        }
+      }
+      if (togglePickup) {
+        togglePickup.checked = Boolean(state.otroPunto);
+      }
+
+      // Si el contenedor ya tiene exactamente el número correcto de tarjetas, actualizamos asientos sin borrar el DOM
+      const existingCards = container.querySelectorAll(".passenger-card");
+      if (existingCards.length === numTotal && numTotal > 0) {
+        const leadBadge = document.getElementById("lead-seat-badge");
+        if (leadBadge) leadBadge.textContent = \`Asiento #\${state.asientosSeleccionados[0]}\`;
+        for (let i = 0; i < numComps; i++) {
+          const compBadge = document.getElementById(\`comp-seat-badge-\${i}\`);
+          if (compBadge) compBadge.textContent = \`Asiento #\${state.asientosSeleccionados[i + 1]}\`;
+        }
+        handleToggleSeparatePickup(state.otroPunto);
+        return;
+      }
+
+      // Construcción del formulario manteniendo los datos que viven en state.passengers
+      const leadSeat = state.asientosSeleccionados[0] || "--";
+      const leadData = state.passengers[0] || { nombre: "", cedula: "", edad: "", telefono: "", correo: "", recogida: "" };
 
       let html = \`
-        <div class="p-4 bg-sky-50/60 rounded-2xl border border-sky-200/80 space-y-3">
+        <div class="passenger-card p-4 bg-sky-50/60 rounded-2xl border border-sky-200/80 space-y-3">
           <div class="flex items-center justify-between border-b border-sky-100 pb-2">
             <span class="font-title font-bold text-xs uppercase text-tour-navy flex items-center gap-1.5">
               <i data-lucide="user-check" class="w-4 h-4 text-tour-blue"></i>
-              Pasajero Titular (Asiento #\${leadSeat})
+              <span>Pasajero Titular (<span id="lead-seat-badge">Asiento #\${leadSeat}</span>)</span>
             </span>
             <span class="text-[10px] bg-tour-blue text-white px-2 py-0.5 rounded-full font-bold">Principal</span>
           </div>
@@ -1643,74 +2093,77 @@ ${rateClientCode}
           <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
             <div>
               <label class="block text-slate-600 font-medium mb-1">Nombre y Apellido *</label>
-              <input type="text" id="lead-name" value="\${state.titular.nombre}" required placeholder="Ej. Carlos Pérez" class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-tour-blue focus:outline-none">
+              <input type="text" id="lead-name" value="\${escapeAttr(leadData.nombre)}" required placeholder="Ej. Carlos Pérez" class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-tour-blue focus:outline-none">
             </div>
             <div>
               <label class="block text-slate-600 font-medium mb-1">Cédula o Pasaporte *</label>
-              <input type="text" id="lead-cedula" value="\${state.titular.cedula}" required placeholder="Ej. V-19876543" class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-tour-blue focus:outline-none">
+              <input type="text" id="lead-cedula" value="\${escapeAttr(leadData.cedula)}" required placeholder="Ej. V-19876543" class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-tour-blue focus:outline-none">
             </div>
             <div>
               <label class="block text-slate-600 font-medium mb-1">Edad *</label>
-              <input type="number" id="lead-age" value="\${state.titular.edad}" required placeholder="Ej. 28" min="1" max="100" class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-tour-blue focus:outline-none">
+              <input type="number" id="lead-age" value="\${escapeAttr(leadData.edad)}" required placeholder="Ej. 28" min="1" max="100" class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-tour-blue focus:outline-none">
             </div>
             <div>
               <label class="block text-slate-600 font-medium mb-1">Teléfono WhatsApp *</label>
-              <input type="tel" id="lead-phone" value="\${state.titular.telefono}" required placeholder="Ej. 04121234567" class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-tour-blue focus:outline-none">
+              <input type="tel" id="lead-phone" value="\${escapeAttr(leadData.telefono)}" required placeholder="Ej. 04121234567" class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-tour-blue focus:outline-none">
             </div>
             <div class="md:col-span-2">
               <label class="block text-slate-600 font-medium mb-1">Correo Electrónico (opcional)</label>
-              <input type="email" id="lead-email" value="\${state.titular.correo}" placeholder="ejemplo@correo.com" class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-tour-blue focus:outline-none">
+              <input type="email" id="lead-email" value="\${escapeAttr(leadData.correo)}" placeholder="ejemplo@correo.com" class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-tour-blue focus:outline-none">
             </div>
             <div class="md:col-span-2">
               <label class="block text-slate-600 font-medium mb-1">Punto de Recogida * (mínimo 10 caracteres)</label>
-              <textarea id="lead-pickup" rows="2" required placeholder="Ej. Barquisimeto (Monumental), Cabudare (Redoma) o Yaracuy (Chivacoa / San Felipe)" class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-tour-blue focus:outline-none text-xs">\${state.titular.recogida}</textarea>
+              <textarea id="lead-pickup" rows="2" required placeholder="Ej. Barquisimeto (Monumental), Cabudare (Redoma) o Yaracuy (Chivacoa / San Felipe)" class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-tour-blue focus:outline-none text-xs">\${escapeAttr(leadData.recogida)}</textarea>
               <span class="text-[10px] text-slate-400">Salidas desde Barquisimeto, Cabudare y Yaracuy. Puedes seleccionar un punto o escribirlo:</span>
               <div class="flex flex-wrap gap-1.5 pt-1.5">
-                <button type="button" onclick="document.getElementById('lead-pickup').value='Barquisimeto: C.C. Metrópolis / Monumental'; document.getElementById('lead-pickup').dispatchEvent(new Event('input'));" class="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-sky-50 text-tour-blue border border-sky-200 hover:bg-sky-100 transition cursor-pointer">📍 Barquisimeto</button>
-                <button type="button" onclick="document.getElementById('lead-pickup').value='Cabudare: Redoma de Agua Viva'; document.getElementById('lead-pickup').dispatchEvent(new Event('input'));" class="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-sky-50 text-tour-blue border border-sky-200 hover:bg-sky-100 transition cursor-pointer">📍 Cabudare</button>
-                <button type="button" onclick="document.getElementById('lead-pickup').value='Yaracuy: Pasarela / Peaje de Chivacoa'; document.getElementById('lead-pickup').dispatchEvent(new Event('input'));" class="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-sky-50 text-tour-blue border border-sky-200 hover:bg-sky-100 transition cursor-pointer">📍 Yaracuy (Chivacoa)</button>
-                <button type="button" onclick="document.getElementById('lead-pickup').value='Yaracuy: San Felipe (Redoma / Autopista)'; document.getElementById('lead-pickup').dispatchEvent(new Event('input'));" class="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-sky-50 text-tour-blue border border-sky-200 hover:bg-sky-100 transition cursor-pointer">📍 Yaracuy (San Felipe)</button>
+                <button type="button" onclick="selectLeadPickup('Barquisimeto: C.C. Metrópolis / Monumental')" class="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-sky-50 text-tour-blue border border-sky-200 hover:bg-sky-100 transition cursor-pointer">📍 Barquisimeto</button>
+                <button type="button" onclick="selectLeadPickup('Cabudare: Redoma de Agua Viva')" class="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-sky-50 text-tour-blue border border-sky-200 hover:bg-sky-100 transition cursor-pointer">📍 Cabudare</button>
+                <button type="button" onclick="selectLeadPickup('Yaracuy: Pasarela / Peaje de Chivacoa')" class="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-sky-50 text-tour-blue border border-sky-200 hover:bg-sky-100 transition cursor-pointer">📍 Yaracuy (Chivacoa)</button>
+                <button type="button" onclick="selectLeadPickup('Yaracuy: San Felipe (Redoma / Autopista)')" class="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-sky-50 text-tour-blue border border-sky-200 hover:bg-sky-100 transition cursor-pointer">📍 Yaracuy (San Felipe)</button>
               </div>
             </div>
           </div>
         </div>
       \`;
 
-      compSeats.forEach((seatNum, idx) => {
-        const compData = state.acompanantes[idx] || { nombre: "", edad: "", cedula: "", recogida: "" };
+      for (let i = 0; i < numComps; i++) {
+        const compSeat = state.asientosSeleccionados[i + 1] || "--";
+        const compData = state.passengers[i + 1] || { nombre: "", edad: "", cedula: "", recogida: "" };
+        const compPickupVal = compData.recogida || "";
+
         html += \`
-          <div class="p-4 bg-white rounded-2xl border border-slate-200 space-y-3">
+          <div class="passenger-card p-4 bg-white rounded-2xl border border-slate-200 space-y-3">
             <div class="flex items-center justify-between border-b border-slate-100 pb-2">
               <span class="font-title font-bold text-xs uppercase text-slate-700 flex items-center gap-1.5">
                 <i data-lucide="user" class="w-4 h-4 text-tour-caribe"></i>
-                Acompañante \${idx + 1} (Asiento #\${seatNum})
+                <span>Acompañante \${i + 1} (<span id="comp-seat-badge-\${i}">Asiento #\${compSeat}</span>)</span>
               </span>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
               <div>
                 <label class="block text-slate-600 font-medium mb-1">Nombre y Apellido *</label>
-                <input type="text" id="comp-name-\${idx}" value="\${compData.nombre || ''}" required placeholder="Nombre completo" class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-tour-blue focus:outline-none">
+                <input type="text" id="comp-name-\${i}" value="\${escapeAttr(compData.nombre)}" required placeholder="Nombre completo" class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-tour-blue focus:outline-none">
               </div>
               <div>
                 <label class="block text-slate-600 font-medium mb-1">Edad *</label>
-                <input type="number" id="comp-age-\${idx}" value="\${compData.edad || ''}" required placeholder="Edad" class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-tour-blue focus:outline-none">
+                <input type="number" id="comp-age-\${i}" value="\${escapeAttr(compData.edad)}" required placeholder="Edad" class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-tour-blue focus:outline-none">
               </div>
               <div>
                 <label class="block text-slate-600 font-medium mb-1">Cédula (opcional para niños)</label>
-                <input type="text" id="comp-cedula-\${idx}" value="\${compData.cedula || ''}" placeholder="Cédula" class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-tour-blue focus:outline-none">
+                <input type="text" id="comp-cedula-\${i}" value="\${escapeAttr(compData.cedula)}" placeholder="Cédula" class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-tour-blue focus:outline-none">
               </div>
-              \${separatePickup ? \`
-                <div class="md:col-span-3">
-                  <label class="block text-slate-600 font-medium mb-1">Punto de Recogida específico *</label>
-                  <input type="text" id="comp-pickup-\${idx}" value="\${compData.recogida || state.titular.recogida || ''}" required placeholder="Dirección exacta de recogida" class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-tour-blue focus:outline-none">
-                </div>
-              \` : ''}
+              
+              <div id="comp-pickup-wrap-\${i}" class="comp-pickup-wrapper md:col-span-3 \${state.otroPunto ? '' : 'hidden'}">
+                <label class="block text-slate-600 font-medium mb-1">Punto de Recogida específico * (mínimo 10 caracteres)</label>
+                <input type="text" id="comp-pickup-\${i}" value="\${escapeAttr(compPickupVal)}" placeholder="Dirección exacta de recogida" class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-tour-blue focus:outline-none text-xs">
+              </div>
             </div>
           </div>
         \`;
-      });
+      }
 
       container.innerHTML = html;
+      bindPassengerRealtimeEvents();
       lucide.createIcons();
     }
 
@@ -1767,7 +2220,7 @@ ${rateClientCode}
         balanceBsStr = \` (Bs. \${formatVzla(balanceEur * state.tasaBCV)})\`;
       }
 
-      const separatePickup = document.getElementById("toggle-separate-pickup").checked;
+      const separatePickup = state.otroPunto;
       let pickupsHtml = "";
       if (!separatePickup) {
         pickupsHtml = \`<div class="text-[11px] text-slate-500"><strong>Punto de recogida:</strong> \${state.titular.recogida}</div>\`;
@@ -1775,7 +2228,7 @@ ${rateClientCode}
         pickupsHtml = \`
           <div class="text-[11px] text-slate-500 space-y-0.5">
             <div><strong>\${state.titular.nombre} (Asiento \${state.asientosSeleccionados[0]}):</strong> \${state.titular.recogida}</div>
-            \${state.acompanantes.map((c, i) => \`<div><strong>\${c.nombre} (Asiento \${state.asientosSeleccionados[i + 1]}):</strong> \${c.recogida}</div>\`).join("")}
+            \${state.acompanantes.map((c, i) => \`<div><strong>\${c.nombre} (Asiento \${state.asientosSeleccionados[i + 1]}):</strong> \${c.recogida || state.titular.recogida}</div>\`).join("")}
           </div>
         \`;
       }
@@ -1855,59 +2308,66 @@ ${rateClientCode}
         return true;
       }
       if (step === 3) {
-        const leadName = document.getElementById("lead-name").value.trim();
-        const leadCedula = document.getElementById("lead-cedula").value.trim();
-        const leadAge = document.getElementById("lead-age").value.trim();
-        const leadPhone = document.getElementById("lead-phone").value.trim();
-        const leadPickup = document.getElementById("lead-pickup").value.trim();
+        const leadNameEl = document.getElementById("lead-name");
+        const leadCedulaEl = document.getElementById("lead-cedula");
+        const leadAgeEl = document.getElementById("lead-age");
+        const leadPhoneEl = document.getElementById("lead-phone");
+        const leadEmailEl = document.getElementById("lead-email");
+        const leadPickupEl = document.getElementById("lead-pickup");
 
-        if (!leadName || !leadCedula || !leadAge || !leadPhone) {
+        if (leadNameEl) state.passengers[0].nombre = leadNameEl.value.trim();
+        if (leadCedulaEl) state.passengers[0].cedula = leadCedulaEl.value.trim();
+        if (leadAgeEl) state.passengers[0].edad = leadAgeEl.value.trim();
+        if (leadPhoneEl) state.passengers[0].telefono = leadPhoneEl.value.trim();
+        if (leadEmailEl) state.passengers[0].correo = leadEmailEl.value.trim();
+        if (leadPickupEl) state.passengers[0].recogida = leadPickupEl.value.trim();
+
+        const lead = state.passengers[0];
+        if (!lead.nombre || !lead.cedula || !lead.edad || !lead.telefono) {
           alert("Por favor completa los datos obligatorios del titular.");
           return false;
         }
-        if (leadPickup.length < 10) {
-          alert("El punto de recogida debe tener al menos 10 caracteres con la dirección clara.");
+        if (!lead.recogida || lead.recogida.length < 10) {
+          alert("El punto de recogida del titular debe tener al menos 10 caracteres con la dirección clara.");
           return false;
         }
 
-        state.titular = {
-          nombre: leadName,
-          cedula: leadCedula,
-          edad: leadAge,
-          telefono: leadPhone,
-          correo: document.getElementById("lead-email").value.trim(),
-          recogida: leadPickup
-        };
-
-        const separatePickup = document.getElementById("toggle-separate-pickup").checked;
-        state.acompanantes = [];
-        const numAcomp = state.asientosSeleccionados.length - 1;
-
+        const numAcomp = Math.max(0, state.asientosSeleccionados.length - 1);
         for (let i = 0; i < numAcomp; i++) {
-          const compName = document.getElementById(\`comp-name-\${i}\`).value.trim();
-          const compAge = document.getElementById(\`comp-age-\${i}\`).value.trim();
-          const compCed = document.getElementById(\`comp-cedula-\${i}\`).value.trim();
-          let compPick = leadPickup;
+          const compNameEl = document.getElementById(\`comp-name-\${i}\`);
+          const compAgeEl = document.getElementById(\`comp-age-\${i}\`);
+          const compCedEl = document.getElementById(\`comp-cedula-\${i}\`);
+          const compPickEl = document.getElementById(\`comp-pickup-\${i}\`);
 
-          if (separatePickup) {
-            compPick = document.getElementById(\`comp-pickup-\${i}\`).value.trim();
-            if (!compPick || compPick.length < 10) {
-              alert(\`El punto de recogida del acompañante \${i + 1} debe tener al menos 10 caracteres.\`);
-              return false;
-            }
+          if (!state.passengers[i + 1]) {
+            state.passengers[i + 1] = {
+              seat: state.asientosSeleccionados[i + 1],
+              nombre: "",
+              edad: "",
+              cedula: "",
+              recogida: lead.recogida
+            };
           }
 
-          if (!compName || !compAge) {
+          if (compNameEl) state.passengers[i + 1].nombre = compNameEl.value.trim();
+          if (compAgeEl) state.passengers[i + 1].edad = compAgeEl.value.trim();
+          if (compCedEl) state.passengers[i + 1].cedula = compCedEl.value.trim();
+          if (compPickEl && state.otroPunto) {
+            state.passengers[i + 1].recogida = compPickEl.value.trim();
+          }
+
+          const comp = state.passengers[i + 1];
+          if (!comp.nombre || !comp.edad) {
             alert(\`Por favor completa el nombre y la edad del acompañante \${i + 1}.\`);
             return false;
           }
 
-          state.acompanantes.push({
-            nombre: compName,
-            edad: compAge,
-            cedula: compCed,
-            recogida: compPick
-          });
+          if (state.otroPunto) {
+            if (!comp.recogida || comp.recogida.length < 10) {
+              alert(\`El punto de recogida del acompañante \${i + 1} debe tener al menos 10 caracteres.\`);
+              return false;
+            }
+          }
         }
         return true;
       }
@@ -1970,8 +2430,15 @@ ${rateClientCode}
         tasaBCV: frozenRate,
         referenciaPagoMovil: state.metodoPago === "Pago Móvil" ? document.getElementById("pagomovil-ref").value.trim() : "",
         estadoPago: estadoPago,
-        titular: state.titular,
-        acompanantes: state.acompanantes
+        titular: { ...state.passengers[0] },
+        acompanantes: state.passengers.slice(1).map(c => ({
+          ...c,
+          recogida: (state.otroPunto && c.recogida) ? c.recogida : state.passengers[0].recogida
+        })),
+        passengers: state.passengers.map((p, idx) => ({
+          ...p,
+          recogida: (idx === 0 || (state.otroPunto && p.recogida)) ? p.recogida : state.passengers[0].recogida
+        }))
       };
 
       state.reservaFinal = payload;
@@ -2071,6 +2538,8 @@ ${rateClientCode}
       }
 
       document.getElementById("btn-close-detalles").onclick = closeDetallesModal;
+      const closePoliticasBtn = document.getElementById("btn-close-politicas");
+      if (closePoliticasBtn) closePoliticasBtn.onclick = closePoliticasModal;
       document.getElementById("btn-close-wizard").onclick = closeWizard;
       document.getElementById("btn-close-success").onclick = () => {
         document.getElementById("modal-success").classList.add("hidden");
@@ -2089,8 +2558,8 @@ ${rateClientCode}
         }
       };
 
-      document.getElementById("toggle-separate-pickup").onchange = () => {
-        renderStep3();
+      document.getElementById("toggle-separate-pickup").onchange = (e) => {
+        handleToggleSeparatePickup(e.target.checked);
       };
 
       document.getElementById("pay-opt-full").onclick = () => {

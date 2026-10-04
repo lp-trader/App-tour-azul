@@ -72,6 +72,12 @@ function doGet(e) {
       return jsonResponse({ ok: true, buses: buses });
     }
 
+    // 4. OBTENER COMENTARIOS APROBADOS
+    if (accion === "comentarios") {
+      const comentarios = obtenerComentariosAprobados(ss);
+      return jsonResponse({ ok: true, comentarios: comentarios });
+    }
+
     return jsonResponse({ ok: false, error: "Accion no reconocida" });
 
   } catch (err) {
@@ -162,6 +168,21 @@ function doPost(e) {
         asientos: asientos,
         mensaje: "Reserva confirmada con éxito"
       });
+    }
+
+    // 3. REGISTRAR COMENTARIO Y OPINIÓN
+    if (accion === "comentario") {
+      return jsonResponse(registrarComentario(ss, data));
+    }
+
+    // 4. VERIFICAR ADMIN DEL SORTEO
+    if (accion === "sorteo_verificar_admin") {
+      return jsonResponse(verificarAdminSorteo(ss, data.clave));
+    }
+
+    // 5. ELEGIR GANADOR DEL SORTEO
+    if (accion === "sorteo_ganador") {
+      return jsonResponse(elegirGanadorSorteo(ss, data));
     }
 
     return jsonResponse({ ok: false, error: "Accion POST no reconocida" });
@@ -642,6 +663,257 @@ function inicializarHojasSiNoExisten(ss) {
     sResumen.getRange(1, 1, 1, hRes.length).setFontWeight("bold").setBackground("#0D9488").setFontColor("#FFFFFF");
     sResumen.setFrozenRows(1);
   }
+
+  // 6. Hoja "Opiniones"
+  let sOpiniones = ss.getSheetByName("Opiniones");
+  if (!sOpiniones) {
+    sOpiniones = ss.insertSheet("Opiniones");
+    const hOpin = ["Timestamp", "ID", "Nombre", "Nombre Publico", "Telefono", "Destino", "Fecha Viaje", "Calificacion", "Comentario", "Foto Base64", "Autoriza", "Participa Sorteo", "Estado"];
+    sOpiniones.appendRow(hOpin);
+    sOpiniones.getRange(1, 1, 1, hOpin.length).setFontWeight("bold").setBackground("#1F3FE0").setFontColor("#FFFFFF");
+    sOpiniones.setFrozenRows(1);
+  }
+
+  // 7. Hoja "Sorteos"
+  let sSorteos = ss.getSheetByName("Sorteos");
+  if (!sSorteos) {
+    sSorteos = ss.insertSheet("Sorteos");
+    const hSort = ["Timestamp", "Mes", "Ganador", "Telefono", "Destino", "Fecha Viaje", "Comentario"];
+    sSorteos.appendRow(hSort);
+    sSorteos.getRange(1, 1, 1, hSort.length).setFontWeight("bold").setBackground("#B45309").setFontColor("#FFFFFF");
+    sSorteos.setFrozenRows(1);
+  }
+}
+
+/**
+ * Obtiene comentarios aprobados para mostrar en la web
+ */
+function obtenerComentariosAprobados(ss) {
+  const sheet = ss.getSheetByName("Opiniones");
+  if (!sheet) return [];
+  const rows = sheet.getDataRange().getValues();
+  if (rows.length <= 1) return [];
+
+  const headers = rows[0];
+  const idxNombrePub = headers.indexOf("Nombre Publico");
+  const idxDestino = headers.indexOf("Destino");
+  const idxFecha = headers.indexOf("Fecha Viaje");
+  const idxCalif = headers.indexOf("Calificacion");
+  const idxComent = headers.indexOf("Comentario");
+  const idxFoto = headers.indexOf("Foto Base64");
+  const idxEstado = headers.indexOf("Estado");
+
+  const lista = [];
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i];
+    const estado = row[idxEstado];
+    if (estado === "Aprobado") {
+      lista.unshift({
+        id: "com-" + i,
+        nombre: row[idxNombrePub] || "Viajero",
+        destino: row[idxDestino] || "",
+        fechaViaje: row[idxFecha] || "",
+        fechaTexto: row[idxFecha] ? Utilities.formatDate(new Date(row[idxFecha]), Session.getScriptTimeZone(), "dd/MM/yyyy") : "",
+        calificacion: Number(row[idxCalif]) || 5,
+        comentario: row[idxComent] || "",
+        fotoUrl: row[idxFoto] || "",
+        verificado: true
+      });
+    }
+  }
+  return lista;
+}
+
+/**
+ * Registra una opinión enviada desde la web
+ */
+function registrarComentario(ss, data) {
+  const sheet = ss.getSheetByName("Opiniones");
+  if (!sheet) return { ok: false, error: "Hoja Opiniones no encontrada" };
+
+  const tel = String(data.telefono || "").trim();
+  const slug = String(data.viajeSlug || "").trim();
+  const rows = sheet.getDataRange().getValues();
+
+  // Validar unicidad por teléfono + viaje
+  for (let i = 1; i < rows.length; i++) {
+    const rowTel = String(rows[i][4] || "").trim();
+    const rowSlug = String(rows[i][5] || "").trim() + "-" + String(rows[i][6] || "").trim();
+    if (rowTel === tel && rowSlug.indexOf(slug) !== -1) {
+      return { ok: false, error: "Ya existe un comentario registrado para este teléfono y viaje." };
+    }
+  }
+
+  const now = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm:ss");
+  const idCom = "OPIN-" + Date.now();
+
+  sheet.appendRow([
+    now,
+    idCom,
+    data.nombre,
+    data.nombrePublico,
+    data.telefono,
+    data.destino,
+    data.fechaViaje,
+    data.calificacion,
+    data.comentario,
+    data.fotoBase64 || "",
+    data.autorizaPublicar ? "SI" : "NO",
+    data.participaSorteo ? "SI" : "NO",
+    "Pendiente" // Requiere aprobación manual
+  ]);
+
+  return { ok: true, mensaje: "Opinión registrada con éxito para revisión", id: idCom };
+}
+
+/**
+ * Verifica la clave de admin y devuelve participantes elegibles
+ */
+function verificarAdminSorteo(ss, clave) {
+  // Clave guardada en Config o fallback seguro
+  const claveReal = getClaveAdminConfig(ss);
+  if (clave !== claveReal) {
+    return { ok: false, error: "Clave de administrador incorrecta" };
+  }
+
+  const now = new Date();
+  const mesKey = "sorteo_" + now.getFullYear() + "_" + (now.getMonth() + 1);
+  let ganadorPrevio = null;
+
+  const sSorteos = ss.getSheetByName("Sorteos");
+  if (sSorteos) {
+    const sRows = sSorteos.getDataRange().getValues();
+    for (let j = sRows.length - 1; j >= 1; j--) {
+      if (String(sRows[j][1] || "") === mesKey) {
+        ganadorPrevio = {
+          nombre: sRows[j][2],
+          telefono: sRows[j][3],
+          destino: sRows[j][4],
+          fechaViaje: sRows[j][5],
+          comentario: sRows[j][6]
+        };
+        break;
+      }
+    }
+  }
+
+  const participantes = obtenerParticipantesSorteoMes(ss);
+  return { ok: true, participantes: participantes, ganadorPrevio: ganadorPrevio };
+}
+
+/**
+ * Elige el ganador al azar desde el backend
+ */
+function elegirGanadorSorteo(ss, data) {
+  const claveReal = getClaveAdminConfig(ss);
+  if (data.clave !== claveReal) {
+    return { ok: false, error: "Clave de administrador incorrecta" };
+  }
+
+  const sSorteos = ss.getSheetByName("Sorteos");
+  const now = new Date();
+  const mesKey = data.mesKey || ("sorteo_" + now.getFullYear() + "_" + (now.getMonth() + 1));
+
+  // Impedir un segundo sorteo en el mismo mes, salvo con confirmación explícita (repetir: true)
+  if (sSorteos && !data.repetir) {
+    const sRows = sSorteos.getDataRange().getValues();
+    for (let j = sRows.length - 1; j >= 1; j--) {
+      if (String(sRows[j][1] || "") === mesKey) {
+        return {
+          ok: false,
+          yaSorteado: true,
+          error: "Ya se ha realizado el sorteo de este mes. Si deseas sortear nuevamente usa el botón 'Repetir sorteo'.",
+          ganador: {
+            nombre: sRows[j][2],
+            telefono: sRows[j][3],
+            destino: sRows[j][4],
+            fechaViaje: sRows[j][5],
+            comentario: sRows[j][6]
+          }
+        };
+      }
+    }
+  }
+
+  const participantes = obtenerParticipantesSorteoMes(ss);
+  if (participantes.length === 0) {
+    return { ok: false, error: "No hay participantes elegibles (opiniones aprobadas) para el sorteo de este mes." };
+  }
+
+  // Selección 100% aleatoria en el servidor
+  const winningIndex = Math.floor(Math.random() * participantes.length);
+  const ganador = participantes[winningIndex];
+  ganador.index = winningIndex;
+
+  // Registrar en hoja Sorteos
+  if (sSorteos) {
+    const timeStr = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm:ss");
+    sSorteos.appendRow([
+      timeStr,
+      mesKey,
+      ganador.nombre,
+      ganador.telefono,
+      ganador.destino,
+      ganador.fechaViaje,
+      ganador.comentario
+    ]);
+  }
+
+  return { ok: true, ganador: ganador };
+}
+
+function getClaveAdminConfig(ss) {
+  const cfg = ss.getSheetByName("Config");
+  if (cfg) {
+    const vals = cfg.getDataRange().getValues();
+    if (vals.length > 2 && vals[2][0]) {
+      return String(vals[2][0]).trim();
+    }
+  }
+  return "touradmin2026"; // Clave por defecto si no está configurada en la hoja Config
+}
+
+function obtenerParticipantesSorteoMes(ss) {
+  const sheet = ss.getSheetByName("Opiniones");
+  if (!sheet) return [];
+  const rows = sheet.getDataRange().getValues();
+  if (rows.length <= 1) return [];
+
+  const headers = rows[0];
+  const idxNombre = headers.indexOf("Nombre");
+  const idxNombrePub = headers.indexOf("Nombre Publico");
+  const idxTel = headers.indexOf("Telefono");
+  const idxDestino = headers.indexOf("Destino");
+  const idxFecha = headers.indexOf("Fecha Viaje");
+  const idxComent = headers.indexOf("Comentario");
+  const idxPart = headers.indexOf("Participa Sorteo");
+  const idxEstado = headers.indexOf("Estado");
+
+  const elegibles = [];
+  const telsVistos = {};
+
+  for (let i = 1; i < rows.length; i++) {
+    const r = rows[i];
+    const tel = String(r[idxTel] || "").trim();
+    const participa = String(r[idxPart] || "").toUpperCase() === "SI";
+    const estado = (idxEstado !== -1) ? String(r[idxEstado] || "").trim().toLowerCase() : "";
+
+    // Participan los viajeros del mes que dejen una opinión aprobada (sin importar calificación)
+    // y máximo 1 participación por persona/teléfono por mes
+    const esAprobado = estado === "aprobado" || estado === "aprobada";
+    if (esAprobado && participa && tel && !telsVistos[tel]) {
+      telsVistos[tel] = true;
+      elegibles.push({
+        nombre: r[idxNombre] || r[idxNombrePub],
+        nombreCorto: r[idxNombrePub] || r[idxNombre],
+        telefono: tel,
+        destino: r[idxDestino] || "",
+        fechaViaje: r[idxFecha] || "",
+        comentario: r[idxComent] || ""
+      });
+    }
+  }
+  return elegibles;
 }
 
 /**
