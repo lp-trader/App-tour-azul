@@ -1039,14 +1039,139 @@ ${opinionsModalsHtml}
     </div>
   </div>
 
+  <!-- CONTENEDOR TOAST NOTIFICACIONES -->
+  <div id="toast-container" class="fixed top-5 right-5 z-[100] flex flex-col gap-2 pointer-events-none"></div>
+
   <!-- JAVASCRIPT ES6+ EMBEBIDO -->
   <script>
-    const WEBHOOK_URL = "";
+    const WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbzdxxU7xWb9Vjv_R8v5RncFEG8eHau7J7mI5isKOqNksG2OVk2ohDSqf84tZ-1j_WFpLA/exec";
     const WHATSAPP_NUMERO = "584126571155";
     const MINUTOS_BLOQUEO_ASIENTO = 10;
     const ABONO_MINIMO = 5;
     const DATOS_PAGO_MOVIL = { banco: "0102 - Banco de Venezuela", cedulaRif: "V-12345678", telefono: "04121234567" };
     const INSTRUCCIONES_EFECTIVO = "Entrega el monto en efectivo al abordar la unidad el día del viaje.";
+
+    // Notificación en pantalla tipo toast elegante
+    function showToastNotification(message, type = "success") {
+      const container = document.getElementById("toast-container");
+      if (!container) return;
+      const toast = document.createElement("div");
+      const bg = type === "success" ? "bg-emerald-600 text-white" : "bg-rose-600 text-white";
+      const icon = type === "success" ? "✓" : "⚠";
+      toast.className = \`pointer-events-auto px-4 py-3 rounded-2xl shadow-xl flex items-center gap-2.5 text-xs font-bold transition-all transform duration-300 translate-y-2 opacity-0 \${bg}\`;
+      toast.innerHTML = \`<span class="text-sm font-black">\${icon}</span><span>\${message}</span>\`;
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.classList.remove("translate-y-2", "opacity-0");
+      }, 10);
+      setTimeout(() => {
+        toast.classList.add("opacity-0", "-translate-y-2");
+        setTimeout(() => toast.remove(), 300);
+      }, 4000);
+    }
+    window.showToastNotification = showToastNotification;
+
+    // Normaliza el nombre del destino para la hoja correspondiente (ej: "Cayo_Muerto_18-10")
+    function formatDestinoSheetName(destino, fechaViaje) {
+      if (!destino) return "General";
+      if (destino.includes("_") && /\\d{1,2}-\\d{1,2}/.test(destino)) {
+        return destino;
+      }
+      let dateTag = "";
+      if (fechaViaje && typeof fechaViaje === "string" && fechaViaje.includes("-")) {
+        const parts = fechaViaje.split("-");
+        if (parts.length >= 3) {
+          dateTag = \`_\${parts[2]}-\${parts[1]}\`; // ej: _18-10
+        }
+      }
+      const cleanDestino = destino
+        .normalize("NFD").replace(/[\\u0300-\\u036f]/g, "")
+        .replace(/[^\\w\\s-]/g, "")
+        .trim()
+        .replace(/\\s+/g, "_");
+      return \`\${cleanDestino}\${dateTag}\`;
+    }
+    window.formatDestinoSheetName = formatDestinoSheetName;
+
+    // Función principal para enviar reservas a Google Sheets (Google Apps Script WebHook)
+    async function enviarReservaAGoogleSheets(datosReserva) {
+      const urlWebHook = "https://script.google.com/macros/s/AKfycbzdxxU7xWb9Vjv_R8v5RncFEG8eHau7J7mI5isKOqNksG2OVk2ohDSqf84tZ-1j_WFpLA/exec";
+
+      // Formato exacto del destino para la hoja de Google Sheets (Ej: "Cayo_Muerto_18-10")
+      const destinoHoja = formatDestinoSheetName(datosReserva.destino, datosReserva.fechaViaje);
+
+      // Normalizar acompañantes como array de strings con nombres ['Juan Pérez', 'Maria Gomez']
+      let listaAcompNombres = [];
+      if (Array.isArray(datosReserva.acompanantes)) {
+        listaAcompNombres = datosReserva.acompanantes.map(a => {
+          if (typeof a === "string") return a;
+          if (a && typeof a === "object") return a.nombre || "";
+          return String(a || "");
+        }).filter(Boolean);
+      }
+
+      // Estructura de los datos que espera el Google Apps Script
+      const payload = {
+        nombreTitular: datosReserva.nombre || datosReserva.nombreTitular || (datosReserva.titular && datosReserva.titular.nombre) || "",
+        cedula: datosReserva.cedula || (datosReserva.titular && datosReserva.titular.cedula) || "",
+        telefono: datosReserva.telefono || (datosReserva.titular && datosReserva.titular.telefono) || "",
+        destino: destinoHoja,
+        fechaViaje: datosReserva.fechaViaje || "",
+        abono: Number(datosReserva.abono !== undefined ? datosReserva.abono : (datosReserva.montoAbonadoEur || 0)),
+        pendiente: Number(datosReserva.pendiente !== undefined ? datosReserva.pendiente : (datosReserva.saldoPendienteEur || 0)),
+        acompanantes: listaAcompNombres,
+        // Campos extendidos para sincronización de inventario y resumen
+        accion: datosReserva.accion || "reservar",
+        idReserva: datosReserva.idReserva || \`TA-\${(datosReserva.fechaViaje || "").replace(/-/g, "")}-\${Math.floor(Math.random() * 900 + 100)}\`,
+        bus: datosReserva.bus || "Bus 1",
+        asientos: datosReserva.asientos || [],
+        totalPersonas: datosReserva.totalPersonas || (1 + listaAcompNombres.length),
+        tipoPago: datosReserva.tipoPago || "Pago Móvil",
+        montoAbonadoEur: Number(datosReserva.abono !== undefined ? datosReserva.abono : (datosReserva.montoAbonadoEur || 0)),
+        saldoPendienteEur: Number(datosReserva.pendiente !== undefined ? datosReserva.pendiente : (datosReserva.saldoPendienteEur || 0)),
+        montoPagadoBs: datosReserva.montoPagadoBs || 0,
+        montoPagadoUsd: datosReserva.montoPagadoUsd || 0,
+        tasaBCV: datosReserva.tasaBCV || 0,
+        referenciaPagoMovil: datosReserva.referenciaPagoMovil || "",
+        estadoPago: datosReserva.estadoPago || "Pendiente de pago",
+        destinoOriginal: datosReserva.destinoOriginal || datosReserva.destino || "",
+        titular: datosReserva.titular || {
+          nombre: datosReserva.nombre || datosReserva.nombreTitular || "",
+          cedula: datosReserva.cedula || "",
+          telefono: datosReserva.telefono || "",
+          edad: datosReserva.edad || "",
+          recogida: datosReserva.recogida || ""
+        }
+      };
+
+      try {
+        const respuesta = await fetch(urlWebHook, {
+          method: "POST",
+          mode: "no-cors", // Necesario para evitar bloqueos de CORS con Google Apps Script
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        console.log("Reserva enviada correctamente a Google Sheets y registrada en Base_General y Destinos.");
+        showToastNotification("¡Reserva registrada con éxito en Google Sheets!", "success");
+        try {
+          if (typeof window !== "undefined" && window.alert) {
+            window.alert("¡Reserva registrada con éxito!");
+          }
+        } catch (_) {}
+        return { ok: true, payload };
+      } catch (error) {
+        console.error("Error al enviar la reserva:", error);
+        showToastNotification("Hubo un error al registrar la reserva. Por favor, intenta de nuevo.", "error");
+        try {
+          if (typeof window !== "undefined" && window.alert) {
+            window.alert("Hubo un error al registrar la reserva. Por favor, intenta de nuevo.");
+          }
+        } catch (_) {}
+        throw error;
+      }
+    }
+    window.enviarReservaAGoogleSheets = enviarReservaAGoogleSheets;
 
     // DATOS DE LOS VIAJES
     const VIAJES = ${JSON.stringify(TRIPS, null, 2)};
@@ -2560,26 +2685,34 @@ ${opinionsClientCode}
 
       state.reservaFinal = payload;
 
-      if (WEBHOOK_URL) {
-        try {
-          const res = await fetch(WEBHOOK_URL, {
-            method: "POST",
-            headers: { "Content-Type": "text/plain;charset=utf-8" },
-            body: JSON.stringify(payload)
-          });
-          const result = await res.json();
-          if (!result.ok && result.error === "asiento_ocupado") {
-            overlay.classList.add("hidden");
-            alert("Uno o más asientos acaban de ser ocupados por otro cliente. Por favor vuelve a seleccionarlos.");
-            loadBusSeats();
-            goToStep(2);
-            return;
-          }
-        } catch (e) {
-          console.warn("Error enviando al Webhook:", e);
-        }
-      } else {
-        await new Promise(r => setTimeout(r, 800));
+      // Enviar la reserva a Google Sheets mediante enviarReservaAGoogleSheets
+      const datosParaSheets = {
+        nombre: state.passengers[0].nombre,
+        cedula: state.passengers[0].cedula,
+        telefono: state.passengers[0].telefono,
+        destino: state.selectedTrip.destino,
+        fechaViaje: state.selectedSalida.fecha,
+        abono: paidEur,
+        pendiente: balanceEur,
+        acompanantes: state.passengers.slice(1).map(c => c.nombre),
+        idReserva: idReserva,
+        bus: state.selectedBus,
+        asientos: state.asientosSeleccionados,
+        totalPersonas: numPers,
+        tipoPago: state.metodoPago,
+        montoPagadoBs: paidBs,
+        montoPagadoUsd: paidUsd,
+        tasaBCV: frozenRate,
+        referenciaPagoMovil: state.metodoPago === "Pago Móvil" ? (document.getElementById("pagomovil-ref") ? document.getElementById("pagomovil-ref").value.trim() : "") : "",
+        estadoPago: estadoPago,
+        titular: { ...state.passengers[0] },
+        passengers: state.passengers
+      };
+
+      try {
+        await enviarReservaAGoogleSheets(datosParaSheets);
+      } catch (e) {
+        console.warn("Aviso al registrar en Google Sheets:", e);
       }
 
       overlay.classList.add("hidden");

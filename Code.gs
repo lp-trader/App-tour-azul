@@ -225,18 +225,34 @@ function guardarReservaEnHoja(ss, idReserva, data) {
   const now = new Date();
   const fechaRegistro = Utilities.formatDate(now, Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm:ss");
 
-  const titular = data.titular || {};
-  const acompanantes = data.acompanantes || [];
-  const asientos = data.asientos || [];
+  // Soporte bidireccional: datos estructurados u objetos simples (nombreTitular, cedula, telefono, abono, pendiente, acompanantes)
+  const titular = data.titular || {
+    nombre: data.nombreTitular || data.nombre || "",
+    cedula: data.cedula || "",
+    telefono: data.telefono || "",
+    edad: data.edad || "",
+    recogida: data.recogida || data.puntoRecogida || ""
+  };
+  if (!titular.nombre && data.nombreTitular) titular.nombre = data.nombreTitular;
+  if (!titular.cedula && data.cedula) titular.cedula = data.cedula;
+  if (!titular.telefono && data.telefono) titular.telefono = data.telefono;
+
+  // Normalizar acompañantes
+  const acompanantesRaw = data.acompanantes || [];
+  const acompanantes = acompanantesRaw.map(a => typeof a === "string" ? { nombre: a } : a);
+
+  const asientos = Array.isArray(data.asientos) ? data.asientos : [];
   const totalPersonas = data.totalPersonas || (1 + acompanantes.length);
   const tipoPago = data.tipoPago || "Pago Móvil";
   const estadoPago = data.estadoPago || (tipoPago === "Pago Móvil" ? "Pagado" : "Pendiente de pago");
   const tasaBCV = data.tasaBCV || TASA_POR_DEFECTO;
+  const abonoEur = data.abono !== undefined ? data.abono : (data.montoAbonadoEur || 0);
+  const pendienteEur = data.pendiente !== undefined ? data.pendiente : (data.saldoPendienteEur || 0);
 
   const nombresAcompString = acompanantes.map(a => a.nombre).join(", ");
   const asientosString = asientos.join(", ");
 
-  // Fila para el Pasajero Titular
+  // 1. Fila para el Pasajero Titular en hoja "Reservas"
   const filaTitular = [
     idReserva,
     fechaRegistro,
@@ -250,8 +266,8 @@ function guardarReservaEnHoja(ss, idReserva, data) {
     data.bus || "Bus 1",
     totalPersonas,
     tipoPago,
-    data.montoAbonadoEur || 0,
-    data.saldoPendienteEur || 0,
+    abonoEur,
+    pendienteEur,
     tipoPago === "Pago Móvil" ? (data.referenciaPagoMovil || "") : "",
     data.destino || "",
     data.fechaViaje || "",
@@ -294,12 +310,94 @@ function guardarReservaEnHoja(ss, idReserva, data) {
 
   const endRow = sheet.getLastRow();
 
-  // Aplicar formato condicional y lista desplegable en columna "Estado de Pago" (Columna 21)
+  // Aplicar validación desplegable en columna "Estado de Pago" (Columna 21)
   const rangoEstado = sheet.getRange(startRow, 21, endRow - startRow + 1, 1);
   const reglaDesplegable = SpreadsheetApp.newDataValidation()
     .requireValueInList(["Pagado", "Pendiente de pago"], true)
     .build();
   rangoEstado.setDataValidation(reglaDesplegable);
+
+  // 2. Registrar en Base_General
+  guardarEnBaseGeneral(ss, idReserva, fechaRegistro, titular, acompanantes, data, abonoEur, pendienteEur, estadoPago);
+
+  // 3. Registrar en Hoja específica del Destino (ej: "Cayo_Muerto_18-10")
+  guardarEnHojaDestino(ss, idReserva, titular, acompanantes, data, abonoEur, pendienteEur, estadoPago);
+}
+
+/**
+ * Guarda el resumen consolidado en la hoja "Base_General"
+ */
+function guardarEnBaseGeneral(ss, idReserva, fechaRegistro, titular, acompanantes, data, abono, pendiente, estado) {
+  let sheet = ss.getSheetByName("Base_General");
+  if (!sheet) {
+    sheet = ss.insertSheet("Base_General");
+    const h = ["Fecha", "ID Reserva", "Titular", "Cédula", "Teléfono", "Destino", "Fecha Viaje", "Abono (€)", "Pendiente (€)", "Acompañantes", "Bus", "Asientos", "Estado"];
+    sheet.appendRow(h);
+    sheet.getRange(1, 1, 1, h.length).setFontWeight("bold").setBackground("#0B2A6B").setFontColor("#FFFFFF");
+    sheet.setFrozenRows(1);
+  }
+  const nombresAcomp = acompanantes.map(a => a.nombre).join(", ");
+  const asientosStr = Array.isArray(data.asientos) ? data.asientos.join(", ") : (data.asientos || "");
+  sheet.appendRow([
+    fechaRegistro,
+    idReserva,
+    titular.nombre || "",
+    titular.cedula || "",
+    titular.telefono || "",
+    data.destino || "",
+    data.fechaViaje || "",
+    abono,
+    pendiente,
+    nombresAcomp,
+    data.bus || "Bus 1",
+    asientosStr,
+    estado
+  ]);
+}
+
+/**
+ * Guarda los pasajeros en la hoja individual del viaje/destino (ej: "Cayo_Muerto_18-10")
+ */
+function guardarEnHojaDestino(ss, idReserva, titular, acompanantes, data, abono, pendiente, estado) {
+  const nombreHoja = String(data.destino || "").trim();
+  if (!nombreHoja) return;
+  let sheet = ss.getSheetByName(nombreHoja);
+  if (!sheet) {
+    sheet = ss.insertSheet(nombreHoja);
+    const h = ["ID Reserva", "Pasajero", "Cédula", "Teléfono", "Asiento", "Bus", "Punto Recogida", "Abono (€)", "Pendiente (€)", "Estado"];
+    sheet.appendRow(h);
+    sheet.getRange(1, 1, 1, h.length).setFontWeight("bold").setBackground("#1F3FE0").setFontColor("#FFFFFF");
+    sheet.setFrozenRows(1);
+  }
+  const asientos = Array.isArray(data.asientos) ? data.asientos : [];
+  // Fila titular
+  sheet.appendRow([
+    idReserva,
+    titular.nombre || "",
+    titular.cedula || "",
+    titular.telefono || "",
+    asientos[0] || "",
+    data.bus || "Bus 1",
+    titular.recogida || "",
+    abono,
+    pendiente,
+    estado
+  ]);
+  // Filas acompañantes
+  acompanantes.forEach((ac, idx) => {
+    sheet.appendRow([
+      idReserva,
+      ac.nombre || "",
+      ac.cedula || "(Acompañante)",
+      titular.telefono || "",
+      asientos[idx + 1] || "",
+      data.bus || "Bus 1",
+      ac.recogida || titular.recogida || "",
+      0,
+      0,
+      estado
+    ]);
+  });
 }
 
 /**
