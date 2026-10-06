@@ -631,12 +631,12 @@ const html = `<!DOCTYPE html>
                 <span class="font-bold text-slate-800" id="pm-banco">0102 - Banco de Venezuela</span>
               </div>
               <div class="flex justify-between items-center">
-                <span class="text-slate-500">Cédula / RIF:</span>
-                <span class="font-bold text-slate-800" id="pm-rif">V-12345678</span>
+                <span class="text-slate-500">Cédula:</span>
+                <span class="font-bold text-slate-800" id="pm-rif">V-24162410</span>
               </div>
               <div class="flex justify-between items-center">
                 <span class="text-slate-500">Teléfono:</span>
-                <span class="font-bold text-slate-800" id="pm-telf">0412-1234567</span>
+                <span class="font-bold text-slate-800" id="pm-telf">0412-6571155</span>
               </div>
             </div>
 
@@ -822,7 +822,7 @@ const html = `<!DOCTYPE html>
     const WHATSAPP_NUMERO = "584120000000"; // formato internacional sin +
     const MINUTOS_BLOQUEO_ASIENTO = 10;
     const ABONO_MINIMO = 5; // euros por persona, igual para todos los viajes
-    const DATOS_PAGO_MOVIL = { banco: "0102 - Banco de Venezuela", cedulaRif: "V-12345678", telefono: "04121234567" };
+    const DATOS_PAGO_MOVIL = { banco: "0102 - Banco de Venezuela", cedulaRif: "V-24162410", telefono: "04126571155" };
     const INSTRUCCIONES_EFECTIVO = "Entrega el monto exacto en dólares en efectivo el día del viaje al abordar la unidad. Recuerda que 1 € equivale a 1 $ en efectivo.";
     const TASA_DEMO = 45.80; // tasa de prueba para el modo demo (pon un número razonable)
 
@@ -1579,7 +1579,7 @@ const html = `<!DOCTYPE html>
               <input type="email" id="lead-email" value="\${state.titular.correo}" placeholder="ejemplo@correo.com" class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-tour-blue focus:outline-none">
             </div>
             <div class="md:col-span-2">
-              <label class="block text-slate-600 font-medium mb-1">Punto de Recogida * (mínimo 10 caracteres)</label>
+              <label class="block text-slate-600 font-medium mb-1">Punto de Recogida *</label>
               <textarea id="lead-pickup" rows="2" required placeholder="Ej. Monumental de Barquisimeto frente a la pasarela" class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-tour-blue focus:outline-none text-xs">\${state.titular.recogida}</textarea>
               <span class="text-[10px] text-slate-400">Escribe la dirección lo más claro posible, el chofer te recogerá según lo que escribas.</span>
             </div>
@@ -1766,8 +1766,8 @@ const html = `<!DOCTYPE html>
           alert("Por favor completa los datos obligatorios del titular.");
           return false;
         }
-        if (leadPickup.length < 10) {
-          alert("El punto de recogida debe tener al menos 10 caracteres con la dirección clara.");
+        if (!leadPickup) {
+          alert("Por favor indica el punto de recogida del titular.");
           return false;
         }
 
@@ -1792,8 +1792,8 @@ const html = `<!DOCTYPE html>
 
           if (separatePickup) {
             compPick = document.getElementById(\`comp-pickup-\${i}\`).value.trim();
-            if (!compPick || compPick.length < 10) {
-              alert(\`El punto de recogida del acompañante \${i + 1} debe tener al menos 10 caracteres.\`);
+            if (!compPick) {
+              alert(\`Por favor indica el punto de recogida del acompañante \${i + 1}.\`);
               return false;
             }
           }

@@ -820,12 +820,12 @@
                 <span class="font-bold text-slate-800" id="pm-banco">0102 - Banco de Venezuela</span>
               </div>
               <div class="flex justify-between items-center">
-                <span class="text-slate-500">Cédula / RIF:</span>
-                <span class="font-bold text-slate-800" id="pm-rif">V-12345678</span>
+                <span class="text-slate-500">Cédula:</span>
+                <span class="font-bold text-slate-800" id="pm-rif">V-24162410</span>
               </div>
               <div class="flex justify-between items-center">
                 <span class="text-slate-500">Teléfono:</span>
-                <span class="font-bold text-slate-800" id="pm-telf">0412-1234567</span>
+                <span class="font-bold text-slate-800" id="pm-telf">0412-6571155</span>
               </div>
             </div>
 
@@ -1571,7 +1571,7 @@
     const WHATSAPP_NUMERO = "584126571155";
     const MINUTOS_BLOQUEO_ASIENTO = 10;
     const ABONO_MINIMO = 5;
-    const DATOS_PAGO_MOVIL = { banco: "0102 - Banco de Venezuela", cedulaRif: "V-12345678", telefono: "04121234567" };
+    const DATOS_PAGO_MOVIL = { banco: "0102 - Banco de Venezuela", cedulaRif: "V-24162410", telefono: "04126571155" };
     const INSTRUCCIONES_EFECTIVO = "Entrega el monto en efectivo al abordar la unidad el día del viaje.";
 
     // Notificación en pantalla tipo toast elegante
@@ -5304,7 +5304,7 @@
               <input type="email" id="lead-email" value="${escapeAttr(leadData.correo)}" placeholder="ejemplo@correo.com" class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-tour-blue focus:outline-none">
             </div>
             <div class="md:col-span-2">
-              <label class="block text-slate-600 font-medium mb-1">Punto de Recogida * (mínimo 10 caracteres)</label>
+              <label class="block text-slate-600 font-medium mb-1">Punto de Recogida *</label>
               <textarea id="lead-pickup" rows="2" required placeholder="Ej. Barquisimeto (Monumental), Cabudare (Redoma) o Yaracuy (Chivacoa / San Felipe)" class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-tour-blue focus:outline-none text-xs">${escapeAttr(leadData.recogida)}</textarea>
               <span class="text-[10px] text-slate-400">Salidas desde Barquisimeto, Cabudare y Yaracuy. Puedes seleccionar un punto o escribirlo:</span>
               <div class="flex flex-wrap gap-1.5 pt-1.5">
@@ -5346,7 +5346,7 @@
               </div>
               
               <div id="comp-pickup-wrap-${i}" class="comp-pickup-wrapper md:col-span-3 ${state.otroPunto ? '' : 'hidden'}">
-                <label class="block text-slate-600 font-medium mb-1">Punto de Recogida específico * (mínimo 10 caracteres)</label>
+                <label class="block text-slate-600 font-medium mb-1">Punto de Recogida específico *</label>
                 <input type="text" id="comp-pickup-${i}" value="${escapeAttr(compPickupVal)}" placeholder="Dirección exacta de recogida" class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-tour-blue focus:outline-none text-xs">
               </div>
             </div>
@@ -5519,8 +5519,8 @@
           alert("Por favor completa los datos obligatorios del titular.");
           return false;
         }
-        if (!lead.recogida || lead.recogida.length < 10) {
-          alert("El punto de recogida del titular debe tener al menos 10 caracteres con la dirección clara.");
+        if (!lead.recogida) {
+          alert("Por favor indica el punto de recogida del titular.");
           return false;
         }
 
@@ -5555,8 +5555,8 @@
           }
 
           if (state.otroPunto) {
-            if (!comp.recogida || comp.recogida.length < 10) {
-              alert(`El punto de recogida del acompañante ${i + 1} debe tener al menos 10 caracteres.`);
+            if (!comp.recogida) {
+              alert(`Por favor indica el punto de recogida del acompañante ${i + 1}.`);
               return false;
             }
           }
