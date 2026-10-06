@@ -1702,9 +1702,9 @@
     }
 
     // Guarda asientos ocupados de forma persistente en sessionStorage y localStorage
-    function saveStoredOccupiedSeats(destino, fecha, bus = "Bus 1", nuevosAsientos = []) {
+    function saveStoredOccupiedSeats(destino, fecha, bus = "Bus 1", nuevosAsientos = [], replace = false) {
       const key = getSeatsStorageKey(destino, fecha, bus);
-      const existentes = getStoredOccupiedSeats(destino, fecha, bus);
+      const existentes = replace ? [] : getStoredOccupiedSeats(destino, fecha, bus);
       const setAsientos = new Set([...existentes]);
 
       if (Array.isArray(nuevosAsientos)) {
@@ -4841,30 +4841,86 @@
           ? formatDestinoSheetName(destino, fecha) 
           : destino;
 
-        const params = new URLSearchParams({
+        // Petición al Webhook: Enviar correctamente accion: "asientos" y el nombre exacto del destino
+        const payload = {
           accion: "asientos",
           destino: destino,
           destinoHoja: destinoHoja,
           fecha: fecha,
-          bus: bus,
-          _t: Date.now().toString()
-        });
+          bus: bus
+        };
 
-        const url = `${WEBHOOK_URL}?${params.toString()}`;
-        const res = await fetch(url, { redirect: "follow" });
-        if (res.ok) {
-          const data = await res.json();
-          if (data && data.ok) {
-            const serverOcupados = Array.isArray(data.ocupados) ? data.ocupados.map(Number) : [];
+        let data = null;
+
+        // Petición POST al Webhook (Google Apps Script)
+        try {
+          const res = await fetch(WEBHOOK_URL, {
+            method: "POST",
+            headers: { "Content-Type": "text/plain;charset=utf-8" },
+            body: JSON.stringify(payload),
+            redirect: "follow"
+          });
+          if (res.ok) {
+            data = await res.json();
+            console.log("Respuesta recibida del Apps Script (POST accion asientos):", data);
+          }
+        } catch (postErr) {
+          console.warn("Aviso al realizar POST a Webhook para asientos, probando fallback GET:", postErr);
+        }
+
+        // Si la petición POST no obtuvo asientos, intentar por GET como fallback
+        if (!data || (!data.asientos && !data.ocupados)) {
+          try {
+            const params = new URLSearchParams({
+              accion: "asientos",
+              destino: destino,
+              destinoHoja: destinoHoja,
+              fecha: fecha,
+              bus: bus,
+              _t: Date.now().toString()
+            });
+            const url = WEBHOOK_URL + "?" + params.toString();
+            const resGet = await fetch(url, { redirect: "follow" });
+            if (resGet.ok) {
+              const dataGet = await resGet.json();
+              if (dataGet && (dataGet.asientos || dataGet.ocupados)) {
+                data = dataGet;
+                console.log("Respuesta recibida del Apps Script (GET accion asientos):", data);
+              }
+            }
+          } catch (_) {}
+        }
+
+        // 3. Procesar la respuesta del Apps Script leyendo la propiedad data.asientos
+        if (data) {
+          let listaAsientos = null;
+          if (Array.isArray(data.asientos)) {
+            listaAsientos = data.asientos;
+          } else if (Array.isArray(data.ocupados)) {
+            listaAsientos = data.ocupados;
+          }
+
+          if (Array.isArray(listaAsientos)) {
+            // Convertir asientos a formato numérico (soportando ["1", "2"] o [1, 2])
+            const serverOcupados = listaAsientos
+              .map(n => Number(n))
+              .filter(n => !isNaN(n) && n >= 1 && n <= 31);
+
+            console.log("Asientos ocupados actualizados para " + destino + " (" + bus + "):", serverOcupados);
+
+            // Inyectar de inmediato en el estado local de los asientos ocupados
+            state.asientosOcupados = [...serverOcupados];
+
+            // Guardar en almacenamiento de sesión y local de forma autoritativa
+            saveStoredOccupiedSeats(destino, fecha, bus, serverOcupados, true);
+
+            // Manejo de asientos bloqueados si vienen en la respuesta
             const serverBloqueados = Array.isArray(data.bloqueados) ? data.bloqueados.map(Number) : [];
+            state.asientosBloqueados = serverBloqueados.filter(s => !state.asientosOcupados.includes(s));
 
-            // Fusionar asientos de la hoja con los asientos bloqueados en la sesión actual
-            const combinedOcupados = [...new Set([...localOcupados, ...serverOcupados])].sort((a, b) => a - b);
-            saveStoredOccupiedSeats(destino, fecha, bus, combinedOcupados);
-
-            state.asientosOcupados = combinedOcupados;
-            state.asientosBloqueados = serverBloqueados.filter(s => !combinedOcupados.includes(s));
+            // Actualizar la interfaz del mapa de asientos y las tarjetas de viaje
             renderBusSeatsUI();
+            if (typeof renderTrips === "function") renderTrips();
           }
         }
       } catch (e) {
@@ -4950,7 +5006,7 @@
     };
 
     function renderSingleSeat(num) {
-      const isOcupado = state.asientosOcupados.includes(num);
+      const isOcupado = state.asientosOcupados.includes(num) || state.asientosOcupados.some(s => Number(s) === num || String(s) === String(num));
       const isBloqueado = state.asientosBloqueados.includes(num);
       const isSeleccionado = state.asientosSeleccionados.includes(num);
 
@@ -5020,7 +5076,8 @@
 
     window.toggleSeat = function(num) {
       const currentOcupados = getStoredOccupiedSeats(state.selectedTrip.destino, state.selectedSalida.fecha, state.selectedBus);
-      if (state.asientosOcupados.includes(num) || currentOcupados.includes(num) || state.asientosBloqueados.includes(num)) {
+      const isOcupadoLocal = state.asientosOcupados.includes(num) || state.asientosOcupados.some(s => Number(s) === num || String(s) === String(num)) || currentOcupados.includes(num);
+      if (isOcupadoLocal || state.asientosBloqueados.includes(num)) {
         if (!state.asientosOcupados.includes(num) && currentOcupados.includes(num)) {
           state.asientosOcupados = [...currentOcupados];
           renderBusSeatsUI();

@@ -51,15 +51,17 @@ function doGet(e) {
     if (accion === "asientos") {
       const destino = params.destino || "";
       const destinoHoja = params.destinoHoja || "";
-      const fecha = params.fecha || "";
+      const fecha = params.fecha || params.fechaViaje || "";
       const bus = params.bus || "Bus 1";
 
       const resultado = obtenerEstadoAsientos(ss, destino, fecha, bus, false, destinoHoja);
       return jsonResponse({
+        status: "success",
         ok: true,
         destino: destino,
         fecha: fecha,
         bus: bus,
+        asientos: resultado.ocupados.map(String),
         ocupados: resultado.ocupados,
         bloqueados: resultado.bloqueados
       });
@@ -110,6 +112,26 @@ function doPost(e) {
 
     // Asegurar estructura de las hojas requeridas
     inicializarHojasSiNoExisten(ss);
+
+    // 0. CONSULTAR ASIENTOS OCUPADOS
+    if (accion === "asientos") {
+      const destino = data.destino || "";
+      const destinoHoja = data.destinoHoja || "";
+      const fecha = data.fecha || data.fechaViaje || "";
+      const bus = data.bus || "Bus 1";
+
+      const resultado = obtenerEstadoAsientos(ss, destino, fecha, bus, false, destinoHoja);
+      return jsonResponse({
+        status: "success",
+        ok: true,
+        destino: destino,
+        fecha: fecha,
+        bus: bus,
+        asientos: resultado.ocupados.map(String),
+        ocupados: resultado.ocupados,
+        bloqueados: resultado.bloqueados
+      });
+    }
 
     // 1. BLOQUEAR ASIENTOS TEMPORALMENTE
     if (accion === "bloquear") {

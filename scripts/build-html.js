@@ -1340,20 +1340,48 @@ const html = `<!DOCTYPE html>
 
     // PASO 2: BUS Y ASIENTOS (31 PUESTOS)
     async function loadBusSeats() {
+      if (!state.selectedTrip || !state.selectedSalida) return;
       if (!WEBHOOK_URL) {
-        // En modo Demo: Asientos 3, 4, 11, 12, 19, 28 ocupados; asiento 15 bloqueado
+        // En modo Demo si no hay Webhook
         state.asientosOcupados = [3, 4, 11, 12, 19, 28];
         state.asientosBloqueados = [15];
         renderBusSeatsUI();
         return;
       }
       try {
-        const url = \`\${WEBHOOK_URL}?accion=asientos&destino=\${encodeURIComponent(state.selectedTrip.destino)}&fecha=\${state.selectedSalida.fecha}&bus=\${encodeURIComponent(state.selectedBus)}\`;
-        const res = await fetch(url);
-        const data = await res.json();
-        state.asientosOcupados = data.ocupados || [];
-        state.asientosBloqueados = data.bloqueados || [];
-        renderBusSeatsUI();
+        const payload = {
+          accion: "asientos",
+          destino: state.selectedTrip.destino,
+          fecha: state.selectedSalida.fecha,
+          bus: state.selectedBus || "Bus 1"
+        };
+        let data = null;
+        try {
+          const res = await fetch(WEBHOOK_URL, {
+            method: "POST",
+            headers: { "Content-Type": "text/plain;charset=utf-8" },
+            body: JSON.stringify(payload),
+            redirect: "follow"
+          });
+          if (res.ok) {
+            data = await res.json();
+          }
+        } catch (_) {}
+
+        if (!data || (!data.asientos && !data.ocupados)) {
+          const url = `\${WEBHOOK_URL}?accion=asientos&destino=\${encodeURIComponent(state.selectedTrip.destino)}&fecha=\${state.selectedSalida.fecha}&bus=\${encodeURIComponent(state.selectedBus)}`;
+          const resGet = await fetch(url, { redirect: "follow" });
+          if (resGet.ok) {
+            data = await resGet.json();
+          }
+        }
+
+        if (data) {
+          const lista = Array.isArray(data.asientos) ? data.asientos : (Array.isArray(data.ocupados) ? data.ocupados : []);
+          state.asientosOcupados = lista.map(Number).filter(n => !isNaN(n) && n >= 1 && n <= 31);
+          state.asientosBloqueados = (Array.isArray(data.bloqueados) ? data.bloqueados.map(Number) : []).filter(s => !state.asientosOcupados.includes(s));
+          renderBusSeatsUI();
+        }
       } catch (e) {
         console.error("Error al cargar asientos:", e);
       }
