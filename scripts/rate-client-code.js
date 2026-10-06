@@ -187,6 +187,7 @@ export const rateClientCode = `
       }
 
       renderTrips();
+      if (typeof renderFeaturedCards === "function") renderFeaturedCards();
       if (currentStep === 4) renderStep4();
       if (currentStep === 5) renderStep5();
     }

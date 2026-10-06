@@ -122,6 +122,7 @@ export const TRIPS = [
     destino: "Cayo Sombrero + Juanes",
     precio: 30,
     tipo: "FULL DAY",
+    destacado: true,
     imagenUrl: "/cayo-sombrero.jpg",
     descripcion: "Es el cayo más icónico de todo el parque nacional, famoso por sus aguas color turquesa y ese bosque de palmeras gigante que te da la sombra perfecta. Si quieres vivir la experiencia completa de Morrocoy, ¡este es el lugar! 🏝️✨",
     salidas: [

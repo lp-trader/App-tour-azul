@@ -2,6 +2,7 @@ import fs from 'fs';
 import { TRIPS } from './data.js';
 import { rateClientCode } from './rate-client-code.js';
 import { opinionsHtmlSection, opinionsModalsHtml, opinionsClientCode } from './opinions-module.js';
+import { featuredSectionHtml, featuredClientCode } from './featured-trips-module.js';
 
 const logoBase64 = fs.readFileSync('logo-base64.txt', 'utf8').trim();
 
@@ -110,12 +111,6 @@ const html = `<!DOCTYPE html>
 
       <!-- Acciones de Cabecera -->
       <div class="flex items-center gap-2">
-        <button type="button" onclick="openPoliticasModal()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-tour-navy hover:text-tour-blue hover:bg-sky-50 transition border border-sky-100 cursor-pointer shadow-2xs">
-          <i data-lucide="scroll-text" class="w-3.5 h-3.5 text-tour-blue"></i>
-          <span class="hidden sm:inline">Políticas de Reserva</span>
-          <span class="sm:hidden">Políticas</span>
-        </button>
-
         <!-- Pill BCV Tasa del Día (con Skeleton Inicial) -->
         <div id="bcv-pill-container" class="flex items-center gap-2">
           <div class="animate-pulse flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 border border-slate-200 text-xs text-slate-400 shadow-sm">
@@ -180,6 +175,8 @@ const html = `<!DOCTYPE html>
         </svg>
       </div>
     </section>
+
+${featuredSectionHtml}
 
     <!-- SECCIÓN VIAJES DEL MES -->
     <section id="viajes" class="max-w-6xl mx-auto px-4 py-12">
@@ -1098,6 +1095,8 @@ ${opinionsModalsHtml}
 
 ${rateClientCode}
 
+${featuredClientCode}
+
 ${opinionsClientCode}
 
     function getBeachSvgFallback() {
@@ -1146,6 +1145,9 @@ ${opinionsClientCode}
       setInterval(fetchBcvRate, 30 * 60 * 1000);
 
       renderHeroChips();
+      initFeaturedTrips();
+      scheduleMidnightCaracasUpdate();
+      setInterval(initFeaturedTrips, 3600000);
       renderDestinationFilters();
       renderCalendar();
       renderTrips();
@@ -1209,10 +1211,13 @@ ${opinionsClientCode}
         htmlDays += \`<div class="h-10 rounded-xl"></div>\`;
       }
 
+      const todayIso = (typeof getCaracasTodayStr === 'function') ? getCaracasTodayStr() : new Date().toISOString().split('T')[0];
+
       for (let day = 1; day <= totalDays; day++) {
         const monthStr = String(state.mesCalendario + 1).padStart(2, "0");
         const dayStr = String(day).padStart(2, "0");
         const dateIso = \`\${state.anioCalendario}-\${monthStr}-\${dayStr}\`;
+        const isPastDate = dateIso < todayIso;
 
         // Datos reales dinámicos de salidas desde VIAJES
         const departures = [];
@@ -1233,8 +1238,16 @@ ${opinionsClientCode}
               <span class="text-xs font-medium">\${day}</span>
             </div>
           \`;
+        } else if (isPastDate) {
+          // Salidas cuya fecha ya pasó: mostrar atenuadas y no seleccionables para evitar reservas
+          htmlDays += \`
+            <div class="h-10 rounded-xl flex flex-col items-center justify-center text-slate-400 bg-slate-100/70 border border-slate-200/60 cursor-not-allowed select-none opacity-45" title="\${day} de \${monthNames[state.mesCalendario]} (\${countTrips} salida\${countTrips > 1 ? 's' : ''} ya culminada\${countTrips > 1 ? 's' : ''})">
+              <span class="text-xs line-through font-medium">\${day}</span>
+              <span class="text-[7px] font-bold text-slate-400 uppercase tracking-tighter">Pasado</span>
+            </div>
+          \`;
         } else {
-          // Día con viajes: seleccionable con 1 punto si 1 viaje o 2 puntos si 2 viajes
+          // Día con viajes vigentes: seleccionable con 1 punto si 1 viaje o 2 puntos si 2 viajes
           let bgClass = "bg-sky-50 text-tour-blue font-bold border border-sky-200 hover:bg-sky-100 hover:border-sky-300 cursor-pointer";
           if (isSelected) {
             bgClass = "bg-tour-blue text-white font-black shadow-md border-tour-blue";
@@ -1276,6 +1289,9 @@ ${opinionsClientCode}
     }
 
     window.selectCalendarDate = function(dateIso, hasTrips) {
+      const todayIso = (typeof getCaracasTodayStr === 'function') ? getCaracasTodayStr() : new Date().toISOString().split('T')[0];
+      if (dateIso < todayIso) return;
+
       // 2. Si el usuario toca otra vez el día que ya está seleccionado, se deselecciona y se muestran todos los viajes
       if (state.filtroFecha === dateIso) {
         state.filtroFecha = null;
@@ -1321,10 +1337,11 @@ ${opinionsClientCode}
     }
 
     function getNextTripDate(fromIso) {
+      const todayIso = (typeof getCaracasTodayStr === 'function') ? getCaracasTodayStr() : new Date().toISOString().split('T')[0];
       const allDates = [];
       VIAJES.forEach(v => {
         v.salidas.forEach(s => {
-          if (s.fecha && !allDates.includes(s.fecha)) {
+          if (s.fecha && s.fecha >= todayIso && !allDates.includes(s.fecha)) {
             allDates.push(s.fecha);
           }
         });
@@ -1373,6 +1390,7 @@ ${opinionsClientCode}
     }, { passive: true });
 
     function renderTrips() {
+      const todayIso = (typeof getCaracasTodayStr === 'function') ? getCaracasTodayStr() : new Date().toISOString().split('T')[0];
       const container = document.getElementById("trips-grid");
       let filtered = VIAJES;
 
@@ -1382,6 +1400,15 @@ ${opinionsClientCode}
       if (state.filtroFecha) {
         filtered = filtered.filter(v => v.salidas.some(s => s.fecha === state.filtroFecha));
       }
+
+      // Ordenar: primero los viajes que tienen salidas vigentes (>= todayIso); al final los que ya culminaron
+      filtered = [...filtered].sort((a, b) => {
+        const aUpcoming = a.salidas.some(s => s.fecha >= todayIso);
+        const bUpcoming = b.salidas.some(s => s.fecha >= todayIso);
+        if (aUpcoming && !bUpcoming) return -1;
+        if (!aUpcoming && bUpcoming) return 1;
+        return 0;
+      });
 
       // 1. Etiqueta tipo chip "Mostrando: [día y mes]" con X a la derecha encima de la lista de viajes
       const dateBanner = document.getElementById("selected-date-banner");
@@ -1454,27 +1481,79 @@ ${opinionsClientCode}
           bsPriceHtml = \`<span class="text-tour-yellow text-[10px] md:text-[11px] font-semibold block mt-0.5">≈ Bs. \${bsValue}</span>\`;
         }
 
-        const mockCupos = 31;
-        let cuposText = "31 cupos disponibles";
-        let cuposClass = "text-emerald-600 bg-emerald-50 border-emerald-200 font-bold";
+        const upcomingSalidas = trip.salidas.filter(s => s.fecha >= todayIso);
+        const allSalidasPassed = (upcomingSalidas.length === 0);
 
-        const fechasChipsHtml = trip.salidas.map((s, idx) => \`
-          <button type="button" onclick="setTripSelectedDate('\${trip.id}', \${idx}, event)" class="px-2 py-0.5 md:px-2.5 md:py-1 rounded-lg text-[10px] md:text-[11px] font-bold transition shadow-sm \${idx === 0 ? 'bg-white text-tour-navy shadow' : 'bg-black/40 text-white hover:bg-black/60'}">
-            \${s.fechaTexto.split(" ")[0]} \${s.fechaTexto.split(" ")[1]}
+        // Salida principal a mostrar (la primera futura o la última si ya pasaron todas)
+        const primarySalida = (!allSalidasPassed) ? upcomingSalidas[0] : trip.salidas[trip.salidas.length - 1];
+        const primarySalidaIdx = trip.salidas.findIndex(s => s.fecha === primarySalida.fecha);
+
+        // Ocupación calculada
+        const cuposOcupados = (typeof getSalidaOccupancy === 'function') ? getSalidaOccupancy(trip, primarySalida) : 18;
+        const cuposDisp = Math.max(0, 31 - cuposOcupados);
+        let cuposText = \`\${cuposDisp} cupos disponibles\`;
+        let cuposClass = "text-emerald-600 bg-emerald-50 border-emerald-200 font-bold";
+        if (cuposDisp <= 6) {
+          cuposText = \`¡Últimos \${cuposDisp} cupos!\`;
+          cuposClass = "text-rose-600 bg-rose-50 border-rose-200 font-bold animate-pulse";
+        } else if (cuposOcupados >= 16) {
+          cuposText = "🔥 Muy solicitado";
+          cuposClass = "text-amber-700 bg-amber-50 border-amber-200 font-bold";
+        }
+
+        const fechasChipsHtml = trip.salidas.map((s, idx) => {
+          const isPast = s.fecha < todayIso;
+          if (isPast) {
+            return \`
+              <span class="px-2 py-0.5 md:px-2.5 md:py-1 rounded-lg text-[10px] md:text-[11px] font-bold bg-black/40 text-slate-400 line-through cursor-not-allowed select-none" title="Salida culminada (\${s.fechaTexto})">
+                \${s.fechaTexto.split(" ")[0]} \${s.fechaTexto.split(" ")[1]} (Pasada)
+              </span>
+            \`;
+          }
+          const isPrimary = s.fecha === primarySalida.fecha;
+          return \`
+            <button type="button" onclick="setTripSelectedDate('\${trip.id}', \${idx}, event)" class="px-2 py-0.5 md:px-2.5 md:py-1 rounded-lg text-[10px] md:text-[11px] font-bold transition shadow-sm \${isPrimary ? 'bg-white text-tour-navy shadow' : 'bg-black/40 text-white hover:bg-black/60'} cursor-pointer">
+              \${s.fechaTexto.split(" ")[0]} \${s.fechaTexto.split(" ")[1]}
+            </button>
+          \`;
+        }).join("");
+
+        // Tarjeta atenuada si todas las fechas ya pasaron
+        const cardClass = allSalidasPassed 
+          ? "opacity-60 grayscale-[35%] bg-slate-50 border-slate-200" 
+          : "bg-white border-sky-100 hover:shadow-2xl hover:-translate-y-1";
+
+        const tagHtml = allSalidasPassed ? \`
+          <span class="px-2.5 py-0.5 md:px-3 md:py-1 rounded-full bg-slate-700 text-white font-bold text-[10px] md:text-xs shadow-sm uppercase tracking-wide">
+            Finalizado
+          </span>
+        \` : \`
+          <span class="px-2.5 py-0.5 md:px-3 md:py-1 rounded-full bg-tour-yellow text-tour-navy font-bold text-[10px] md:text-xs shadow-sm uppercase tracking-wide">
+            \${trip.tipo}
+          </span>
+        \`;
+
+        const actionBtnHtml = allSalidasPassed ? \`
+          <button disabled class="py-2.5 md:py-3 px-2 md:px-3 rounded-xl md:rounded-2xl bg-slate-200 text-slate-500 font-bold text-xs cursor-not-allowed flex items-center justify-center gap-1">
+            <i data-lucide="calendar-off" class="w-3.5 h-3.5"></i>
+            <span>Fecha culminada</span>
           </button>
-        \`).join("");
+        \` : \`
+          <button onclick="startBooking('\${trip.id}', \${primarySalidaIdx})" class="py-2.5 md:py-3 px-2 md:px-3 rounded-xl md:rounded-2xl bg-tour-blue hover:bg-blue-700 text-white font-title font-black uppercase text-xs tracking-wider shadow-md hover:shadow-lg active:scale-95 transition flex items-center justify-center gap-1 cursor-pointer">
+            <span>Reserva ya</span>
+            <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+          </button>
+        \`;
 
         return \`
-          <div class="group bg-white rounded-2xl md:rounded-3xl overflow-hidden shadow-sm hover:shadow-2xl border border-sky-100 flex flex-col transition-all duration-300 hover:-translate-y-1">
+          <div class="group rounded-2xl md:rounded-3xl overflow-hidden shadow-sm border flex flex-col transition-all duration-300 \${cardClass}">
             <div class="relative h-44 sm:h-52 md:h-64 w-full overflow-hidden bg-sky-900">
               <img src="\${encodeURI(trip.imagenUrl)}" alt="\${trip.destino}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" onerror="this.style.opacity='0.25';" />
               <div class="absolute inset-0 bg-gradient-to-t from-[#0B2A6B]/90 via-[#0B2A6B]/25 to-transparent pointer-events-none"></div>
 
               <div class="absolute top-3 left-3 md:top-4 md:left-4 flex flex-col gap-1 items-start">
-                <span class="px-2.5 py-0.5 md:px-3 md:py-1 rounded-full bg-tour-yellow text-tour-navy font-bold text-[10px] md:text-xs shadow-sm uppercase tracking-wide">
-                  \${trip.tipo}
-                </span>
-                \${trip.etiquetaEspecial ? \`
+                \${tagHtml}
+                \${trip.etiquetaEspecial && !allSalidasPassed ? \`
                   <span class="px-2 py-0.5 rounded-full bg-rose-500 text-white font-bold text-[9px] md:text-[10px] shadow-sm uppercase tracking-wider">
                     \${trip.etiquetaEspecial}
                   </span>
@@ -1491,7 +1570,7 @@ ${opinionsClientCode}
                   \${trip.destino}
                 </h3>
                 <p class="text-sky-200 text-[11px] md:text-xs font-medium">
-                  \${trip.salidas[0].fechaTexto}
+                  \${primarySalida.fechaTexto} \${allSalidasPassed ? '(Culminado)' : ''}
                 </p>
                 \${trip.salidas.length > 1 ? \`
                   <div class="flex items-center gap-1.5 pt-0.5">
@@ -1506,23 +1585,20 @@ ${opinionsClientCode}
               <div class="flex items-center justify-between text-[11px] md:text-xs pt-0.5">
                 <span class="text-slate-500">Ocupación del bus</span>
                 <span class="px-2 py-0.5 rounded-full border text-[10px] md:text-[11px] \${cuposClass}">
-                  \${cuposText}
+                  \${allSalidasPassed ? '0 cupos (Finalizado)' : cuposText}
                 </span>
               </div>
               <div class="w-full bg-slate-100 rounded-full h-1.5 md:h-2 overflow-hidden">
-                <div class="bg-tour-caribe h-full rounded-full" style="width: \${Math.round((31 - mockCupos) / 31 * 100)}%"></div>
+                <div class="bg-tour-caribe h-full rounded-full" style="width: \${allSalidasPassed ? 100 : Math.round((cuposOcupados / 31) * 100)}%"></div>
               </div>
             </div>
 
             <div class="p-3 md:p-4 pt-0 grid grid-cols-2 gap-2">
-              <button onclick="openDetallesModal('\${trip.id}')" class="py-2.5 md:py-3 px-2 md:px-3 rounded-xl md:rounded-2xl border-2 border-tour-blue text-tour-blue font-bold text-xs hover:bg-sky-50 active:scale-95 transition flex items-center justify-center gap-1">
+              <button onclick="openDetallesModal('\${trip.id}')" class="py-2.5 md:py-3 px-2 md:px-3 rounded-xl md:rounded-2xl border-2 border-tour-blue text-tour-blue font-bold text-xs hover:bg-sky-50 active:scale-95 transition flex items-center justify-center gap-1 cursor-pointer">
                 <i data-lucide="eye" class="w-3.5 h-3.5"></i>
                 <span>Detalles</span>
               </button>
-              <button onclick="startBooking('\${trip.id}', 0)" class="py-2.5 md:py-3 px-2 md:px-3 rounded-xl md:rounded-2xl bg-tour-blue hover:bg-blue-700 text-white font-title font-black uppercase text-xs tracking-wider shadow-md hover:shadow-lg active:scale-95 transition flex items-center justify-center gap-1">
-                <span>Reserva ya</span>
-                <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
-              </button>
+              \${actionBtnHtml}
             </div>
           </div>
         \`;
@@ -1542,9 +1618,13 @@ ${opinionsClientCode}
     window.setTripSelectedDate = function(tripId, index, event) {
       event.stopPropagation();
       const trip = VIAJES.find(t => t.id === tripId);
-      if (trip && trip.salidas[index]) {
-        startBooking(tripId, index);
+      if (!trip || !trip.salidas[index]) return;
+      const todayIso = (typeof getCaracasTodayStr === 'function') ? getCaracasTodayStr() : new Date().toISOString().split('T')[0];
+      if (trip.salidas[index].fecha < todayIso) {
+        alert("Esta salida ya ocurrió. Por favor selecciona una fecha disponible.");
+        return;
       }
+      startBooking(tripId, index);
     };
 
     window.openDetallesModal = function(tripId) {
@@ -1588,7 +1668,9 @@ ${opinionsClientCode}
 
       document.getElementById("modal-det-btn-reservar").onclick = () => {
         closeDetallesModal();
-        startBooking(trip.id, 0);
+        const todayIso = (typeof getCaracasTodayStr === 'function') ? getCaracasTodayStr() : new Date().toISOString().split('T')[0];
+        const upcomingIdx = trip.salidas.findIndex(s => s.fecha >= todayIso);
+        startBooking(trip.id, upcomingIdx !== -1 ? upcomingIdx : 0);
       };
 
       document.getElementById("modal-detalles").classList.remove("hidden");
@@ -1624,8 +1706,22 @@ ${opinionsClientCode}
       const trip = VIAJES.find(t => t.id === tripId);
       if (!trip) return;
 
+      const todayIso = (typeof getCaracasTodayStr === 'function') ? getCaracasTodayStr() : new Date().toISOString().split('T')[0];
+      let candidateSalida = trip.salidas[salidaIndex] || trip.salidas[0];
+
+      // Si la salida solicitada ya pasó, buscar automáticamente la primera salida futura disponible
+      if (candidateSalida.fecha < todayIso) {
+        const nextAvailable = trip.salidas.find(s => s.fecha >= todayIso);
+        if (nextAvailable) {
+          candidateSalida = nextAvailable;
+        } else {
+          alert("Todas las salidas programadas para este viaje ya han culminado.");
+          return;
+        }
+      }
+
       state.selectedTrip = trip;
-      state.selectedSalida = trip.salidas[salidaIndex] || trip.salidas[0];
+      state.selectedSalida = candidateSalida;
       state.selectedBus = state.selectedSalida.buses[0] || "Bus 1";
       state.busesDisponibles = state.selectedSalida.buses || ["Bus 1"];
       state.asientosSeleccionados = [];
@@ -1707,23 +1803,44 @@ ${opinionsClientCode}
     }
 
     function renderStep1() {
+      const todayIso = (typeof getCaracasTodayStr === 'function') ? getCaracasTodayStr() : new Date().toISOString().split('T')[0];
       const container = document.getElementById("step-1-fechas");
       container.innerHTML = state.selectedTrip.salidas.map((s, idx) => {
-        const isSelected = state.selectedSalida.fecha === s.fecha;
-        return \`
-          <button type="button" onclick="selectSalidaDate(\${idx})" class="w-full p-4 rounded-2xl border-2 text-left transition flex items-center justify-between \${isSelected ? 'border-tour-blue bg-blue-50/50' : 'border-slate-200 hover:border-slate-300'}">
-            <div>
-              <span class="font-bold text-sm text-tour-navy block">\${s.fechaTexto}</span>
-              <span class="text-xs text-slate-500">\${s.buses.length} unidad(es) de transporte</span>
+        const isPast = s.fecha < todayIso;
+        if (isPast) {
+          return `
+            <div class="w-full p-4 rounded-2xl border-2 border-slate-200 bg-slate-50 opacity-45 cursor-not-allowed flex items-center justify-between">
+              <div>
+                <span class="font-bold text-sm text-slate-500 line-through block">${s.fechaTexto}</span>
+                <span class="text-xs text-rose-500 font-semibold">Salida culminada (No disponible)</span>
+              </div>
+              <span class="px-2.5 py-1 rounded-md bg-slate-200 text-slate-600 text-[10px] font-bold uppercase">Pasada</span>
             </div>
-            \${isSelected ? '<i data-lucide="check-circle" class="w-5 h-5 text-tour-blue"></i>' : ''}
+          `;
+        }
+        const isSelected = state.selectedSalida.fecha === s.fecha;
+        return `
+          <button type="button" onclick="selectSalidaDate(${idx})" class="w-full p-4 rounded-2xl border-2 text-left transition flex items-center justify-between ${isSelected ? 'border-tour-blue bg-blue-50/50' : 'border-slate-200 hover:border-slate-300'} cursor-pointer">
+            <div>
+              <span class="font-bold text-sm text-tour-navy block">${s.fechaTexto}</span>
+              <span class="text-xs text-slate-500">${s.buses.length} unidad(es) de transporte</span>
+            </div>
+            ${isSelected ? '<i data-lucide="check-circle" class="w-5 h-5 text-tour-blue"></i>' : ''}
           </button>
-        \`;
+        `;
       }).join("");
+      lucide.createIcons();
     }
 
     window.selectSalidaDate = function(index) {
-      state.selectedSalida = state.selectedTrip.salidas[index];
+      const target = state.selectedTrip.salidas[index];
+      if (!target) return;
+      const todayIso = (typeof getCaracasTodayStr === 'function') ? getCaracasTodayStr() : new Date().toISOString().split('T')[0];
+      if (target.fecha < todayIso) {
+        alert("Esta salida ya ocurrió y no puede ser seleccionada.");
+        return;
+      }
+      state.selectedSalida = target;
       state.selectedBus = state.selectedSalida.buses[0];
       state.busesDisponibles = state.selectedSalida.buses;
       document.getElementById("wizard-trip-date").textContent = state.selectedSalida.fechaTexto;
