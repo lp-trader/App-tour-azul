@@ -1074,7 +1074,7 @@ ${opinionsModalsHtml}
     // Normaliza el nombre del destino para la hoja correspondiente (ej: "Cayo_Muerto_18-10")
     function formatDestinoSheetName(destino, fechaViaje) {
       if (!destino) return "General";
-      if (destino.includes("_") && /\\d{1,2}-\\d{1,2}/.test(destino)) {
+      if (destino.includes("_") && /\d{1,2}-\d{1,2}/.test(destino)) {
         return destino;
       }
       let dateTag = "";
@@ -1084,14 +1084,175 @@ ${opinionsModalsHtml}
           dateTag = \`_\${parts[2]}-\${parts[1]}\`; // ej: _18-10
         }
       }
-      const cleanDestino = destino
-        .normalize("NFD").replace(/[\\u0300-\\u036f]/g, "")
-        .replace(/[^\\w\\s-]/g, "")
+      const cleanDestino = String(destino)
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^\w\s-]/g, "")
         .trim()
-        .replace(/\\s+/g, "_");
+        .replace(/\s+/g, "_");
       return \`\${cleanDestino}\${dateTag}\`;
     }
     window.formatDestinoSheetName = formatDestinoSheetName;
+
+    // ========================================================
+    // GESTIÓN PERSISTENTE DE ASIENTOS OCUPADOS (SESIÓN Y LOCAL)
+    // ========================================================
+    function normalizeTripKey(str) {
+      if (!str) return "";
+      return String(str)
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, "_")
+        .replace(/^_+|_+$/g, "");
+    }
+
+    function getSeatsStorageKey(destino, fecha, bus = "Bus 1") {
+      const normDest = normalizeTripKey(destino);
+      const normFecha = String(fecha || "").replace(/[^0-9]/g, "");
+      const normBus = normalizeTripKey(bus || "Bus 1");
+      return \`tour_azul_occupied_\${normDest}_\${normFecha}_\${normBus}\`;
+    }
+
+    // Obtiene los asientos ocupados guardados en la sesión o almacenamiento local
+    function getStoredOccupiedSeats(destino, fecha, bus = "Bus 1") {
+      const key = getSeatsStorageKey(destino, fecha, bus);
+      const setAsientos = new Set();
+
+      // 1. Memoria activa en el estado
+      if (typeof state !== "undefined" && state.asientosOcupadosCache && Array.isArray(state.asientosOcupadosCache[key])) {
+        state.asientosOcupadosCache[key].forEach(n => {
+          const num = Number(n);
+          if (!isNaN(num) && num >= 1 && num <= 31) setAsientos.add(num);
+        });
+      }
+
+      // 2. sessionStorage (persiste durante toda la pestaña/sesión del navegador)
+      try {
+        const rawSession = sessionStorage.getItem(key);
+        if (rawSession) {
+          const parsed = JSON.parse(rawSession);
+          if (Array.isArray(parsed)) {
+            parsed.forEach(n => {
+              const num = Number(n);
+              if (!isNaN(num) && num >= 1 && num <= 31) setAsientos.add(num);
+            });
+          }
+        }
+      } catch (_) {}
+
+      // 3. localStorage (persiste entre pestañas y recargas)
+      try {
+        const rawLocal = localStorage.getItem(key);
+        if (rawLocal) {
+          const parsed = JSON.parse(rawLocal);
+          if (Array.isArray(parsed)) {
+            parsed.forEach(n => {
+              const num = Number(n);
+              if (!isNaN(num) && num >= 1 && num <= 31) setAsientos.add(num);
+            });
+          }
+        }
+      } catch (_) {}
+
+      // 4. Registro acumulado de reservas de la sesión
+      try {
+        const rawBookings = sessionStorage.getItem("tour_azul_sesion_reservas");
+        if (rawBookings) {
+          const bookings = JSON.parse(rawBookings);
+          if (Array.isArray(bookings)) {
+            bookings.forEach(b => {
+              if (b && b.fechaViaje === fecha && (b.bus || "Bus 1") === bus) {
+                const matchDest = (b.destino === destino) || (normalizeTripKey(b.destino) === normalizeTripKey(destino));
+                if (matchDest && Array.isArray(b.asientos)) {
+                  b.asientos.forEach(n => {
+                    const num = Number(n);
+                    if (!isNaN(num) && num >= 1 && num <= 31) setAsientos.add(num);
+                  });
+                }
+              }
+            });
+          }
+        }
+      } catch (_) {}
+
+      return Array.from(setAsientos).sort((a, b) => a - b);
+    }
+
+    // Guarda asientos ocupados de forma persistente en sessionStorage y localStorage
+    function saveStoredOccupiedSeats(destino, fecha, bus = "Bus 1", nuevosAsientos = []) {
+      const key = getSeatsStorageKey(destino, fecha, bus);
+      const existentes = getStoredOccupiedSeats(destino, fecha, bus);
+      const setAsientos = new Set([...existentes]);
+
+      if (Array.isArray(nuevosAsientos)) {
+        nuevosAsientos.forEach(n => {
+          const num = Number(n);
+          if (!isNaN(num) && num >= 1 && num <= 31) {
+            setAsientos.add(num);
+          }
+        });
+      }
+
+      const listaFinal = Array.from(setAsientos).sort((a, b) => a - b);
+
+      if (typeof state !== "undefined" && state.asientosOcupadosCache) {
+        state.asientosOcupadosCache[key] = [...listaFinal];
+      }
+
+      try {
+        sessionStorage.setItem(key, JSON.stringify(listaFinal));
+      } catch (_) {}
+
+      try {
+        localStorage.setItem(key, JSON.stringify(listaFinal));
+      } catch (_) {}
+
+      return listaFinal;
+    }
+
+    // Guarda la reserva confirmada en el historial de reservas de la sesión
+    function saveConfirmedBookingToSession(bookingData) {
+      if (!bookingData) return;
+      try {
+        const raw = sessionStorage.getItem("tour_azul_sesion_reservas");
+        const list = raw ? JSON.parse(raw) : [];
+        list.push({
+          idReserva: bookingData.idReserva,
+          destino: bookingData.destino,
+          fechaViaje: bookingData.fechaViaje,
+          bus: bookingData.bus || "Bus 1",
+          asientos: bookingData.asientos || [],
+          timestamp: Date.now()
+        });
+        sessionStorage.setItem("tour_azul_sesion_reservas", JSON.stringify(list));
+      } catch (_) {}
+
+      try {
+        const rawLoc = localStorage.getItem("tour_azul_todas_reservas");
+        const listLoc = rawLoc ? JSON.parse(rawLoc) : [];
+        listLoc.push({
+          idReserva: bookingData.idReserva,
+          destino: bookingData.destino,
+          fechaViaje: bookingData.fechaViaje,
+          bus: bookingData.bus || "Bus 1",
+          asientos: bookingData.asientos || [],
+          timestamp: Date.now()
+        });
+        localStorage.setItem("tour_azul_todas_reservas", JSON.stringify(listLoc));
+      } catch (_) {}
+    }
+
+    // Función auxiliar para calcular ocupación de una salida
+    function getSalidaOccupancy(trip, salida) {
+      if (!salida) return 18;
+      const bus = (salida.buses && salida.buses[0]) ? salida.buses[0] : "Bus 1";
+      const ocupados = getStoredOccupiedSeats(trip.destino, salida.fecha, bus);
+      let hash = 0;
+      const str = (trip.id || trip.destino) + salida.fecha;
+      for (let i = 0; i < str.length; i++) hash = (hash * 31 + str.charCodeAt(i)) % 7;
+      const baseOcupacion = 14 + hash;
+      return Math.min(31, Math.max(ocupados.length, baseOcupacion + ocupados.length));
+    }
 
     // Función principal para enviar reservas a Google Sheets (Google Apps Script WebHook)
     async function enviarReservaAGoogleSheets(datosReserva) {
@@ -1115,7 +1276,9 @@ ${opinionsModalsHtml}
         nombreTitular: datosReserva.nombre || datosReserva.nombreTitular || (datosReserva.titular && datosReserva.titular.nombre) || "",
         cedula: datosReserva.cedula || (datosReserva.titular && datosReserva.titular.cedula) || "",
         telefono: datosReserva.telefono || (datosReserva.titular && datosReserva.titular.telefono) || "",
-        destino: destinoHoja,
+        destino: datosReserva.destino || datosReserva.destinoOriginal || destinoHoja,
+        destinoHoja: destinoHoja,
+        destinoOriginal: datosReserva.destino || "",
         fechaViaje: datosReserva.fechaViaje || "",
         abono: Number(datosReserva.abono !== undefined ? datosReserva.abono : (datosReserva.montoAbonadoEur || 0)),
         pendiente: Number(datosReserva.pendiente !== undefined ? datosReserva.pendiente : (datosReserva.saldoPendienteEur || 0)),
@@ -1134,7 +1297,6 @@ ${opinionsModalsHtml}
         tasaBCV: datosReserva.tasaBCV || 0,
         referenciaPagoMovil: datosReserva.referenciaPagoMovil || "",
         estadoPago: datosReserva.estadoPago || "Pendiente de pago",
-        destinoOriginal: datosReserva.destinoOriginal || datosReserva.destino || "",
         titular: datosReserva.titular || {
           nombre: datosReserva.nombre || datosReserva.nombreTitular || "",
           cedula: datosReserva.cedula || "",
@@ -1193,6 +1355,7 @@ ${opinionsModalsHtml}
       asientosOcupados: [],
       asientosBloqueados: [],
       asientosSeleccionados: [],
+      asientosOcupadosCache: {},
       passengers: [],
       otroPunto: false,
       get titular() {
@@ -1855,6 +2018,10 @@ ${opinionsClientCode}
       state.tipoAbono = "full";
       state.metodoPago = state.tasaDisponible ? "Pago Móvil" : "Efectivo";
 
+      // Cargar inmediatamente los asientos ocupados guardados en la sesión para este bus
+      state.asientosOcupados = getStoredOccupiedSeats(trip.destino, candidateSalida.fecha, state.selectedBus);
+      state.asientosBloqueados = [];
+
       document.getElementById("wizard-trip-name").textContent = trip.destino;
       document.getElementById("wizard-trip-date").textContent = state.selectedSalida.fechaTexto;
 
@@ -1933,26 +2100,26 @@ ${opinionsClientCode}
       container.innerHTML = state.selectedTrip.salidas.map((s, idx) => {
         const isPast = s.fecha < todayIso;
         if (isPast) {
-          return `
+          return \`
             <div class="w-full p-4 rounded-2xl border-2 border-slate-200 bg-slate-50 opacity-45 cursor-not-allowed flex items-center justify-between">
               <div>
-                <span class="font-bold text-sm text-slate-500 line-through block">${s.fechaTexto}</span>
+                <span class="font-bold text-sm text-slate-500 line-through block">\${s.fechaTexto}</span>
                 <span class="text-xs text-rose-500 font-semibold">Salida culminada (No disponible)</span>
               </div>
               <span class="px-2.5 py-1 rounded-md bg-slate-200 text-slate-600 text-[10px] font-bold uppercase">Pasada</span>
             </div>
-          `;
+          \`;
         }
         const isSelected = state.selectedSalida.fecha === s.fecha;
-        return `
-          <button type="button" onclick="selectSalidaDate(${idx})" class="w-full p-4 rounded-2xl border-2 text-left transition flex items-center justify-between ${isSelected ? 'border-tour-blue bg-blue-50/50' : 'border-slate-200 hover:border-slate-300'} cursor-pointer">
+        return \`
+          <button type="button" onclick="selectSalidaDate(\${idx})" class="w-full p-4 rounded-2xl border-2 text-left transition flex items-center justify-between \${isSelected ? 'border-tour-blue bg-blue-50/50' : 'border-slate-200 hover:border-slate-300'} cursor-pointer">
             <div>
-              <span class="font-bold text-sm text-tour-navy block">${s.fechaTexto}</span>
-              <span class="text-xs text-slate-500">${s.buses.length} unidad(es) de transporte</span>
+              <span class="font-bold text-sm text-tour-navy block">\${s.fechaTexto}</span>
+              <span class="text-xs text-slate-500">\${s.buses.length} unidad(es) de transporte</span>
             </div>
-            ${isSelected ? '<i data-lucide="check-circle" class="w-5 h-5 text-tour-blue"></i>' : ''}
+            \${isSelected ? '<i data-lucide="check-circle" class="w-5 h-5 text-tour-blue"></i>' : ''}
           </button>
-        `;
+        \`;
       }).join("");
       lucide.createIcons();
     }
@@ -1966,30 +2133,68 @@ ${opinionsClientCode}
         return;
       }
       state.selectedSalida = target;
-      state.selectedBus = state.selectedSalida.buses[0];
-      state.busesDisponibles = state.selectedSalida.buses;
+      state.selectedBus = state.selectedSalida.buses[0] || "Bus 1";
+      state.busesDisponibles = state.selectedSalida.buses || ["Bus 1"];
+      state.asientosSeleccionados = [];
+      state.asientosOcupados = getStoredOccupiedSeats(state.selectedTrip.destino, target.fecha, state.selectedBus);
+      state.asientosBloqueados = [];
       document.getElementById("wizard-trip-date").textContent = state.selectedSalida.fechaTexto;
       renderStep1();
+      renderBusSeatsUI();
       loadBusSeats();
     };
 
     async function loadBusSeats() {
+      if (!state.selectedTrip || !state.selectedSalida) return;
+
+      const destino = state.selectedTrip.destino;
+      const fecha = state.selectedSalida.fecha;
+      const bus = state.selectedBus || "Bus 1";
+
+      // 1. CARGA INMEDIATA DESDE LA SESIÓN LOCAL (UI instantánea, sin parpadeo)
+      const localOcupados = getStoredOccupiedSeats(destino, fecha, bus);
+      state.asientosOcupados = [...localOcupados];
+      renderBusSeatsUI();
+
+      // 2. CONSULTAR A GOOGLE SHEETS / WEBHOOK SI ESTÁ CONFIGURADO
       if (!WEBHOOK_URL) {
-        state.asientosOcupados = [];
-        state.asientosBloqueados = [];
-        renderBusSeatsUI();
         return;
       }
+
       try {
-        const url = \`\${WEBHOOK_URL}?accion=asientos&destino=\${encodeURIComponent(state.selectedTrip.destino)}&fecha=\${state.selectedSalida.fecha}&bus=\${encodeURIComponent(state.selectedBus)}\`;
-        const res = await fetch(url);
-        const data = await res.json();
-        state.asientosOcupados = data.ocupados || [];
-        state.asientosBloqueados = data.bloqueados || [];
-        renderBusSeatsUI();
+        const destinoHoja = (typeof formatDestinoSheetName === "function") 
+          ? formatDestinoSheetName(destino, fecha) 
+          : destino;
+
+        const params = new URLSearchParams({
+          accion: "asientos",
+          destino: destino,
+          destinoHoja: destinoHoja,
+          fecha: fecha,
+          bus: bus,
+          _t: Date.now().toString()
+        });
+
+        const url = \`\${WEBHOOK_URL}?\${params.toString()}\`;
+        const res = await fetch(url, { redirect: "follow" });
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.ok) {
+            const serverOcupados = Array.isArray(data.ocupados) ? data.ocupados.map(Number) : [];
+            const serverBloqueados = Array.isArray(data.bloqueados) ? data.bloqueados.map(Number) : [];
+
+            // Fusionar asientos de la hoja con los asientos bloqueados en la sesión actual
+            const combinedOcupados = [...new Set([...localOcupados, ...serverOcupados])].sort((a, b) => a - b);
+            saveStoredOccupiedSeats(destino, fecha, bus, combinedOcupados);
+
+            state.asientosOcupados = combinedOcupados;
+            state.asientosBloqueados = serverBloqueados.filter(s => !combinedOcupados.includes(s));
+            renderBusSeatsUI();
+          }
+        }
       } catch (e) {
-        state.asientosOcupados = [];
-        state.asientosBloqueados = [];
+        console.warn("Aviso al consultar asientos de Google Sheets (usando caché de sesión):", e);
+        state.asientosOcupados = getStoredOccupiedSeats(destino, fecha, bus);
         renderBusSeatsUI();
       }
     }
@@ -2064,6 +2269,8 @@ ${opinionsClientCode}
     window.selectBus = function(busName) {
       state.selectedBus = busName;
       state.asientosSeleccionados = [];
+      state.asientosOcupados = getStoredOccupiedSeats(state.selectedTrip.destino, state.selectedSalida.fecha, busName);
+      renderBusSeatsUI();
       loadBusSeats();
     };
 
@@ -2073,16 +2280,20 @@ ${opinionsClientCode}
       const isSeleccionado = state.asientosSeleccionados.includes(num);
 
       let styleClass = "bg-emerald-500 text-white shadow-sm border border-emerald-400 cursor-pointer hover:bg-emerald-600";
+      let titleAttr = \`Asiento \${num} disponible\`;
       if (isOcupado) {
-        styleClass = "bg-slate-300 text-slate-500 cursor-not-allowed border border-slate-300";
+        styleClass = "bg-slate-300 text-slate-500 cursor-not-allowed border border-slate-300 opacity-80 select-none shadow-none";
+        titleAttr = \`Asiento \${num} ocupado (reservado)\`;
       } else if (isBloqueado) {
-        styleClass = "bg-amber-400 text-amber-950 cursor-not-allowed border border-amber-300";
+        styleClass = "bg-amber-400 text-amber-950 cursor-not-allowed border border-amber-300 select-none shadow-none";
+        titleAttr = \`Asiento \${num} apartado temporalmente\`;
       } else if (isSeleccionado) {
         styleClass = "bg-tour-blue text-white ring-4 ring-blue-300 ring-offset-1 font-bold shadow-md scale-105";
+        titleAttr = \`Asiento \${num} seleccionado por ti\`;
       }
 
       return \`
-        <button type="button" onclick="toggleSeat(\${num})" class="w-9 h-10 rounded-xl relative flex flex-col items-center justify-center text-xs font-bold seat-bounce transition \${styleClass}" \${isOcupado || isBloqueado ? 'disabled' : ''}>
+        <button type="button" onclick="toggleSeat(\${num})" title="\${titleAttr}" class="w-9 h-10 rounded-xl relative flex flex-col items-center justify-center text-xs font-bold seat-bounce transition \${styleClass}" \${isOcupado || isBloqueado ? 'disabled' : ''}>
           <span class="w-5 h-1.5 rounded-full bg-white/30 mb-0.5 pointer-events-none"></span>
           <span>\${num}</span>
         </button>
@@ -2133,7 +2344,14 @@ ${opinionsClientCode}
     }
 
     window.toggleSeat = function(num) {
-      if (state.asientosOcupados.includes(num) || state.asientosBloqueados.includes(num)) return;
+      const currentOcupados = getStoredOccupiedSeats(state.selectedTrip.destino, state.selectedSalida.fecha, state.selectedBus);
+      if (state.asientosOcupados.includes(num) || currentOcupados.includes(num) || state.asientosBloqueados.includes(num)) {
+        if (!state.asientosOcupados.includes(num) && currentOcupados.includes(num)) {
+          state.asientosOcupados = [...currentOcupados];
+          renderBusSeatsUI();
+        }
+        return;
+      }
       if (navigator.vibrate) navigator.vibrate(20);
 
       const idx = state.asientosSeleccionados.indexOf(num);
@@ -2685,6 +2903,35 @@ ${opinionsClientCode}
 
       state.reservaFinal = payload;
 
+      // ============================================================
+      // 🔒 BLOQUEO INMEDIATO Y PERSISTENTE EN LA INTERFAZ Y SESIÓN
+      // ============================================================
+      const asientosConfirmados = [...state.asientosSeleccionados];
+      const destActual = state.selectedTrip.destino;
+      const fechaActual = state.selectedSalida.fecha;
+      const busActual = state.selectedBus;
+
+      // Guardar de inmediato en sessionStorage y localStorage
+      const asientosActualizados = saveStoredOccupiedSeats(destActual, fechaActual, busActual, asientosConfirmados);
+      saveConfirmedBookingToSession(payload);
+
+      // Actualizar el estado en memoria para reflejar inmediatamente el bloqueo
+      state.asientosOcupados = [...asientosActualizados];
+      state.asientosBloqueados = state.asientosBloqueados.filter(s => !asientosConfirmados.includes(s));
+      state.asientosSeleccionados = [];
+
+      // Cancelar el temporizador de bloqueo temporal si existía
+      if (state.timerBloqueo) {
+        clearInterval(state.timerBloqueo);
+        state.timerBloqueo = null;
+      }
+      const boxTimer = document.getElementById("seat-timer-box");
+      if (boxTimer) boxTimer.classList.add("hidden");
+
+      // Actualizar la interfaz de asientos y las tarjetas de viaje
+      renderBusSeatsUI();
+      if (typeof renderTrips === "function") renderTrips();
+
       // Enviar la reserva a Google Sheets mediante enviarReservaAGoogleSheets
       const datosParaSheets = {
         nombre: state.passengers[0].nombre,
@@ -2697,7 +2944,7 @@ ${opinionsClientCode}
         acompanantes: state.passengers.slice(1).map(c => c.nombre),
         idReserva: idReserva,
         bus: state.selectedBus,
-        asientos: state.asientosSeleccionados,
+        asientos: asientosConfirmados,
         totalPersonas: numPers,
         tipoPago: state.metodoPago,
         montoPagadoBs: paidBs,
@@ -2794,6 +3041,7 @@ ${opinionsClientCode}
       document.getElementById("btn-close-success").onclick = () => {
         document.getElementById("modal-success").classList.add("hidden");
         document.getElementById("modal-success").classList.remove("flex");
+        renderTrips();
       };
 
       document.getElementById("btn-wizard-prev").onclick = () => {

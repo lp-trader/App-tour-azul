@@ -50,10 +50,11 @@ function doGet(e) {
     // 2. OBTENER ASIENTOS OCUPADOS Y BLOQUEADOS
     if (accion === "asientos") {
       const destino = params.destino || "";
+      const destinoHoja = params.destinoHoja || "";
       const fecha = params.fecha || "";
       const bus = params.bus || "Bus 1";
 
-      const resultado = obtenerEstadoAsientos(ss, destino, fecha, bus);
+      const resultado = obtenerEstadoAsientos(ss, destino, fecha, bus, false, destinoHoja);
       return jsonResponse({
         ok: true,
         destino: destino,
@@ -356,10 +357,21 @@ function guardarEnBaseGeneral(ss, idReserva, fechaRegistro, titular, acompanante
 }
 
 /**
+ * Función auxiliar para verificar coincidencia flexible de destinos
+ */
+function destinosCoinciden(d1, d2) {
+  if (!d1 || !d2) return false;
+  if (d1 === d2) return true;
+  const s1 = String(d1).toLowerCase().replace(/[^a-z0-9]/g, "");
+  const s2 = String(d2).toLowerCase().replace(/[^a-z0-9]/g, "");
+  return s1 === s2 || s1.startsWith(s2) || s2.startsWith(s1);
+}
+
+/**
  * Guarda los pasajeros en la hoja individual del viaje/destino (ej: "Cayo_Muerto_18-10")
  */
 function guardarEnHojaDestino(ss, idReserva, titular, acompanantes, data, abono, pendiente, estado) {
-  const nombreHoja = String(data.destino || "").trim();
+  const nombreHoja = String(data.destinoHoja || data.destino || "").trim();
   if (!nombreHoja) return;
   let sheet = ss.getSheetByName(nombreHoja);
   if (!sheet) {
@@ -403,7 +415,7 @@ function guardarEnHojaDestino(ss, idReserva, titular, acompanantes, data, abono,
 /**
  * Obtiene los asientos ocupados (reservados en "Reservas") y bloqueados (en "Bloqueos")
  */
-function obtenerEstadoAsientos(ss, destino, fecha, bus, omitirBloqueos = false) {
+function obtenerEstadoAsientos(ss, destino, fecha, bus, omitirBloqueos = false, destinoHoja = "") {
   inicializarHojasSiNoExisten(ss);
 
   const ocupadosSet = new Set();
@@ -425,7 +437,12 @@ function obtenerEstadoAsientos(ss, destino, fecha, bus, omitirBloqueos = false) 
     const rDestino = row[15] ? row[15].toString() : "";
     const rFecha = row[16] ? Utilities.formatDate(new Date(row[16]), Session.getScriptTimeZone(), "yyyy-MM-dd") : "";
 
-    if (rDestino === destino && rFecha === fecha && rBus === bus) {
+    const destCoincide = (rDestino === destino) ||
+      (destinoHoja && rDestino === destinoHoja) ||
+      destinosCoinciden(rDestino, destino) ||
+      (destinoHoja && destinosCoinciden(rDestino, destinoHoja));
+
+    if (destCoincide && rFecha === fecha && rBus === bus) {
       const lista = rAsientos.split(",");
       lista.forEach(numStr => {
         const n = parseInt(numStr.trim(), 10);
@@ -451,7 +468,12 @@ function obtenerEstadoAsientos(ss, destino, fecha, bus, omitirBloqueos = false) 
       const bFecha = bRow[3] ? Utilities.formatDate(new Date(bRow[3]), Session.getScriptTimeZone(), "yyyy-MM-dd") : "";
       const bExpira = bRow[4] ? new Date(bRow[4]).getTime() : 0;
 
-      if (bDestino === destino && bFecha === fecha && bBus === bus && bExpira > nowMs) {
+      const destCoincideBloq = (bDestino === destino) ||
+        (destinoHoja && bDestino === destinoHoja) ||
+        destinosCoinciden(bDestino, destino) ||
+        (destinoHoja && destinosCoinciden(bDestino, destinoHoja));
+
+      if (destCoincideBloq && bFecha === fecha && bBus === bus && bExpira > nowMs) {
         if (!ocupadosSet.has(bAsiento)) {
           bloqueadosSet.add(bAsiento);
         }

@@ -361,3 +361,52 @@ export const TRIPS = [
     ]
   }
 ];
+
+export const TOTAL_BUS_SEATS = 31;
+
+/**
+ * Normaliza una cadena para claves de almacenamiento sin caracteres especiales ni acentos
+ */
+export function normalizeTripKey(str) {
+  if (!str) return "";
+  return String(str)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
+/**
+ * Genera la clave única y consistente de almacenamiento para una salida y autobús
+ */
+export function getOccupiedSeatsStorageKey(destino, fecha, bus = "Bus 1") {
+  const normDest = normalizeTripKey(destino);
+  const normFecha = String(fecha || "").replace(/[^0-9]/g, "");
+  const normBus = normalizeTripKey(bus || "Bus 1");
+  return `tour_azul_occupied_${normDest}_${normFecha}_${normBus}`;
+}
+
+/**
+ * Normaliza el nombre del destino para la hoja correspondiente (ej: "Cayo_Muerto_18-10")
+ */
+export function formatDestinoSheetName(destino, fechaViaje) {
+  if (!destino) return "General";
+  if (destino.includes("_") && /\d{1,2}-\d{1,2}/.test(destino)) {
+    return destino;
+  }
+  let dateTag = "";
+  if (fechaViaje && typeof fechaViaje === "string" && fechaViaje.includes("-")) {
+    const parts = fechaViaje.split("-");
+    if (parts.length >= 3) {
+      dateTag = `_${parts[2]}-${parts[1]}`; // ej: _18-10
+    }
+  }
+  const cleanDestino = String(destino)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^\w\s-]/g, "")
+    .trim()
+    .replace(/\s+/g, "_");
+  return `${cleanDestino}${dateTag}`;
+}

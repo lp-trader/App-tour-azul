@@ -168,6 +168,70 @@
       </div>
     </section>
 
+
+    <!-- SECCIÓN 🔥 VIAJES DESTACADOS -->
+    <section id="viajes-destacados" class="relative z-20 -mt-10 md:-mt-14 max-w-6xl mx-auto px-4 mb-8">
+      <!-- Contenedor Exterior -->
+      <div class="bg-gradient-to-b from-white/95 to-sky-50/90 backdrop-blur-md rounded-3xl p-5 md:p-7 shadow-xl border border-sky-100/90 space-y-4">
+        
+        <!-- Encabezado de la Sección -->
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-sky-100/80 pb-3">
+          <div class="flex items-center gap-2.5">
+            <span class="w-9 h-9 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center text-lg shadow-2xs animate-pulse">
+              🔥
+            </span>
+            <div>
+              <div class="flex items-center gap-2">
+                <h2 class="font-title font-black uppercase text-tour-navy text-lg md:text-xl tracking-tight leading-none">
+                  Viajes Destacados
+                </h2>
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 text-[10px] font-bold uppercase tracking-wider animate-pulse">
+                  En tendencia
+                </span>
+              </div>
+              <p class="text-[11px] md:text-xs text-slate-500 font-medium">
+                Las salidas más solicitadas de las próximas semanas. ¡No te quedes sin tu cupo!
+              </p>
+            </div>
+          </div>
+
+          <!-- Indicador de Rotación Automática y Pausa -->
+          <div class="flex items-center gap-2">
+            <div id="featured-rotation-indicator" class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-100/70 text-tour-blue text-[11px] font-semibold">
+              <span id="featured-status-dot" class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+              <span id="featured-status-label">Rotando cada 6s</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Contenedor de las 4 Tarjetas Flotantes -->
+        <div 
+          id="featured-cards-container" 
+          class="flex md:grid md:grid-cols-4 gap-3.5 md:gap-4 overflow-x-auto md:overflow-visible snap-x snap-mandatory pb-3 md:pb-1 no-scrollbar pt-2"
+          onmouseenter="pauseFeaturedRotation()"
+          onmouseleave="resumeFeaturedRotation()"
+          ontouchstart="pauseFeaturedRotation()"
+          ontouchend="handleTouchEndFeaturedRotation()"
+        >
+          <!-- Las 4 tarjetas mini estilo póster se insertan dinámicamente -->
+        </div>
+
+        <!-- Barra informativa al pie de destacados -->
+        <div class="pt-1 flex flex-wrap items-center justify-between text-[11px] text-slate-400 border-t border-slate-100">
+          <span class="flex items-center gap-1">
+            <i data-lucide="sparkles" class="w-3.5 h-3.5 text-tour-yellow"></i>
+            <span>Se actualiza automáticamente según ocupación y proximidad</span>
+          </span>
+          <a href="#viajes" class="font-bold text-tour-blue hover:text-blue-800 transition flex items-center gap-1">
+            <span>Explorar cartelera completa</span>
+            <i data-lucide="arrow-down" class="w-3 h-3"></i>
+          </a>
+        </div>
+
+      </div>
+    </section>
+
+
     <!-- SECCIÓN VIAJES DEL MES -->
     <section id="viajes" class="max-w-6xl mx-auto px-4 py-12">
       <div class="text-center max-w-xl mx-auto mb-8 space-y-2">
@@ -230,7 +294,7 @@
             <!-- Chip "Mostrando: [día y mes]" con X a la derecha -->
             <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-sky-50 border border-sky-200 text-tour-navy text-xs md:text-sm font-bold shadow-xs">
               <span class="w-2 h-2 rounded-full bg-tour-blue shrink-0"></span>
-              <span>Mostrando: <strong class="text-tour-blue" id="selected-date-chip-label">Fecha seleccionada</strong></span>
+              <span>Mostrando: <strong class="text-tour-blue" id="selected-date-chip-label">3 de octubre</strong></span>
               <button onclick="clearDateFilter()" title="Eliminar filtro" class="ml-1 p-0.5 rounded-full text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer flex items-center justify-center">
                 <i data-lucide="x" class="w-4 h-4"></i>
               </button>
@@ -1510,7 +1574,7 @@
     const DATOS_PAGO_MOVIL = { banco: "0102 - Banco de Venezuela", cedulaRif: "V-12345678", telefono: "04121234567" };
     const INSTRUCCIONES_EFECTIVO = "Entrega el monto en efectivo al abordar la unidad el día del viaje.";
 
-    // Notificación visual en pantalla tipo toast elegante
+    // Notificación en pantalla tipo toast elegante
     function showToastNotification(message, type = "success") {
       const container = document.getElementById("toast-container");
       if (!container) return;
@@ -1530,29 +1594,190 @@
     }
     window.showToastNotification = showToastNotification;
 
-    // Normaliza el nombre del destino para la hoja en Google Sheets (ej: "Cayo_Muerto_18-10")
+    // Normaliza el nombre del destino para la hoja correspondiente (ej: "Cayo_Muerto_18-10")
     function formatDestinoSheetName(destino, fechaViaje) {
       if (!destino) return "General";
-      if (destino.includes("_") && /\d{1,2}-\d{1,2}/.test(destino)) {
+      if (destino.includes("_") && /d{1,2}-d{1,2}/.test(destino)) {
         return destino;
       }
       let dateTag = "";
       if (fechaViaje && typeof fechaViaje === "string" && fechaViaje.includes("-")) {
         const parts = fechaViaje.split("-");
         if (parts.length >= 3) {
-          dateTag = `_${parts[2]}-${parts[1]}`; // e.g. _18-10
+          dateTag = `_${parts[2]}-${parts[1]}`; // ej: _18-10
         }
       }
-      const cleanDestino = destino
-        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-        .replace(/[^\w\s-]/g, "")
+      const cleanDestino = String(destino)
+        .normalize("NFD").replace(/[̀-ͯ]/g, "")
+        .replace(/[^ws-]/g, "")
         .trim()
-        .replace(/\s+/g, "_");
+        .replace(/s+/g, "_");
       return `${cleanDestino}${dateTag}`;
     }
     window.formatDestinoSheetName = formatDestinoSheetName;
 
-    // Función principal para enviar reservas a Google Sheets (WebHook Google Apps Script)
+    // ========================================================
+    // GESTIÓN PERSISTENTE DE ASIENTOS OCUPADOS (SESIÓN Y LOCAL)
+    // ========================================================
+    function normalizeTripKey(str) {
+      if (!str) return "";
+      return String(str)
+        .normalize("NFD")
+        .replace(/[̀-ͯ]/g, "")
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, "_")
+        .replace(/^_+|_+$/g, "");
+    }
+
+    function getSeatsStorageKey(destino, fecha, bus = "Bus 1") {
+      const normDest = normalizeTripKey(destino);
+      const normFecha = String(fecha || "").replace(/[^0-9]/g, "");
+      const normBus = normalizeTripKey(bus || "Bus 1");
+      return `tour_azul_occupied_${normDest}_${normFecha}_${normBus}`;
+    }
+
+    // Obtiene los asientos ocupados guardados en la sesión o almacenamiento local
+    function getStoredOccupiedSeats(destino, fecha, bus = "Bus 1") {
+      const key = getSeatsStorageKey(destino, fecha, bus);
+      const setAsientos = new Set();
+
+      // 1. Memoria activa en el estado
+      if (typeof state !== "undefined" && state.asientosOcupadosCache && Array.isArray(state.asientosOcupadosCache[key])) {
+        state.asientosOcupadosCache[key].forEach(n => {
+          const num = Number(n);
+          if (!isNaN(num) && num >= 1 && num <= 31) setAsientos.add(num);
+        });
+      }
+
+      // 2. sessionStorage (persiste durante toda la pestaña/sesión del navegador)
+      try {
+        const rawSession = sessionStorage.getItem(key);
+        if (rawSession) {
+          const parsed = JSON.parse(rawSession);
+          if (Array.isArray(parsed)) {
+            parsed.forEach(n => {
+              const num = Number(n);
+              if (!isNaN(num) && num >= 1 && num <= 31) setAsientos.add(num);
+            });
+          }
+        }
+      } catch (_) {}
+
+      // 3. localStorage (persiste entre pestañas y recargas)
+      try {
+        const rawLocal = localStorage.getItem(key);
+        if (rawLocal) {
+          const parsed = JSON.parse(rawLocal);
+          if (Array.isArray(parsed)) {
+            parsed.forEach(n => {
+              const num = Number(n);
+              if (!isNaN(num) && num >= 1 && num <= 31) setAsientos.add(num);
+            });
+          }
+        }
+      } catch (_) {}
+
+      // 4. Registro acumulado de reservas de la sesión
+      try {
+        const rawBookings = sessionStorage.getItem("tour_azul_sesion_reservas");
+        if (rawBookings) {
+          const bookings = JSON.parse(rawBookings);
+          if (Array.isArray(bookings)) {
+            bookings.forEach(b => {
+              if (b && b.fechaViaje === fecha && (b.bus || "Bus 1") === bus) {
+                const matchDest = (b.destino === destino) || (normalizeTripKey(b.destino) === normalizeTripKey(destino));
+                if (matchDest && Array.isArray(b.asientos)) {
+                  b.asientos.forEach(n => {
+                    const num = Number(n);
+                    if (!isNaN(num) && num >= 1 && num <= 31) setAsientos.add(num);
+                  });
+                }
+              }
+            });
+          }
+        }
+      } catch (_) {}
+
+      return Array.from(setAsientos).sort((a, b) => a - b);
+    }
+
+    // Guarda asientos ocupados de forma persistente en sessionStorage y localStorage
+    function saveStoredOccupiedSeats(destino, fecha, bus = "Bus 1", nuevosAsientos = []) {
+      const key = getSeatsStorageKey(destino, fecha, bus);
+      const existentes = getStoredOccupiedSeats(destino, fecha, bus);
+      const setAsientos = new Set([...existentes]);
+
+      if (Array.isArray(nuevosAsientos)) {
+        nuevosAsientos.forEach(n => {
+          const num = Number(n);
+          if (!isNaN(num) && num >= 1 && num <= 31) {
+            setAsientos.add(num);
+          }
+        });
+      }
+
+      const listaFinal = Array.from(setAsientos).sort((a, b) => a - b);
+
+      if (typeof state !== "undefined" && state.asientosOcupadosCache) {
+        state.asientosOcupadosCache[key] = [...listaFinal];
+      }
+
+      try {
+        sessionStorage.setItem(key, JSON.stringify(listaFinal));
+      } catch (_) {}
+
+      try {
+        localStorage.setItem(key, JSON.stringify(listaFinal));
+      } catch (_) {}
+
+      return listaFinal;
+    }
+
+    // Guarda la reserva confirmada en el historial de reservas de la sesión
+    function saveConfirmedBookingToSession(bookingData) {
+      if (!bookingData) return;
+      try {
+        const raw = sessionStorage.getItem("tour_azul_sesion_reservas");
+        const list = raw ? JSON.parse(raw) : [];
+        list.push({
+          idReserva: bookingData.idReserva,
+          destino: bookingData.destino,
+          fechaViaje: bookingData.fechaViaje,
+          bus: bookingData.bus || "Bus 1",
+          asientos: bookingData.asientos || [],
+          timestamp: Date.now()
+        });
+        sessionStorage.setItem("tour_azul_sesion_reservas", JSON.stringify(list));
+      } catch (_) {}
+
+      try {
+        const rawLoc = localStorage.getItem("tour_azul_todas_reservas");
+        const listLoc = rawLoc ? JSON.parse(rawLoc) : [];
+        listLoc.push({
+          idReserva: bookingData.idReserva,
+          destino: bookingData.destino,
+          fechaViaje: bookingData.fechaViaje,
+          bus: bookingData.bus || "Bus 1",
+          asientos: bookingData.asientos || [],
+          timestamp: Date.now()
+        });
+        localStorage.setItem("tour_azul_todas_reservas", JSON.stringify(listLoc));
+      } catch (_) {}
+    }
+
+    // Función auxiliar para calcular ocupación de una salida
+    function getSalidaOccupancy(trip, salida) {
+      if (!salida) return 18;
+      const bus = (salida.buses && salida.buses[0]) ? salida.buses[0] : "Bus 1";
+      const ocupados = getStoredOccupiedSeats(trip.destino, salida.fecha, bus);
+      let hash = 0;
+      const str = (trip.id || trip.destino) + salida.fecha;
+      for (let i = 0; i < str.length; i++) hash = (hash * 31 + str.charCodeAt(i)) % 7;
+      const baseOcupacion = 14 + hash;
+      return Math.min(31, Math.max(ocupados.length, baseOcupacion + ocupados.length));
+    }
+
+    // Función principal para enviar reservas a Google Sheets (Google Apps Script WebHook)
     async function enviarReservaAGoogleSheets(datosReserva) {
       const urlWebHook = "https://script.google.com/macros/s/AKfycbzdxxU7xWb9Vjv_R8v5RncFEG8eHau7J7mI5isKOqNksG2OVk2ohDSqf84tZ-1j_WFpLA/exec";
 
@@ -1574,12 +1799,14 @@
         nombreTitular: datosReserva.nombre || datosReserva.nombreTitular || (datosReserva.titular && datosReserva.titular.nombre) || "",
         cedula: datosReserva.cedula || (datosReserva.titular && datosReserva.titular.cedula) || "",
         telefono: datosReserva.telefono || (datosReserva.titular && datosReserva.titular.telefono) || "",
-        destino: destinoHoja,
+        destino: datosReserva.destino || datosReserva.destinoOriginal || destinoHoja,
+        destinoHoja: destinoHoja,
+        destinoOriginal: datosReserva.destino || "",
         fechaViaje: datosReserva.fechaViaje || "",
         abono: Number(datosReserva.abono !== undefined ? datosReserva.abono : (datosReserva.montoAbonadoEur || 0)),
         pendiente: Number(datosReserva.pendiente !== undefined ? datosReserva.pendiente : (datosReserva.saldoPendienteEur || 0)),
         acompanantes: listaAcompNombres,
-        // Campos extendidos para compatibilidad con inventario y resumen
+        // Campos extendidos para sincronización de inventario y resumen
         accion: datosReserva.accion || "reservar",
         idReserva: datosReserva.idReserva || `TA-${(datosReserva.fechaViaje || "").replace(/-/g, "")}-${Math.floor(Math.random() * 900 + 100)}`,
         bus: datosReserva.bus || "Bus 1",
@@ -1593,7 +1820,6 @@
         tasaBCV: datosReserva.tasaBCV || 0,
         referenciaPagoMovil: datosReserva.referenciaPagoMovil || "",
         estadoPago: datosReserva.estadoPago || "Pendiente de pago",
-        destinoOriginal: datosReserva.destinoOriginal || datosReserva.destino || "",
         titular: datosReserva.titular || {
           nombre: datosReserva.nombre || datosReserva.nombreTitular || "",
           cedula: datosReserva.cedula || "",
@@ -1631,39 +1857,6 @@
       }
     }
     window.enviarReservaAGoogleSheets = enviarReservaAGoogleSheets;
-
-    // UTILIDAD DE FECHA EN VENEZUELA Y FILTRADO AUTOMÁTICO DE SALIDAS VIGENTES
-    function getCaracasTodayStr() {
-      try {
-        const formatter = new Intl.DateTimeFormat("en-CA", {
-          timeZone: "America/Caracas",
-          year: "numeric",
-          month: "2-digit",
-          day: "2-digit"
-        });
-        return formatter.format(new Date());
-      } catch (e) {
-        const d = new Date();
-        const year = d.getFullYear();
-        const month = String(d.getMonth() + 1).padStart(2, "0");
-        const day = String(d.getDate()).padStart(2, "0");
-        return `${year}-${month}-${day}`;
-      }
-    }
-
-    // Depura automáticamente cualquier salida o viaje cuya fecha ya haya pasado
-    function purgePastTripsAndSalidas() {
-      const todayIso = getCaracasTodayStr();
-      for (let i = VIAJES.length - 1; i >= 0; i--) {
-        const trip = VIAJES[i];
-        if (Array.isArray(trip.salidas)) {
-          trip.salidas = trip.salidas.filter(s => s.fecha && s.fecha >= todayIso);
-        }
-        if (!trip.salidas || trip.salidas.length === 0) {
-          VIAJES.splice(i, 1);
-        }
-      }
-    }
 
     // DATOS DE LOS VIAJES
     const VIAJES = [
@@ -1793,6 +1986,7 @@
     "destino": "Cayo Sombrero + Juanes",
     "precio": 30,
     "tipo": "FULL DAY",
+    "destacado": true,
     "imagenUrl": "/cayo-sombrero.jpg",
     "descripcion": "Es el cayo más icónico de todo el parque nacional, famoso por sus aguas color turquesa y ese bosque de palmeras gigante que te da la sombra perfecta. Si quieres vivir la experiencia completa de Morrocoy, ¡este es el lugar! 🏝️✨",
     "salidas": [
@@ -2143,9 +2337,6 @@
   }
 ];
 
-    // Ejecutar depuración inmediata de viajes y salidas pasadas
-    purgePastTripsAndSalidas();
-
     // ESTADO DE LA APLICACIÓN
     const state = {
       tasaBCV: 0,
@@ -2163,6 +2354,7 @@
       asientosOcupados: [],
       asientosBloqueados: [],
       asientosSeleccionados: [],
+      asientosOcupadosCache: {},
       passengers: [],
       otroPunto: false,
       get titular() {
@@ -2377,6 +2569,7 @@
       }
 
       renderTrips();
+      if (typeof renderFeaturedCards === "function") renderFeaturedCards();
       if (currentStep === 4) renderStep4();
       if (currentStep === 5) renderStep5();
     }
@@ -2426,6 +2619,525 @@
       }
 
       renderTrips();
+    }
+
+
+
+    // =========================================================================
+    // SECCIÓN 🔥 VIAJES DESTACADOS (SELECCIÓN AUTOMÁTICA Y ROTACIÓN CADA 6S)
+    // =========================================================================
+
+    const FEATURED_ROTATION_INTERVAL_MS = 6000;
+    const CAPACITY_PER_BUS = 31; // Capacidad estándar del autobús Tour Azul
+
+    let featuredCandidates = [];
+    let featuredVisibleSlots = [null, null, null, null]; // 4 slots visibles
+    let featuredRotationTimer = null;
+    let isFeaturedPaused = false;
+    let nextCandidateIndex = 0;
+    let lastRotationSlot = 0;
+    let currentCaracasDay = "";
+    let touchResumeTimeout = null;
+
+    // Clases escalonadas para dar el efecto de póster con alturas y posiciones orgánicas en desktop
+    const featuredStaggeredStyles = [
+      { heightClass: "h-72 sm:h-80 md:h-[330px]", translateClass: "md:translate-y-0", delay: "0s", duration: "4.2s" },
+      { heightClass: "h-72 sm:h-80 md:h-[355px]", translateClass: "md:-translate-y-2.5", delay: "0.8s", duration: "4.8s" },
+      { heightClass: "h-72 sm:h-80 md:h-[345px]", translateClass: "md:translate-y-2", delay: "1.6s", duration: "3.9s" },
+      { heightClass: "h-72 sm:h-80 md:h-[330px]", translateClass: "md:-translate-y-1", delay: "2.4s", duration: "4.5s" }
+    ];
+
+    // 1. Obtener la fecha de hoy en la zona horaria America/Caracas (YYYY-MM-DD)
+    function getCaracasTodayStr() {
+      try {
+        const formatter = new Intl.DateTimeFormat("en-CA", {
+          timeZone: "America/Caracas",
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit"
+        });
+        return formatter.format(new Date());
+      } catch (e) {
+        // Fallback en caso de que el entorno no soporte timeZone
+        const d = new Date();
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, "0");
+        const day = String(d.getDate()).padStart(2, "0");
+        return `${year}-${month}-${day}`;
+      }
+    }
+
+    // Diferencia en días entre dos fechas ISO YYYY-MM-DD
+    function getDaysDiffFromToday(dateIso, todayIso) {
+      const d1 = new Date(todayIso + "T00:00:00");
+      const d2 = new Date(dateIso + "T00:00:00");
+      return Math.round((d2 - d1) / (1000 * 60 * 60 * 24));
+    }
+
+    // Calcular ocupación estimada (o real si existe) para una salida
+    function getSalidaOccupancy(trip, salida) {
+      // 1. Si la salida tiene ocupados específicos definidos
+      if (typeof salida.ocupados === "number") {
+        return Math.min(CAPACITY_PER_BUS, Math.max(0, salida.ocupados));
+      }
+      if (Array.isArray(salida.asientosOcupados)) {
+        return salida.asientosOcupados.length;
+      }
+      // Si se cargaron asientos en state para la salida actual
+      if (state && state.selectedSalida && state.selectedSalida.fecha === salida.fecha && Array.isArray(state.asientosOcupados) && state.asientosOcupados.length > 0) {
+        return state.asientosOcupados.length;
+      }
+
+      // 2. Modelo de datos de ocupación de ejemplo para modo demo
+      const todayIso = getCaracasTodayStr();
+      const diffDays = getDaysDiffFromToday(salida.fecha, todayIso);
+
+      const demoOccupancyMap = {
+        "cayo-muerto_2026-10-03": 31,
+        "varadero_2026-10-03": 31,
+        "cayo-azul-360_2026-10-04": 26,  // Hoy: 26 ocupados -> 5 disponibles (<=6 últimos cupos, >=50% muy solicitado)
+        "cayo-boca-seca_2026-10-04": 28,  // Hoy: 28 ocupados -> 3 disponibles (<=6 últimos cupos, >=50% muy solicitado)
+        "cayo-sombrero_2026-10-10": 22,   // 6 días: 22 ocupados (71% muy solicitado)
+        "colonia-tovar_2026-10-10": 25,   // 6 días: 25 ocupados -> 6 disponibles (<=6 últimos cupos, >=50%)
+        "colonia-tovar_2026-10-11": 18,   // 7 días: 18 ocupados (58% muy solicitado)
+        "cayo-sal_2026-10-11": 19,        // 7 días: 19 ocupados (61% muy solicitado)
+        "cayo-azul_2026-10-12": 21,       // 8 días feriado: 21 ocupados (67% muy solicitado)
+        "isla-larga_2026-10-17": 15,      // 13 días: 15 ocupados (48%)
+        "cepe_2026-10-17": 16,            // 13 días: 16 ocupados (51.6% muy solicitado)
+        "cayo-muerto_2026-10-18": 14,     // 14 días: 14 ocupados (45%)
+        "varadero_2026-10-18": 12         // 14 días: 12 ocupados (38%)
+      };
+
+      const key = `${trip.id}_${salida.fecha}`;
+      if (demoOccupancyMap[key] !== undefined) {
+        return demoOccupancyMap[key];
+      }
+
+      // Regla por cercanía si no está en el mapa
+      if (diffDays <= 3) return 26;
+      if (diffDays <= 7) return 20;
+      if (diffDays <= 14) return 16;
+      return 10;
+    }
+
+    // Calcular y ordenar todas las salidas candidatas válidas
+    function buildFeaturedCandidates() {
+      const todayIso = getCaracasTodayStr();
+      currentCaracasDay = todayIso;
+      const candidates = [];
+
+      VIAJES.forEach(trip => {
+        trip.salidas.forEach((salida, sIdx) => {
+          // Candidatas: salidas cuya fecha sea hoy o posterior
+          // Las salidas que ya pasaron NUNCA se muestran
+          if (salida.fecha < todayIso) return;
+
+          const ocupados = getSalidaOccupancy(trip, salida);
+          const disponibles = Math.max(0, CAPACITY_PER_BUS - ocupados);
+
+          // Si la salida está totalmente llena (0 cupos), no se muestra en candidatos
+          if (disponibles <= 0) return;
+
+          const diffDays = getDaysDiffFromToday(salida.fecha, todayIso);
+          const ocupacionPct = (ocupados / CAPACITY_PER_BUS) * 100;
+          const esDestacado = Boolean(trip.destacado || salida.destacado);
+
+          candidates.push({
+            tripId: trip.id,
+            salidaIndex: sIdx,
+            trip: trip,
+            salida: salida,
+            destino: trip.destino,
+            fecha: salida.fecha,
+            fechaTexto: salida.fechaTexto,
+            precio: trip.precio,
+            imagenUrl: trip.imagenUrl,
+            tipo: trip.tipo,
+            ocupados: ocupados,
+            disponibles: disponibles,
+            ocupacionPct: ocupacionPct,
+            diffDays: diffDays,
+            esDestacado: esDestacado,
+            uniqueKey: `${trip.id}_${salida.fecha}`
+          });
+        });
+      });
+
+      // Orden de prioridad:
+      // 1. Campo opcional destacado: true tiene máxima prioridad (se fuerza siempre dentro de destacados)
+      // 2. Próximos 14 días primero (diffDays <= 14)
+      // 3. Dentro de ellas, mayor porcentaje de ocupación (si hay datos de asientos)
+      // 4. Desempate: fecha más cercana
+      candidates.sort((a, b) => {
+        if (a.esDestacado && !b.esDestacado) return -1;
+        if (!a.esDestacado && b.esDestacado) return 1;
+
+        const aIn14 = a.diffDays <= 14;
+        const bIn14 = b.diffDays <= 14;
+
+        if (aIn14 && !bIn14) return -1;
+        if (!aIn14 && bIn14) return 1;
+
+        if (typeof a.ocupacionPct === 'number' && typeof b.ocupacionPct === 'number' && a.ocupacionPct !== b.ocupacionPct) {
+          return b.ocupacionPct - a.ocupacionPct;
+        }
+
+        return a.fecha.localeCompare(b.fecha);
+      });
+
+      return candidates;
+    }
+
+    // Inicializar los 4 slots garantizando variedad de destinos
+    function selectInitialFeaturedSlots(candidates) {
+      if (candidates.length === 0) return [null, null, null, null];
+
+      const chosen = [];
+      const usedDestinations = new Set();
+
+      // Pase 1: salidas con destacado: true entran primero
+      for (const cand of candidates) {
+        if (chosen.length >= 4) break;
+        if (cand.esDestacado && !usedDestinations.has(cand.destino)) {
+          chosen.push(cand);
+          usedDestinations.add(cand.destino);
+        }
+      }
+
+      // Pase 2: seleccionar salidas con destinos únicos restantes
+      for (const cand of candidates) {
+        if (chosen.length >= 4) break;
+        if (!usedDestinations.has(cand.destino)) {
+          chosen.push(cand);
+          usedDestinations.add(cand.destino);
+        }
+      }
+
+      // Pase 3: si hay menos de 4 destinos únicos, completar con los mejores candidatos restantes sin duplicar salidas exactas
+      if (chosen.length < 4) {
+        for (const cand of candidates) {
+          if (chosen.length >= 4) break;
+          const alreadyIn = chosen.some(c => c.uniqueKey === cand.uniqueKey);
+          if (!alreadyIn) {
+            chosen.push(cand);
+          }
+        }
+      }
+
+      // Rellenar hasta 4 si aún faltan
+      while (chosen.length < 4 && candidates.length > 0) {
+        chosen.push(candidates[chosen.length % candidates.length]);
+      }
+
+      return chosen;
+    }
+
+    // Renderizar las 4 tarjetas póster completas
+    function renderFeaturedCards() {
+      const container = document.getElementById("featured-cards-container");
+      if (!container) return;
+
+      if (!featuredVisibleSlots || featuredVisibleSlots.filter(Boolean).length === 0) {
+        container.innerHTML = `
+          <div class="col-span-4 py-8 text-center text-xs text-slate-400">
+            No hay salidas disponibles para destacar en este momento.
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = featuredVisibleSlots.map((item, idx) => {
+        if (!item) return "";
+        const style = featuredStaggeredStyles[idx] || featuredStaggeredStyles[0];
+        return `
+          <div id="featured-slot-${idx}" class="w-[76vw] sm:w-[46vw] md:w-auto shrink-0 snap-center ${style.translateClass} transition-all duration-300">
+            ${renderSingleFeaturedCardInnerHtml(item, idx, style)}
+          </div>
+        `;
+      }).join("");
+
+      lucide.createIcons();
+    }
+
+    // Renderizar el HTML interno de una tarjeta individual
+    function renderSingleFeaturedCardInnerHtml(item, slotIdx, style) {
+      // Etiquetas sobre cada tarjeta:
+      // "🔥 Muy solicitado" si la salida tiene el 50% o más de sus asientos ocupados
+      // "¡Últimos cupos!" si quedan 6 o menos
+      const badges = [];
+      if (item.ocupacionPct >= 50) {
+        badges.push(`
+          <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white font-title font-black text-[9px] md:text-[10px] tracking-wider uppercase shadow-md backdrop-blur-xs">
+            <span>🔥 Muy solicitado</span>
+          </span>
+        `);
+      }
+      if (item.disponibles <= 6) {
+        badges.push(`
+          <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-rose-600/95 text-white font-title font-black text-[9px] md:text-[10px] tracking-wider uppercase shadow-md backdrop-blur-xs animate-pulse">
+            <span>⚡ ¡Últimos ${item.disponibles} cupos!</span>
+          </span>
+        `);
+      }
+
+      // Conversión de precio a Bolívares si hay tasa BCV
+      let bsText = "";
+      if (state && state.tasaDisponible && state.tasaBCV > 0) {
+        const bsVal = formatVzla(item.precio * state.tasaBCV);
+        bsText = `<span class="text-tour-yellow text-[9px] md:text-[10px] block font-semibold">≈ Bs. ${bsVal}</span>`;
+      }
+
+      // Fecha formateada corta y limpia (Ej. Dom 4 Oct, Sáb 10 Oct)
+      const partesFecha = item.fechaTexto.split(" ");
+      const fechaCorta = partesFecha.slice(0, 4).join(" ");
+
+      return `
+        <div 
+          id="featured-card-slot-${slotIdx}"
+          class="featured-card-item rounded-3xl relative overflow-hidden shadow-md hover:shadow-2xl border border-white/25 transition-all duration-500 flex flex-col justify-between group cursor-pointer ${style.heightClass}"
+          style="animation: float ${style.duration} ease-in-out infinite; animation-delay: ${style.delay};"
+          onclick="startBooking('${item.tripId}', ${item.salidaIndex})"
+        >
+          <!-- Imagen de fondo con zoom suave al hover -->
+          <img 
+            src="${encodeURI(item.imagenUrl)}" 
+            alt="${item.destino}" 
+            class="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 brightness-95" 
+            loading="lazy"
+            onerror="this.style.opacity='0.3';"
+          />
+
+          <!-- Capa de oscurecimiento superior e inferior para máxima legibilidad -->
+          <div class="absolute inset-0 bg-gradient-to-b from-black/80 via-black/20 to-black/90 pointer-events-none"></div>
+
+          <!-- Cabecera de la Tarjeta Póster: Etiquetas y Precio -->
+          <div class="relative z-10 p-3.5 flex items-start justify-between gap-2">
+            <div class="flex flex-col gap-1 items-start max-w-[70%]">
+              <span class="px-2 py-0.5 rounded-full bg-white/20 backdrop-blur-md text-white font-bold text-[9px] uppercase tracking-wider border border-white/30">
+                ${item.tipo}
+              </span>
+              ${badges.join("")}
+            </div>
+
+            <div class="px-2.5 py-1 rounded-2xl bg-tour-blue/95 border border-white/40 text-right backdrop-blur-md shadow-lg shrink-0">
+              <span class="text-white font-title font-black text-base md:text-lg tracking-tight leading-none block">${item.precio} €</span>
+              ${bsText}
+            </div>
+          </div>
+
+          <!-- Pie de la Tarjeta Póster: Destino, Fecha y Botón Reservar ya -->
+          <div class="relative z-10 p-3.5 md:p-4 space-y-2">
+            <div class="space-y-0.5">
+              <h3 class="font-title font-black italic uppercase text-white text-base md:text-lg drop-shadow-md leading-tight group-hover:text-tour-yellow transition-colors line-clamp-1">
+                ${item.destino}
+              </h3>
+              <div class="flex items-center gap-1.5 text-sky-200 text-[11px] font-medium">
+                <i data-lucide="calendar" class="w-3 h-3 text-tour-yellow shrink-0"></i>
+                <span class="truncate">${fechaCorta}</span>
+              </div>
+            </div>
+
+            <!-- Botón Reservar ya (abre asistente con salida ya elegida) -->
+            <button 
+              type="button" 
+              onclick="event.stopPropagation(); startBooking('${item.tripId}', ${item.salidaIndex});" 
+              class="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-tour-yellow to-amber-400 hover:from-yellow-400 hover:to-amber-500 text-tour-navy font-title font-black uppercase text-xs tracking-wider shadow-md hover:shadow-lg transition-all active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <span>Reservar ya</span>
+              <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
+    // 2. Rotación: Cada 6 segundos una de las 4 tarjetas se cambia por la siguiente candidata
+    function rotateNextFeaturedCard() {
+      if (isFeaturedPaused) return;
+      if (!featuredCandidates || featuredCandidates.length <= 4) return;
+
+      // Comprobar si cambió el día en Caracas
+      const todayIso = getCaracasTodayStr();
+      if (todayIso !== currentCaracasDay) {
+        initFeaturedTrips();
+        if (typeof renderTrips === "function") renderTrips();
+        if (typeof renderCalendar === "function") renderCalendar();
+        return;
+      }
+
+      // No rotar un slot que contiene un viaje forzado como destacado: true si hay otros slots disponibles
+      const nonPinnedSlots = [];
+      for (let s = 0; s < 4; s++) {
+        const slotItem = featuredVisibleSlots[s];
+        if (!slotItem || !slotItem.esDestacado) {
+          nonPinnedSlots.push(s);
+        }
+      }
+
+      let targetSlotIdx;
+      if (nonPinnedSlots.length > 0) {
+        lastRotationSlot = (lastRotationSlot + 1) % nonPinnedSlots.length;
+        targetSlotIdx = nonPinnedSlots[lastRotationSlot];
+      } else {
+        lastRotationSlot = (lastRotationSlot + 1) % 4;
+        targetSlotIdx = lastRotationSlot;
+      }
+
+      // Obtener destinos actualmente visibles en los otros 3 slots
+      const otherVisibleDestinations = new Set();
+      featuredVisibleSlots.forEach((slot, idx) => {
+        if (idx !== targetSlotIdx && slot) {
+          otherVisibleDestinations.add(slot.destino);
+        }
+      });
+
+      // Encontrar la siguiente candidata válida que:
+      // 1. No esté actualmente en ninguno de los otros 3 slots
+      // 2. Procure no repetir destino con los otros 3 slots (para garantizar variedad)
+      let selectedNext = null;
+      const totalCand = featuredCandidates.length;
+
+      // Intento 1: Candidata con destino diferente
+      for (let i = 0; i < totalCand; i++) {
+        const checkIdx = (nextCandidateIndex + i) % totalCand;
+        const candidate = featuredCandidates[checkIdx];
+
+        const alreadyInOtherSlot = featuredVisibleSlots.some((s, idx) => idx !== targetSlotIdx && s && s.uniqueKey === candidate.uniqueKey);
+        const isCurrentSlot = featuredVisibleSlots[targetSlotIdx] && featuredVisibleSlots[targetSlotIdx].uniqueKey === candidate.uniqueKey;
+
+        if (!alreadyInOtherSlot && !isCurrentSlot && !otherVisibleDestinations.has(candidate.destino)) {
+          selectedNext = candidate;
+          nextCandidateIndex = (checkIdx + 1) % totalCand;
+          break;
+        }
+      }
+
+      // Intento 2: Si no hay destino libre diferente, aceptar cualquier candidata no repetida en otros slots
+      if (!selectedNext) {
+        for (let i = 0; i < totalCand; i++) {
+          const checkIdx = (nextCandidateIndex + i) % totalCand;
+          const candidate = featuredCandidates[checkIdx];
+          const alreadyInOtherSlot = featuredVisibleSlots.some((s, idx) => idx !== targetSlotIdx && s && s.uniqueKey === candidate.uniqueKey);
+          const isCurrentSlot = featuredVisibleSlots[targetSlotIdx] && featuredVisibleSlots[targetSlotIdx].uniqueKey === candidate.uniqueKey;
+
+          if (!alreadyInOtherSlot && !isCurrentSlot) {
+            selectedNext = candidate;
+            nextCandidateIndex = (checkIdx + 1) % totalCand;
+            break;
+          }
+        }
+      }
+
+      if (!selectedNext) return;
+
+      // Animar el cambio en la tarjeta elegida (efecto giro 3D / desvanecimiento)
+      const cardEl = document.getElementById(`featured-card-slot-${targetSlotIdx}`);
+      const slotEl = document.getElementById(`featured-slot-${targetSlotIdx}`);
+      if (!cardEl || !slotEl) return;
+
+      // Animación de salida (giro 3D alrededor de Y con desvanecimiento)
+      cardEl.style.transition = "transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease";
+      cardEl.style.transform = "perspective(900px) rotateY(90deg) scale(0.92)";
+      cardEl.style.opacity = "0";
+
+      setTimeout(() => {
+        featuredVisibleSlots[targetSlotIdx] = selectedNext;
+        const style = featuredStaggeredStyles[targetSlotIdx] || featuredStaggeredStyles[0];
+        slotEl.innerHTML = renderSingleFeaturedCardInnerHtml(selectedNext, targetSlotIdx, style);
+
+        const newCardEl = document.getElementById(`featured-card-slot-${targetSlotIdx}`);
+        if (newCardEl) {
+          newCardEl.style.transform = "perspective(900px) rotateY(-90deg) scale(0.92)";
+          newCardEl.style.opacity = "0";
+          void newCardEl.offsetWidth; // Forzar reflujo del navegador
+          newCardEl.style.transition = "transform 0.45s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.45s ease";
+          newCardEl.style.transform = "perspective(900px) rotateY(0deg) scale(1)";
+          newCardEl.style.opacity = "1";
+
+          setTimeout(() => {
+            if (newCardEl) newCardEl.style.transform = "";
+          }, 500);
+        }
+        lucide.createIcons();
+      }, 400);
+    }
+
+    // Pausar y reanudar rotación al interactuar (cursor o toque)
+    window.pauseFeaturedRotation = function() {
+      isFeaturedPaused = true;
+      if (touchResumeTimeout) clearTimeout(touchResumeTimeout);
+      const statusLabel = document.getElementById("featured-status-label");
+      if (statusLabel) statusLabel.textContent = "Pausado";
+      const statusDot = document.getElementById("featured-status-dot");
+      if (statusDot) statusDot.className = "w-2 h-2 rounded-full bg-amber-400";
+    };
+
+    window.resumeFeaturedRotation = function() {
+      if (touchResumeTimeout) clearTimeout(touchResumeTimeout);
+      isFeaturedPaused = false;
+      const statusLabel = document.getElementById("featured-status-label");
+      if (statusLabel) statusLabel.textContent = "Rotando cada 6s";
+      const statusDot = document.getElementById("featured-status-dot");
+      if (statusDot) statusDot.className = "w-2 h-2 rounded-full bg-emerald-500 animate-ping";
+    };
+
+    window.handleTouchEndFeaturedRotation = function() {
+      if (touchResumeTimeout) clearTimeout(touchResumeTimeout);
+      touchResumeTimeout = setTimeout(() => {
+        resumeFeaturedRotation();
+      }, 4000);
+    };
+
+    // 3. Programación de actualización: Al cargar, cada hora y a medianoche de Caracas
+    function scheduleMidnightCaracasUpdate() {
+      try {
+        const now = new Date();
+        const caracasDateParts = new Intl.DateTimeFormat("en-US", {
+          timeZone: "America/Caracas",
+          hour12: false,
+          year: "numeric",
+          month: "numeric",
+          day: "numeric",
+          hour: "numeric",
+          minute: "numeric",
+          second: "numeric"
+        }).formatToParts(now);
+
+        const p = {};
+        caracasDateParts.forEach(part => { p[part.type] = part.value; });
+
+        let hours = parseInt(p.hour, 10);
+        if (hours === 24) hours = 0;
+        const minutes = parseInt(p.minute, 10);
+        const seconds = parseInt(p.second, 10);
+
+        // Segundos restantes hasta las 00:00:01 del día siguiente en Caracas
+        const secondsUntilMidnight = (24 * 3600) - (hours * 3600 + minutes * 60 + seconds) + 1;
+        const msUntilMidnight = Math.max(1000, secondsUntilMidnight * 1000);
+
+        setTimeout(() => {
+          initFeaturedTrips();
+          if (typeof renderTrips === "function") renderTrips();
+          if (typeof renderCalendar === "function") renderCalendar();
+          scheduleMidnightCaracasUpdate();
+        }, msUntilMidnight);
+      } catch (err) {
+        console.warn("Error calculando medianoche Caracas:", err);
+      }
+    }
+
+    // Inicializador principal de la sección de destacados
+    function initFeaturedTrips() {
+      featuredCandidates = buildFeaturedCandidates();
+      featuredVisibleSlots = selectInitialFeaturedSlots(featuredCandidates);
+      nextCandidateIndex = 4 % Math.max(1, featuredCandidates.length);
+      renderFeaturedCards();
+
+      // Iniciar temporizador de rotación de 6 segundos
+      if (featuredRotationTimer) clearInterval(featuredRotationTimer);
+      if (featuredCandidates.length > 4) {
+        featuredRotationTimer = setInterval(rotateNextFeaturedCard, FEATURED_ROTATION_INTERVAL_MS);
+      }
     }
 
 
@@ -3381,7 +4093,6 @@
     }
 
     document.addEventListener("DOMContentLoaded", () => {
-      purgePastTripsAndSalidas();
       lucide.createIcons();
       
       // Mostrar de inmediato la tasa guardada en caché si existe
@@ -3397,6 +4108,9 @@
       setInterval(fetchBcvRate, 30 * 60 * 1000);
 
       renderHeroChips();
+      initFeaturedTrips();
+      scheduleMidnightCaracasUpdate();
+      setInterval(initFeaturedTrips, 3600000);
       renderDestinationFilters();
       renderCalendar();
       renderTrips();
@@ -3460,17 +4174,19 @@
         htmlDays += `<div class="h-10 rounded-xl"></div>`;
       }
 
+      const todayIso = (typeof getCaracasTodayStr === 'function') ? getCaracasTodayStr() : new Date().toISOString().split('T')[0];
+
       for (let day = 1; day <= totalDays; day++) {
         const monthStr = String(state.mesCalendario + 1).padStart(2, "0");
         const dayStr = String(day).padStart(2, "0");
         const dateIso = `${state.anioCalendario}-${monthStr}-${dayStr}`;
+        const isPastDate = dateIso < todayIso;
 
-        // Datos reales dinámicos de salidas desde VIAJES (solo salidas hoy o futuras)
-        const todayIso = getCaracasTodayStr();
+        // Datos reales dinámicos de salidas desde VIAJES
         const departures = [];
         VIAJES.forEach(v => {
           v.salidas.forEach(s => {
-            if (s.fecha === dateIso && s.fecha >= todayIso) departures.push(v);
+            if (s.fecha === dateIso) departures.push(v);
           });
         });
 
@@ -3478,15 +4194,23 @@
         const hasTrips = countTrips > 0;
         const isSelected = state.filtroFecha === dateIso;
 
-        if (!hasTrips || dateIso < todayIso) {
+        if (!hasTrips) {
           // Día sin viajes: gris claro y no seleccionable
           htmlDays += `
             <div class="h-10 rounded-xl flex flex-col items-center justify-center text-slate-300 bg-slate-50/50 cursor-default select-none pointer-events-none border border-transparent">
               <span class="text-xs font-medium">${day}</span>
             </div>
           `;
+        } else if (isPastDate) {
+          // Salidas cuya fecha ya pasó: mostrar atenuadas y no seleccionables para evitar reservas
+          htmlDays += `
+            <div class="h-10 rounded-xl flex flex-col items-center justify-center text-slate-400 bg-slate-100/70 border border-slate-200/60 cursor-not-allowed select-none opacity-45" title="${day} de ${monthNames[state.mesCalendario]} (${countTrips} salida${countTrips > 1 ? 's' : ''} ya culminada${countTrips > 1 ? 's' : ''})">
+              <span class="text-xs line-through font-medium">${day}</span>
+              <span class="text-[7px] font-bold text-slate-400 uppercase tracking-tighter">Pasado</span>
+            </div>
+          `;
         } else {
-          // Día con viajes: seleccionable con 1 punto si 1 viaje o 2 puntos si 2 viajes
+          // Día con viajes vigentes: seleccionable con 1 punto si 1 viaje o 2 puntos si 2 viajes
           let bgClass = "bg-sky-50 text-tour-blue font-bold border border-sky-200 hover:bg-sky-100 hover:border-sky-300 cursor-pointer";
           if (isSelected) {
             bgClass = "bg-tour-blue text-white font-black shadow-md border-tour-blue";
@@ -3528,8 +4252,9 @@
     }
 
     window.selectCalendarDate = function(dateIso, hasTrips) {
-      const todayIso = getCaracasTodayStr();
-      if (dateIso < todayIso) return; // No permitir seleccionar fechas pasadas
+      const todayIso = (typeof getCaracasTodayStr === 'function') ? getCaracasTodayStr() : new Date().toISOString().split('T')[0];
+      if (dateIso < todayIso) return;
+
       // 2. Si el usuario toca otra vez el día que ya está seleccionado, se deselecciona y se muestran todos los viajes
       if (state.filtroFecha === dateIso) {
         state.filtroFecha = null;
@@ -3575,7 +4300,7 @@
     }
 
     function getNextTripDate(fromIso) {
-      const todayIso = getCaracasTodayStr();
+      const todayIso = (typeof getCaracasTodayStr === 'function') ? getCaracasTodayStr() : new Date().toISOString().split('T')[0];
       const allDates = [];
       VIAJES.forEach(v => {
         v.salidas.forEach(s => {
@@ -3585,7 +4310,7 @@
         });
       });
       allDates.sort();
-      return allDates.find(d => d > fromIso && d >= todayIso) || (allDates.length > 0 ? allDates[0] : null);
+      return allDates.find(d => d > fromIso) || (allDates.length > 0 ? allDates[0] : null);
     }
 
     let scrollCueDismissed = false;
@@ -3628,17 +4353,25 @@
     }, { passive: true });
 
     function renderTrips() {
+      const todayIso = (typeof getCaracasTodayStr === 'function') ? getCaracasTodayStr() : new Date().toISOString().split('T')[0];
       const container = document.getElementById("trips-grid");
-      const todayIso = getCaracasTodayStr();
-      // Garantizar que solo se incluyan viajes que tengan al menos una salida hoy o futura
-      let filtered = VIAJES.filter(v => Array.isArray(v.salidas) && v.salidas.some(s => s.fecha && s.fecha >= todayIso));
+      let filtered = VIAJES;
 
       if (state.filtroDestino !== "todos") {
         filtered = filtered.filter(v => v.destino === state.filtroDestino);
       }
       if (state.filtroFecha) {
-        filtered = filtered.filter(v => v.salidas.some(s => s.fecha === state.filtroFecha && s.fecha >= todayIso));
+        filtered = filtered.filter(v => v.salidas.some(s => s.fecha === state.filtroFecha));
       }
+
+      // Ordenar: primero los viajes que tienen salidas vigentes (>= todayIso); al final los que ya culminaron
+      filtered = [...filtered].sort((a, b) => {
+        const aUpcoming = a.salidas.some(s => s.fecha >= todayIso);
+        const bUpcoming = b.salidas.some(s => s.fecha >= todayIso);
+        if (aUpcoming && !bUpcoming) return -1;
+        if (!aUpcoming && bUpcoming) return 1;
+        return 0;
+      });
 
       // 1. Etiqueta tipo chip "Mostrando: [día y mes]" con X a la derecha encima de la lista de viajes
       const dateBanner = document.getElementById("selected-date-banner");
@@ -3711,27 +4444,79 @@
           bsPriceHtml = `<span class="text-tour-yellow text-[10px] md:text-[11px] font-semibold block mt-0.5">≈ Bs. ${bsValue}</span>`;
         }
 
-        const mockCupos = 31;
-        let cuposText = "31 cupos disponibles";
-        let cuposClass = "text-emerald-600 bg-emerald-50 border-emerald-200 font-bold";
+        const upcomingSalidas = trip.salidas.filter(s => s.fecha >= todayIso);
+        const allSalidasPassed = (upcomingSalidas.length === 0);
 
-        const fechasChipsHtml = trip.salidas.map((s, idx) => `
-          <button type="button" onclick="setTripSelectedDate('${trip.id}', ${idx}, event)" class="px-2 py-0.5 md:px-2.5 md:py-1 rounded-lg text-[10px] md:text-[11px] font-bold transition shadow-sm ${idx === 0 ? 'bg-white text-tour-navy shadow' : 'bg-black/40 text-white hover:bg-black/60'}">
-            ${s.fechaTexto.split(" ")[0]} ${s.fechaTexto.split(" ")[1]}
+        // Salida principal a mostrar (la primera futura o la última si ya pasaron todas)
+        const primarySalida = (!allSalidasPassed) ? upcomingSalidas[0] : trip.salidas[trip.salidas.length - 1];
+        const primarySalidaIdx = trip.salidas.findIndex(s => s.fecha === primarySalida.fecha);
+
+        // Ocupación calculada
+        const cuposOcupados = (typeof getSalidaOccupancy === 'function') ? getSalidaOccupancy(trip, primarySalida) : 18;
+        const cuposDisp = Math.max(0, 31 - cuposOcupados);
+        let cuposText = `${cuposDisp} cupos disponibles`;
+        let cuposClass = "text-emerald-600 bg-emerald-50 border-emerald-200 font-bold";
+        if (cuposDisp <= 6) {
+          cuposText = `¡Últimos ${cuposDisp} cupos!`;
+          cuposClass = "text-rose-600 bg-rose-50 border-rose-200 font-bold animate-pulse";
+        } else if (cuposOcupados >= 16) {
+          cuposText = "🔥 Muy solicitado";
+          cuposClass = "text-amber-700 bg-amber-50 border-amber-200 font-bold";
+        }
+
+        const fechasChipsHtml = trip.salidas.map((s, idx) => {
+          const isPast = s.fecha < todayIso;
+          if (isPast) {
+            return `
+              <span class="px-2 py-0.5 md:px-2.5 md:py-1 rounded-lg text-[10px] md:text-[11px] font-bold bg-black/40 text-slate-400 line-through cursor-not-allowed select-none" title="Salida culminada (${s.fechaTexto})">
+                ${s.fechaTexto.split(" ")[0]} ${s.fechaTexto.split(" ")[1]} (Pasada)
+              </span>
+            `;
+          }
+          const isPrimary = s.fecha === primarySalida.fecha;
+          return `
+            <button type="button" onclick="setTripSelectedDate('${trip.id}', ${idx}, event)" class="px-2 py-0.5 md:px-2.5 md:py-1 rounded-lg text-[10px] md:text-[11px] font-bold transition shadow-sm ${isPrimary ? 'bg-white text-tour-navy shadow' : 'bg-black/40 text-white hover:bg-black/60'} cursor-pointer">
+              ${s.fechaTexto.split(" ")[0]} ${s.fechaTexto.split(" ")[1]}
+            </button>
+          `;
+        }).join("");
+
+        // Tarjeta atenuada si todas las fechas ya pasaron
+        const cardClass = allSalidasPassed 
+          ? "opacity-60 grayscale-[35%] bg-slate-50 border-slate-200" 
+          : "bg-white border-sky-100 hover:shadow-2xl hover:-translate-y-1";
+
+        const tagHtml = allSalidasPassed ? `
+          <span class="px-2.5 py-0.5 md:px-3 md:py-1 rounded-full bg-slate-700 text-white font-bold text-[10px] md:text-xs shadow-sm uppercase tracking-wide">
+            Finalizado
+          </span>
+        ` : `
+          <span class="px-2.5 py-0.5 md:px-3 md:py-1 rounded-full bg-tour-yellow text-tour-navy font-bold text-[10px] md:text-xs shadow-sm uppercase tracking-wide">
+            ${trip.tipo}
+          </span>
+        `;
+
+        const actionBtnHtml = allSalidasPassed ? `
+          <button disabled class="py-2.5 md:py-3 px-2 md:px-3 rounded-xl md:rounded-2xl bg-slate-200 text-slate-500 font-bold text-xs cursor-not-allowed flex items-center justify-center gap-1">
+            <i data-lucide="calendar-off" class="w-3.5 h-3.5"></i>
+            <span>Fecha culminada</span>
           </button>
-        `).join("");
+        ` : `
+          <button onclick="startBooking('${trip.id}', ${primarySalidaIdx})" class="py-2.5 md:py-3 px-2 md:px-3 rounded-xl md:rounded-2xl bg-tour-blue hover:bg-blue-700 text-white font-title font-black uppercase text-xs tracking-wider shadow-md hover:shadow-lg active:scale-95 transition flex items-center justify-center gap-1 cursor-pointer">
+            <span>Reserva ya</span>
+            <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+          </button>
+        `;
 
         return `
-          <div class="group bg-white rounded-2xl md:rounded-3xl overflow-hidden shadow-sm hover:shadow-2xl border border-sky-100 flex flex-col transition-all duration-300 hover:-translate-y-1">
+          <div class="group rounded-2xl md:rounded-3xl overflow-hidden shadow-sm border flex flex-col transition-all duration-300 ${cardClass}">
             <div class="relative h-44 sm:h-52 md:h-64 w-full overflow-hidden bg-sky-900">
               <img src="${encodeURI(trip.imagenUrl)}" alt="${trip.destino}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" onerror="this.style.opacity='0.25';" />
               <div class="absolute inset-0 bg-gradient-to-t from-[#0B2A6B]/90 via-[#0B2A6B]/25 to-transparent pointer-events-none"></div>
 
               <div class="absolute top-3 left-3 md:top-4 md:left-4 flex flex-col gap-1 items-start">
-                <span class="px-2.5 py-0.5 md:px-3 md:py-1 rounded-full bg-tour-yellow text-tour-navy font-bold text-[10px] md:text-xs shadow-sm uppercase tracking-wide">
-                  ${trip.tipo}
-                </span>
-                ${trip.etiquetaEspecial ? `
+                ${tagHtml}
+                ${trip.etiquetaEspecial && !allSalidasPassed ? `
                   <span class="px-2 py-0.5 rounded-full bg-rose-500 text-white font-bold text-[9px] md:text-[10px] shadow-sm uppercase tracking-wider">
                     ${trip.etiquetaEspecial}
                   </span>
@@ -3748,7 +4533,7 @@
                   ${trip.destino}
                 </h3>
                 <p class="text-sky-200 text-[11px] md:text-xs font-medium">
-                  ${trip.salidas[0].fechaTexto}
+                  ${primarySalida.fechaTexto} ${allSalidasPassed ? '(Culminado)' : ''}
                 </p>
                 ${trip.salidas.length > 1 ? `
                   <div class="flex items-center gap-1.5 pt-0.5">
@@ -3763,23 +4548,20 @@
               <div class="flex items-center justify-between text-[11px] md:text-xs pt-0.5">
                 <span class="text-slate-500">Ocupación del bus</span>
                 <span class="px-2 py-0.5 rounded-full border text-[10px] md:text-[11px] ${cuposClass}">
-                  ${cuposText}
+                  ${allSalidasPassed ? '0 cupos (Finalizado)' : cuposText}
                 </span>
               </div>
               <div class="w-full bg-slate-100 rounded-full h-1.5 md:h-2 overflow-hidden">
-                <div class="bg-tour-caribe h-full rounded-full" style="width: ${Math.round((31 - mockCupos) / 31 * 100)}%"></div>
+                <div class="bg-tour-caribe h-full rounded-full" style="width: ${allSalidasPassed ? 100 : Math.round((cuposOcupados / 31) * 100)}%"></div>
               </div>
             </div>
 
             <div class="p-3 md:p-4 pt-0 grid grid-cols-2 gap-2">
-              <button onclick="openDetallesModal('${trip.id}')" class="py-2.5 md:py-3 px-2 md:px-3 rounded-xl md:rounded-2xl border-2 border-tour-blue text-tour-blue font-bold text-xs hover:bg-sky-50 active:scale-95 transition flex items-center justify-center gap-1">
+              <button onclick="openDetallesModal('${trip.id}')" class="py-2.5 md:py-3 px-2 md:px-3 rounded-xl md:rounded-2xl border-2 border-tour-blue text-tour-blue font-bold text-xs hover:bg-sky-50 active:scale-95 transition flex items-center justify-center gap-1 cursor-pointer">
                 <i data-lucide="eye" class="w-3.5 h-3.5"></i>
                 <span>Detalles</span>
               </button>
-              <button onclick="startBooking('${trip.id}', 0)" class="py-2.5 md:py-3 px-2 md:px-3 rounded-xl md:rounded-2xl bg-tour-blue hover:bg-blue-700 text-white font-title font-black uppercase text-xs tracking-wider shadow-md hover:shadow-lg active:scale-95 transition flex items-center justify-center gap-1">
-                <span>Reserva ya</span>
-                <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
-              </button>
+              ${actionBtnHtml}
             </div>
           </div>
         `;
@@ -3799,9 +4581,13 @@
     window.setTripSelectedDate = function(tripId, index, event) {
       event.stopPropagation();
       const trip = VIAJES.find(t => t.id === tripId);
-      if (trip && trip.salidas[index]) {
-        startBooking(tripId, index);
+      if (!trip || !trip.salidas[index]) return;
+      const todayIso = (typeof getCaracasTodayStr === 'function') ? getCaracasTodayStr() : new Date().toISOString().split('T')[0];
+      if (trip.salidas[index].fecha < todayIso) {
+        alert("Esta salida ya ocurrió. Por favor selecciona una fecha disponible.");
+        return;
       }
+      startBooking(tripId, index);
     };
 
     window.openDetallesModal = function(tripId) {
@@ -3845,7 +4631,9 @@
 
       document.getElementById("modal-det-btn-reservar").onclick = () => {
         closeDetallesModal();
-        startBooking(trip.id, 0);
+        const todayIso = (typeof getCaracasTodayStr === 'function') ? getCaracasTodayStr() : new Date().toISOString().split('T')[0];
+        const upcomingIdx = trip.salidas.findIndex(s => s.fecha >= todayIso);
+        startBooking(trip.id, upcomingIdx !== -1 ? upcomingIdx : 0);
       };
 
       document.getElementById("modal-detalles").classList.remove("hidden");
@@ -3881,15 +4669,22 @@
       const trip = VIAJES.find(t => t.id === tripId);
       if (!trip) return;
 
-      const todayIso = getCaracasTodayStr();
-      const salidasVigentes = (trip.salidas || []).filter(s => s.fecha && s.fecha >= todayIso);
-      if (salidasVigentes.length === 0) {
-        alert("Este viaje ya ha culminado sus salidas disponibles.");
-        return;
+      const todayIso = (typeof getCaracasTodayStr === 'function') ? getCaracasTodayStr() : new Date().toISOString().split('T')[0];
+      let candidateSalida = trip.salidas[salidaIndex] || trip.salidas[0];
+
+      // Si la salida solicitada ya pasó, buscar automáticamente la primera salida futura disponible
+      if (candidateSalida.fecha < todayIso) {
+        const nextAvailable = trip.salidas.find(s => s.fecha >= todayIso);
+        if (nextAvailable) {
+          candidateSalida = nextAvailable;
+        } else {
+          alert("Todas las salidas programadas para este viaje ya han culminado.");
+          return;
+        }
       }
 
       state.selectedTrip = trip;
-      state.selectedSalida = salidasVigentes[salidaIndex] || salidasVigentes[0];
+      state.selectedSalida = candidateSalida;
       state.selectedBus = state.selectedSalida.buses[0] || "Bus 1";
       state.busesDisponibles = state.selectedSalida.buses || ["Bus 1"];
       state.asientosSeleccionados = [];
@@ -3897,6 +4692,10 @@
       state.otroPunto = false;
       state.tipoAbono = "full";
       state.metodoPago = state.tasaDisponible ? "Pago Móvil" : "Efectivo";
+
+      // Cargar inmediatamente los asientos ocupados guardados en la sesión para este bus
+      state.asientosOcupados = getStoredOccupiedSeats(trip.destino, candidateSalida.fecha, state.selectedBus);
+      state.asientosBloqueados = [];
 
       document.getElementById("wizard-trip-name").textContent = trip.destino;
       document.getElementById("wizard-trip-date").textContent = state.selectedSalida.fechaTexto;
@@ -3971,11 +4770,24 @@
     }
 
     function renderStep1() {
+      const todayIso = (typeof getCaracasTodayStr === 'function') ? getCaracasTodayStr() : new Date().toISOString().split('T')[0];
       const container = document.getElementById("step-1-fechas");
       container.innerHTML = state.selectedTrip.salidas.map((s, idx) => {
+        const isPast = s.fecha < todayIso;
+        if (isPast) {
+          return `
+            <div class="w-full p-4 rounded-2xl border-2 border-slate-200 bg-slate-50 opacity-45 cursor-not-allowed flex items-center justify-between">
+              <div>
+                <span class="font-bold text-sm text-slate-500 line-through block">${s.fechaTexto}</span>
+                <span class="text-xs text-rose-500 font-semibold">Salida culminada (No disponible)</span>
+              </div>
+              <span class="px-2.5 py-1 rounded-md bg-slate-200 text-slate-600 text-[10px] font-bold uppercase">Pasada</span>
+            </div>
+          `;
+        }
         const isSelected = state.selectedSalida.fecha === s.fecha;
         return `
-          <button type="button" onclick="selectSalidaDate(${idx})" class="w-full p-4 rounded-2xl border-2 text-left transition flex items-center justify-between ${isSelected ? 'border-tour-blue bg-blue-50/50' : 'border-slate-200 hover:border-slate-300'}">
+          <button type="button" onclick="selectSalidaDate(${idx})" class="w-full p-4 rounded-2xl border-2 text-left transition flex items-center justify-between ${isSelected ? 'border-tour-blue bg-blue-50/50' : 'border-slate-200 hover:border-slate-300'} cursor-pointer">
             <div>
               <span class="font-bold text-sm text-tour-navy block">${s.fechaTexto}</span>
               <span class="text-xs text-slate-500">${s.buses.length} unidad(es) de transporte</span>
@@ -3984,34 +4796,80 @@
           </button>
         `;
       }).join("");
+      lucide.createIcons();
     }
 
     window.selectSalidaDate = function(index) {
-      state.selectedSalida = state.selectedTrip.salidas[index];
-      state.selectedBus = state.selectedSalida.buses[0];
-      state.busesDisponibles = state.selectedSalida.buses;
+      const target = state.selectedTrip.salidas[index];
+      if (!target) return;
+      const todayIso = (typeof getCaracasTodayStr === 'function') ? getCaracasTodayStr() : new Date().toISOString().split('T')[0];
+      if (target.fecha < todayIso) {
+        alert("Esta salida ya ocurrió y no puede ser seleccionada.");
+        return;
+      }
+      state.selectedSalida = target;
+      state.selectedBus = state.selectedSalida.buses[0] || "Bus 1";
+      state.busesDisponibles = state.selectedSalida.buses || ["Bus 1"];
+      state.asientosSeleccionados = [];
+      state.asientosOcupados = getStoredOccupiedSeats(state.selectedTrip.destino, target.fecha, state.selectedBus);
+      state.asientosBloqueados = [];
       document.getElementById("wizard-trip-date").textContent = state.selectedSalida.fechaTexto;
       renderStep1();
+      renderBusSeatsUI();
       loadBusSeats();
     };
 
     async function loadBusSeats() {
+      if (!state.selectedTrip || !state.selectedSalida) return;
+
+      const destino = state.selectedTrip.destino;
+      const fecha = state.selectedSalida.fecha;
+      const bus = state.selectedBus || "Bus 1";
+
+      // 1. CARGA INMEDIATA DESDE LA SESIÓN LOCAL (UI instantánea, sin parpadeo)
+      const localOcupados = getStoredOccupiedSeats(destino, fecha, bus);
+      state.asientosOcupados = [...localOcupados];
+      renderBusSeatsUI();
+
+      // 2. CONSULTAR A GOOGLE SHEETS / WEBHOOK SI ESTÁ CONFIGURADO
       if (!WEBHOOK_URL) {
-        state.asientosOcupados = [];
-        state.asientosBloqueados = [];
-        renderBusSeatsUI();
         return;
       }
+
       try {
-        const url = `${WEBHOOK_URL}?accion=asientos&destino=${encodeURIComponent(state.selectedTrip.destino)}&fecha=${state.selectedSalida.fecha}&bus=${encodeURIComponent(state.selectedBus)}`;
-        const res = await fetch(url);
-        const data = await res.json();
-        state.asientosOcupados = data.ocupados || [];
-        state.asientosBloqueados = data.bloqueados || [];
-        renderBusSeatsUI();
+        const destinoHoja = (typeof formatDestinoSheetName === "function") 
+          ? formatDestinoSheetName(destino, fecha) 
+          : destino;
+
+        const params = new URLSearchParams({
+          accion: "asientos",
+          destino: destino,
+          destinoHoja: destinoHoja,
+          fecha: fecha,
+          bus: bus,
+          _t: Date.now().toString()
+        });
+
+        const url = `${WEBHOOK_URL}?${params.toString()}`;
+        const res = await fetch(url, { redirect: "follow" });
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.ok) {
+            const serverOcupados = Array.isArray(data.ocupados) ? data.ocupados.map(Number) : [];
+            const serverBloqueados = Array.isArray(data.bloqueados) ? data.bloqueados.map(Number) : [];
+
+            // Fusionar asientos de la hoja con los asientos bloqueados en la sesión actual
+            const combinedOcupados = [...new Set([...localOcupados, ...serverOcupados])].sort((a, b) => a - b);
+            saveStoredOccupiedSeats(destino, fecha, bus, combinedOcupados);
+
+            state.asientosOcupados = combinedOcupados;
+            state.asientosBloqueados = serverBloqueados.filter(s => !combinedOcupados.includes(s));
+            renderBusSeatsUI();
+          }
+        }
       } catch (e) {
-        state.asientosOcupados = [];
-        state.asientosBloqueados = [];
+        console.warn("Aviso al consultar asientos de Google Sheets (usando caché de sesión):", e);
+        state.asientosOcupados = getStoredOccupiedSeats(destino, fecha, bus);
         renderBusSeatsUI();
       }
     }
@@ -4086,6 +4944,8 @@
     window.selectBus = function(busName) {
       state.selectedBus = busName;
       state.asientosSeleccionados = [];
+      state.asientosOcupados = getStoredOccupiedSeats(state.selectedTrip.destino, state.selectedSalida.fecha, busName);
+      renderBusSeatsUI();
       loadBusSeats();
     };
 
@@ -4095,16 +4955,20 @@
       const isSeleccionado = state.asientosSeleccionados.includes(num);
 
       let styleClass = "bg-emerald-500 text-white shadow-sm border border-emerald-400 cursor-pointer hover:bg-emerald-600";
+      let titleAttr = `Asiento ${num} disponible`;
       if (isOcupado) {
-        styleClass = "bg-slate-300 text-slate-500 cursor-not-allowed border border-slate-300";
+        styleClass = "bg-slate-300 text-slate-500 cursor-not-allowed border border-slate-300 opacity-80 select-none shadow-none";
+        titleAttr = `Asiento ${num} ocupado (reservado)`;
       } else if (isBloqueado) {
-        styleClass = "bg-amber-400 text-amber-950 cursor-not-allowed border border-amber-300";
+        styleClass = "bg-amber-400 text-amber-950 cursor-not-allowed border border-amber-300 select-none shadow-none";
+        titleAttr = `Asiento ${num} apartado temporalmente`;
       } else if (isSeleccionado) {
         styleClass = "bg-tour-blue text-white ring-4 ring-blue-300 ring-offset-1 font-bold shadow-md scale-105";
+        titleAttr = `Asiento ${num} seleccionado por ti`;
       }
 
       return `
-        <button type="button" onclick="toggleSeat(${num})" class="w-9 h-10 rounded-xl relative flex flex-col items-center justify-center text-xs font-bold seat-bounce transition ${styleClass}" ${isOcupado || isBloqueado ? 'disabled' : ''}>
+        <button type="button" onclick="toggleSeat(${num})" title="${titleAttr}" class="w-9 h-10 rounded-xl relative flex flex-col items-center justify-center text-xs font-bold seat-bounce transition ${styleClass}" ${isOcupado || isBloqueado ? 'disabled' : ''}>
           <span class="w-5 h-1.5 rounded-full bg-white/30 mb-0.5 pointer-events-none"></span>
           <span>${num}</span>
         </button>
@@ -4155,7 +5019,14 @@
     }
 
     window.toggleSeat = function(num) {
-      if (state.asientosOcupados.includes(num) || state.asientosBloqueados.includes(num)) return;
+      const currentOcupados = getStoredOccupiedSeats(state.selectedTrip.destino, state.selectedSalida.fecha, state.selectedBus);
+      if (state.asientosOcupados.includes(num) || currentOcupados.includes(num) || state.asientosBloqueados.includes(num)) {
+        if (!state.asientosOcupados.includes(num) && currentOcupados.includes(num)) {
+          state.asientosOcupados = [...currentOcupados];
+          renderBusSeatsUI();
+        }
+        return;
+      }
       if (navigator.vibrate) navigator.vibrate(20);
 
       const idx = state.asientosSeleccionados.indexOf(num);
@@ -4707,7 +5578,36 @@
 
       state.reservaFinal = payload;
 
-      // Enviar la reserva directamente a Google Sheets mediante enviarReservaAGoogleSheets
+      // ============================================================
+      // 🔒 BLOQUEO INMEDIATO Y PERSISTENTE EN LA INTERFAZ Y SESIÓN
+      // ============================================================
+      const asientosConfirmados = [...state.asientosSeleccionados];
+      const destActual = state.selectedTrip.destino;
+      const fechaActual = state.selectedSalida.fecha;
+      const busActual = state.selectedBus;
+
+      // Guardar de inmediato en sessionStorage y localStorage
+      const asientosActualizados = saveStoredOccupiedSeats(destActual, fechaActual, busActual, asientosConfirmados);
+      saveConfirmedBookingToSession(payload);
+
+      // Actualizar el estado en memoria para reflejar inmediatamente el bloqueo
+      state.asientosOcupados = [...asientosActualizados];
+      state.asientosBloqueados = state.asientosBloqueados.filter(s => !asientosConfirmados.includes(s));
+      state.asientosSeleccionados = [];
+
+      // Cancelar el temporizador de bloqueo temporal si existía
+      if (state.timerBloqueo) {
+        clearInterval(state.timerBloqueo);
+        state.timerBloqueo = null;
+      }
+      const boxTimer = document.getElementById("seat-timer-box");
+      if (boxTimer) boxTimer.classList.add("hidden");
+
+      // Actualizar la interfaz de asientos y las tarjetas de viaje
+      renderBusSeatsUI();
+      if (typeof renderTrips === "function") renderTrips();
+
+      // Enviar la reserva a Google Sheets mediante enviarReservaAGoogleSheets
       const datosParaSheets = {
         nombre: state.passengers[0].nombre,
         cedula: state.passengers[0].cedula,
@@ -4719,7 +5619,7 @@
         acompanantes: state.passengers.slice(1).map(c => c.nombre),
         idReserva: idReserva,
         bus: state.selectedBus,
-        asientos: state.asientosSeleccionados,
+        asientos: asientosConfirmados,
         totalPersonas: numPers,
         tipoPago: state.metodoPago,
         montoPagadoBs: paidBs,
@@ -4733,8 +5633,8 @@
 
       try {
         await enviarReservaAGoogleSheets(datosParaSheets);
-      } catch (errHook) {
-        console.warn("Aviso al registrar en Google Sheets:", errHook);
+      } catch (e) {
+        console.warn("Aviso al registrar en Google Sheets:", e);
       }
 
       overlay.classList.add("hidden");
@@ -4816,6 +5716,7 @@
       document.getElementById("btn-close-success").onclick = () => {
         document.getElementById("modal-success").classList.add("hidden");
         document.getElementById("modal-success").classList.remove("flex");
+        renderTrips();
       };
 
       document.getElementById("btn-wizard-prev").onclick = () => {
