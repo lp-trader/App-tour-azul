@@ -230,7 +230,7 @@
             <!-- Chip "Mostrando: [día y mes]" con X a la derecha -->
             <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-sky-50 border border-sky-200 text-tour-navy text-xs md:text-sm font-bold shadow-xs">
               <span class="w-2 h-2 rounded-full bg-tour-blue shrink-0"></span>
-              <span>Mostrando: <strong class="text-tour-blue" id="selected-date-chip-label">3 de octubre</strong></span>
+              <span>Mostrando: <strong class="text-tour-blue" id="selected-date-chip-label">Fecha seleccionada</strong></span>
               <button onclick="clearDateFilter()" title="Eliminar filtro" class="ml-1 p-0.5 rounded-full text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer flex items-center justify-center">
                 <i data-lucide="x" class="w-4 h-4"></i>
               </button>
@@ -1507,6 +1507,39 @@
     const DATOS_PAGO_MOVIL = { banco: "0102 - Banco de Venezuela", cedulaRif: "V-12345678", telefono: "04121234567" };
     const INSTRUCCIONES_EFECTIVO = "Entrega el monto en efectivo al abordar la unidad el día del viaje.";
 
+    // UTILIDAD DE FECHA EN VENEZUELA Y FILTRADO AUTOMÁTICO DE SALIDAS VIGENTES
+    function getCaracasTodayStr() {
+      try {
+        const formatter = new Intl.DateTimeFormat("en-CA", {
+          timeZone: "America/Caracas",
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit"
+        });
+        return formatter.format(new Date());
+      } catch (e) {
+        const d = new Date();
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, "0");
+        const day = String(d.getDate()).padStart(2, "0");
+        return `${year}-${month}-${day}`;
+      }
+    }
+
+    // Depura automáticamente cualquier salida o viaje cuya fecha ya haya pasado
+    function purgePastTripsAndSalidas() {
+      const todayIso = getCaracasTodayStr();
+      for (let i = VIAJES.length - 1; i >= 0; i--) {
+        const trip = VIAJES[i];
+        if (Array.isArray(trip.salidas)) {
+          trip.salidas = trip.salidas.filter(s => s.fecha && s.fecha >= todayIso);
+        }
+        if (!trip.salidas || trip.salidas.length === 0) {
+          VIAJES.splice(i, 1);
+        }
+      }
+    }
+
     // DATOS DE LOS VIAJES
     const VIAJES = [
   {
@@ -1517,13 +1550,6 @@
     "imagenUrl": "/cayo-muerto.jpg",
     "descripcion": "¡El cayo con más vida y palmeras de la zona! Es súper cerquita del malecón, así que en pocos minutos estarás con los pies en el agua cristalina como una piscina natural gigante ✨.",
     "salidas": [
-      {
-        "fecha": "2026-10-03",
-        "fechaTexto": "Sábado 3 de octubre",
-        "buses": [
-          "Bus 1"
-        ]
-      },
       {
         "fecha": "2026-10-18",
         "fechaTexto": "Domingo 18 de octubre",
@@ -1554,13 +1580,6 @@
     "descripcion": "Una de las mejores elecciones en Falcón, destacando porque sus aguas tienen olas suaves, bajitas y de un azul increíble.",
     "salidas": [
       {
-        "fecha": "2026-10-03",
-        "fechaTexto": "Sábado 3 de octubre",
-        "buses": [
-          "Bus 1"
-        ]
-      },
-      {
         "fecha": "2026-10-18",
         "fechaTexto": "Domingo 18 de octubre",
         "buses": [
@@ -1589,13 +1608,6 @@
     "descripcion": "Uno de los destinos favoritos porque es mucho más tranquilo y exclusivo, con aguas tan turquesas y arena tan blanca que te vas a sentir en una postal ideal para huir de las multitudes, sumando la experiencia de estar en medio del océano en Bajo 360.",
     "salidas": [
       {
-        "fecha": "2026-10-04",
-        "fechaTexto": "Domingo 4 de octubre",
-        "buses": [
-          "Bus 1"
-        ]
-      },
-      {
         "fecha": "2026-10-25",
         "fechaTexto": "Domingo 25 de octubre",
         "buses": [
@@ -1615,35 +1627,6 @@
       "🏐 Juegos playeros (balones y raquetas de playa)",
       "⛑️ Kit de primeros auxilios",
       "🎁 Sorpresas en el bus"
-    ]
-  },
-  {
-    "id": "cayo-boca-seca",
-    "destino": "Cayo Boca Seca",
-    "precio": 27,
-    "tipo": "FULL DAY",
-    "imagenUrl": "/boca-seca.jpg",
-    "descripcion": "Aguas tranquilas, arena blanca y ambiente caribeño ideal para desconectarse y disfrutar de una de las mejores playas de Morrocoy.",
-    "salidas": [
-      {
-        "fecha": "2026-10-04",
-        "fechaTexto": "Domingo 4 de octubre",
-        "buses": [
-          "Bus 1"
-        ]
-      }
-    ],
-    "detalles": [
-      "🚍 Traslado ida y vuelta en bus con aire acondicionado",
-      "🚤 Traslado rápido en lancha",
-      "🌴 Sombra natural (vegetación y palmeras)",
-      "🧊 Logística: Cava con hielo",
-      "🤳🏽 Registro fotográfico",
-      "⛑️ Kit de primeros auxilios",
-      "🥨 Snack",
-      "🎁 Sorpresas en el bus",
-      "🎟️ Brazalete identificativo",
-      "🏐 Juegos playeros (balones y raquetas de playa)"
     ]
   },
   {
@@ -2034,6 +2017,9 @@
     ]
   }
 ];
+
+    // Ejecutar depuración inmediata de viajes y salidas pasadas
+    purgePastTripsAndSalidas();
 
     // ESTADO DE LA APLICACIÓN
     const state = {
@@ -3270,6 +3256,7 @@
     }
 
     document.addEventListener("DOMContentLoaded", () => {
+      purgePastTripsAndSalidas();
       lucide.createIcons();
       
       // Mostrar de inmediato la tasa guardada en caché si existe
@@ -3353,11 +3340,12 @@
         const dayStr = String(day).padStart(2, "0");
         const dateIso = `${state.anioCalendario}-${monthStr}-${dayStr}`;
 
-        // Datos reales dinámicos de salidas desde VIAJES
+        // Datos reales dinámicos de salidas desde VIAJES (solo salidas hoy o futuras)
+        const todayIso = getCaracasTodayStr();
         const departures = [];
         VIAJES.forEach(v => {
           v.salidas.forEach(s => {
-            if (s.fecha === dateIso) departures.push(v);
+            if (s.fecha === dateIso && s.fecha >= todayIso) departures.push(v);
           });
         });
 
@@ -3365,7 +3353,7 @@
         const hasTrips = countTrips > 0;
         const isSelected = state.filtroFecha === dateIso;
 
-        if (!hasTrips) {
+        if (!hasTrips || dateIso < todayIso) {
           // Día sin viajes: gris claro y no seleccionable
           htmlDays += `
             <div class="h-10 rounded-xl flex flex-col items-center justify-center text-slate-300 bg-slate-50/50 cursor-default select-none pointer-events-none border border-transparent">
@@ -3415,6 +3403,8 @@
     }
 
     window.selectCalendarDate = function(dateIso, hasTrips) {
+      const todayIso = getCaracasTodayStr();
+      if (dateIso < todayIso) return; // No permitir seleccionar fechas pasadas
       // 2. Si el usuario toca otra vez el día que ya está seleccionado, se deselecciona y se muestran todos los viajes
       if (state.filtroFecha === dateIso) {
         state.filtroFecha = null;
@@ -3460,16 +3450,17 @@
     }
 
     function getNextTripDate(fromIso) {
+      const todayIso = getCaracasTodayStr();
       const allDates = [];
       VIAJES.forEach(v => {
         v.salidas.forEach(s => {
-          if (s.fecha && !allDates.includes(s.fecha)) {
+          if (s.fecha && s.fecha >= todayIso && !allDates.includes(s.fecha)) {
             allDates.push(s.fecha);
           }
         });
       });
       allDates.sort();
-      return allDates.find(d => d > fromIso) || (allDates.length > 0 ? allDates[0] : null);
+      return allDates.find(d => d > fromIso && d >= todayIso) || (allDates.length > 0 ? allDates[0] : null);
     }
 
     let scrollCueDismissed = false;
@@ -3513,13 +3504,15 @@
 
     function renderTrips() {
       const container = document.getElementById("trips-grid");
-      let filtered = VIAJES;
+      const todayIso = getCaracasTodayStr();
+      // Garantizar que solo se incluyan viajes que tengan al menos una salida hoy o futura
+      let filtered = VIAJES.filter(v => Array.isArray(v.salidas) && v.salidas.some(s => s.fecha && s.fecha >= todayIso));
 
       if (state.filtroDestino !== "todos") {
         filtered = filtered.filter(v => v.destino === state.filtroDestino);
       }
       if (state.filtroFecha) {
-        filtered = filtered.filter(v => v.salidas.some(s => s.fecha === state.filtroFecha));
+        filtered = filtered.filter(v => v.salidas.some(s => s.fecha === state.filtroFecha && s.fecha >= todayIso));
       }
 
       // 1. Etiqueta tipo chip "Mostrando: [día y mes]" con X a la derecha encima de la lista de viajes
@@ -3763,8 +3756,15 @@
       const trip = VIAJES.find(t => t.id === tripId);
       if (!trip) return;
 
+      const todayIso = getCaracasTodayStr();
+      const salidasVigentes = (trip.salidas || []).filter(s => s.fecha && s.fecha >= todayIso);
+      if (salidasVigentes.length === 0) {
+        alert("Este viaje ya ha culminado sus salidas disponibles.");
+        return;
+      }
+
       state.selectedTrip = trip;
-      state.selectedSalida = trip.salidas[salidaIndex] || trip.salidas[0];
+      state.selectedSalida = salidasVigentes[salidaIndex] || salidasVigentes[0];
       state.selectedBus = state.selectedSalida.buses[0] || "Bus 1";
       state.busesDisponibles = state.selectedSalida.buses || ["Bus 1"];
       state.asientosSeleccionados = [];

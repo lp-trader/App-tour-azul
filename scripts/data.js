@@ -8,7 +8,6 @@ export const TRIPS = [
     imagenUrl: "/cayo-muerto.jpg",
     descripcion: "¡El cayo con más vida y palmeras de la zona! Es súper cerquita del malecón, así que en pocos minutos estarás con los pies en el agua cristalina como una piscina natural gigante ✨.",
     salidas: [
-      { fecha: "2026-10-03", fechaTexto: "Sábado 3 de octubre", buses: ["Bus 1"] },
       { fecha: "2026-10-18", fechaTexto: "Domingo 18 de octubre", buses: ["Bus 1"] }
     ],
     detalles: [
@@ -32,7 +31,6 @@ export const TRIPS = [
     imagenUrl: "/varadero.jpg",
     descripcion: "Una de las mejores elecciones en Falcón, destacando porque sus aguas tienen olas suaves, bajitas y de un azul increíble.",
     salidas: [
-      { fecha: "2026-10-03", fechaTexto: "Sábado 3 de octubre", buses: ["Bus 1"] },
       { fecha: "2026-10-18", fechaTexto: "Domingo 18 de octubre", buses: ["Bus 1"] }
     ],
     detalles: [
@@ -55,7 +53,6 @@ export const TRIPS = [
     imagenUrl: "/cayo-azul.jpg",
     descripcion: "Uno de los destinos favoritos porque es mucho más tranquilo y exclusivo, con aguas tan turquesas y arena tan blanca que te vas a sentir en una postal ideal para huir de las multitudes, sumando la experiencia de estar en medio del océano en Bajo 360.",
     salidas: [
-      { fecha: "2026-10-04", fechaTexto: "Domingo 4 de octubre", buses: ["Bus 1"] },
       { fecha: "2026-10-25", fechaTexto: "Domingo 25 de octubre", buses: ["Bus 1"] }
     ],
     detalles: [
@@ -70,29 +67,6 @@ export const TRIPS = [
       "🏐 Juegos playeros (balones y raquetas de playa)",
       "⛑️ Kit de primeros auxilios",
       "🎁 Sorpresas en el bus"
-    ]
-  },
-  {
-    id: "cayo-boca-seca",
-    destino: "Cayo Boca Seca",
-    precio: 27,
-    tipo: "FULL DAY",
-    imagenUrl: "/boca-seca.jpg",
-    descripcion: "Aguas tranquilas, arena blanca y ambiente caribeño ideal para desconectarse y disfrutar de una de las mejores playas de Morrocoy.",
-    salidas: [
-      { fecha: "2026-10-04", fechaTexto: "Domingo 4 de octubre", buses: ["Bus 1"] }
-    ],
-    detalles: [
-      "🚍 Traslado ida y vuelta en bus con aire acondicionado",
-      "🚤 Traslado rápido en lancha",
-      "🌴 Sombra natural (vegetación y palmeras)",
-      "🧊 Logística: Cava con hielo",
-      "🤳🏽 Registro fotográfico",
-      "⛑️ Kit de primeros auxilios",
-      "🥨 Snack",
-      "🎁 Sorpresas en el bus",
-      "🎟️ Brazalete identificativo",
-      "🏐 Juegos playeros (balones y raquetas de playa)"
     ]
   },
   {
