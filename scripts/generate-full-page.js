@@ -3,6 +3,19 @@ import { TRIPS } from './data.js';
 import { rateClientCode } from './rate-client-code.js';
 import { opinionsHtmlSection, opinionsModalsHtml, opinionsClientCode } from './opinions-module.js';
 import { featuredSectionHtml, featuredClientCode } from './featured-trips-module.js';
+import { 
+  prelaunchHeaderButtonHtml, 
+  prelaunchHeroNoticeHtml, 
+  recruitmentHtmlSection, 
+  recruitmentModalsHtml, 
+  recruitmentClientCode 
+} from './recruitment-module.js';
+import {
+  retroPhotosCss,
+  retroPhotosHeroHtml,
+  retroPhotosModalsHtml,
+  retroPhotosClientCode
+} from './retro-photos-module.js';
 
 const logoBase64 = fs.readFileSync('logo-base64.txt', 'utf8').trim();
 
@@ -96,6 +109,7 @@ const html = `<!DOCTYPE html>
     .seat-bounce:active {
       transform: scale(0.92);
     }
+${retroPhotosCss}
   </style>
 </head>
 <body class="min-h-screen flex flex-col antialiased selection:bg-tour-caribe selection:text-tour-navy">
@@ -110,14 +124,12 @@ const html = `<!DOCTYPE html>
       </a>
 
       <!-- Acciones de Cabecera -->
-      <div class="flex items-center gap-2">
-        <!-- Pill BCV Tasa del Día (con Skeleton Inicial) -->
-        <div id="bcv-pill-container" class="flex items-center gap-2">
-          <div class="animate-pulse flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 border border-slate-200 text-xs text-slate-400 shadow-sm">
-            <span class="text-sm">🇻🇪</span>
-            <span class="text-slate-500 font-medium hidden md:inline">Tasa BCV Euro:</span>
-            <div class="h-3.5 w-20 md:w-24 bg-slate-300 rounded"></div>
-          </div>
+      <div class="flex items-center gap-2 sm:gap-3">
+${prelaunchHeaderButtonHtml}
+        <!-- Eslogan Tour Azul: Tu escapada perfecta -->
+        <div id="header-slogan" class="flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full bg-sky-50/90 border border-sky-200/90 shadow-2xs">
+          <span class="text-sm sm:text-base select-none">🌴</span>
+          <span class="font-script text-base sm:text-lg md:text-xl text-tour-blue font-bold tracking-wide -rotate-1 whitespace-nowrap">Tu escapada perfecta</span>
         </div>
       </div>
     </div>
@@ -133,6 +145,8 @@ const html = `<!DOCTYPE html>
     <!-- PORTADA HERO -->
     <section class="relative min-h-[90vh] flex flex-col justify-center items-center text-center px-4 overflow-hidden hero-gradient text-white pt-10 pb-28">
       <div class="absolute -top-24 left-1/2 -translate-x-1/2 w-96 h-96 bg-tour-caribe-light/30 rounded-full blur-3xl pointer-events-none"></div>
+
+${retroPhotosHeroHtml}
 
       <!-- Main Logo Big -->
       <div class="relative z-10 mb-4 animate-float">
@@ -161,6 +175,8 @@ const html = `<!DOCTYPE html>
           </a>
         </div>
       </div>
+
+${prelaunchHeroNoticeHtml}
 
       <!-- Floating Destination Chips -->
       <div class="relative z-10 mt-10 max-w-4xl mx-auto flex flex-wrap justify-center gap-2.5 px-2">
@@ -269,7 +285,7 @@ ${featuredSectionHtml}
 
 ${opinionsHtmlSection}
 
-    <!-- SECCIÓN CÓMO FUNCIONA -->
+    <!-- SECCIÓN CÓMO FUNCIONA (PAUSADA TEMPORALMENTE)
     <section class="bg-gradient-to-b from-[#F8FDFF] to-sky-50/60 py-16 border-t border-sky-100">
       <div class="max-w-6xl mx-auto px-4">
         <div class="text-center max-w-xl mx-auto mb-12 space-y-2">
@@ -331,7 +347,10 @@ ${opinionsHtmlSection}
         </div>
       </div>
     </section>
+    -->
   </main>
+
+${recruitmentHtmlSection}
 
   <!-- INDICADOR FLOTANTE DESLIZA PARA VER MÁS (MÓVIL) -->
   <div id="floating-scroll-cue" class="hidden fixed bottom-24 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 py-2 px-4 rounded-full bg-tour-navy/95 backdrop-blur-md text-white text-xs font-bold shadow-2xl border border-sky-300/40 animate-bounce transition-all duration-300 pointer-events-none md:hidden">
@@ -339,8 +358,8 @@ ${opinionsHtmlSection}
     <i data-lucide="chevron-down" class="w-4 h-4 text-tour-yellow"></i>
   </div>
 
-  <!-- BOTÓN FLOTANTE WHATSAPP -->
-  <a id="btn-whatsapp-float" href="https://wa.me/584126571155" target="_blank" rel="noopener noreferrer" class="fixed bottom-6 right-6 z-40 flex items-center gap-2.5 px-4 py-3 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white shadow-2xl hover:scale-105 active:scale-95 transition-all group border-2 border-white/80" title="Contactar al WhatsApp de Tour Azul (0412-657-1155)">
+  <!-- BOTÓN FLOTANTE WHATSAPP (OCULTO POR LOS MOMENTOS) -->
+  <a id="btn-whatsapp-float" href="https://wa.me/584126571155" target="_blank" rel="noopener noreferrer" class="hidden fixed bottom-6 right-6 z-40 items-center gap-2.5 px-4 py-3 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white shadow-2xl hover:scale-105 active:scale-95 transition-all group border-2 border-white/80" title="Contactar al WhatsApp de Tour Azul (0412-657-1155)">
     <div class="relative">
       <span class="absolute -top-1 -right-1 flex h-2.5 w-2.5">
         <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
@@ -371,9 +390,9 @@ ${opinionsHtmlSection}
           <span>Políticas de Reserva y Viaje 📜</span>
         </button>
 
-        <span class="text-slate-300 hidden sm:inline">·</span>
+        <span class="text-slate-300 hidden">·</span>
 
-        <a href="https://wa.me/584126571155?text=%C2%A1Hola%20Tour%20Azul!%20Tengo%20una%20duda." target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 font-bold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-3.5 py-1.5 rounded-full border border-emerald-200 shadow-sm transition">
+        <a href="https://wa.me/584126571155?text=%C2%A1Hola%20Tour%20Azul!%20Tengo%20una%20duda." target="_blank" rel="noopener noreferrer" class="hidden inline-flex items-center gap-1.5 font-bold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-3.5 py-1.5 rounded-full border border-emerald-200 shadow-sm transition">
           <i data-lucide="message-circle" class="w-4 h-4 text-emerald-600"></i>
           <span>WhatsApp: 0412-657-1155</span>
         </a>
@@ -468,8 +487,8 @@ ${opinionsHtmlSection}
         <i data-lucide="arrow-right" class="w-4 h-4"></i>
       </button>
 
-      <!-- Botón de consulta WhatsApp en Detalles -->
-      <a id="modal-det-btn-whatsapp" href="https://wa.me/584126571155" target="_blank" rel="noopener noreferrer" class="w-full py-2.5 rounded-2xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold text-xs transition flex items-center justify-center gap-2 shadow-sm">
+      <!-- Botón de consulta WhatsApp en Detalles (Oculto por los momentos) -->
+      <a id="modal-det-btn-whatsapp" href="https://wa.me/584126571155" target="_blank" rel="noopener noreferrer" class="hidden w-full py-2.5 rounded-2xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold text-xs transition items-center justify-center gap-2 shadow-sm">
         <i data-lucide="message-circle" class="w-4 h-4 text-emerald-600"></i>
         <span>¿Dudas sobre este tour? Escríbenos al 0412-657-1155</span>
       </a>
@@ -1016,8 +1035,8 @@ ${opinionsHtmlSection}
       </div>
 
       <!-- Footer del Modal -->
-      <div class="p-4 border-t border-slate-100 bg-slate-50/80 flex items-center justify-between gap-3">
-        <a href="https://wa.me/584126571155?text=%C2%A1Hola%20Tour%20Azul!%20Tengo%20una%20consulta%20sobre%20las%20pol%C3%ADticas%20de%20reserva." target="_blank" rel="noopener noreferrer" class="text-emerald-700 hover:text-emerald-800 font-bold text-xs flex items-center gap-1.5">
+      <div class="p-4 border-t border-slate-100 bg-slate-50/80 flex items-center justify-end gap-3">
+        <a href="https://wa.me/584126571155?text=%C2%A1Hola%20Tour%20Azul!%20Tengo%20una%20consulta%20sobre%20las%20pol%C3%ADticas%20de%20reserva." target="_blank" rel="noopener noreferrer" class="hidden text-emerald-700 hover:text-emerald-800 font-bold text-xs items-center gap-1.5">
           <i data-lucide="message-circle" class="w-4 h-4"></i>
           <span>Consultar por WhatsApp</span>
         </a>
@@ -1030,6 +1049,10 @@ ${opinionsHtmlSection}
   </div>
 
 ${opinionsModalsHtml}
+
+${recruitmentModalsHtml}
+
+${retroPhotosModalsHtml}
 
   <!-- SPINNER OVERLAY ELEGANTE -->
   <div id="loading-overlay" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden items-center justify-center">
@@ -1044,6 +1067,8 @@ ${opinionsModalsHtml}
 
   <!-- JAVASCRIPT ES6+ EMBEBIDO -->
   <script>
+${recruitmentClientCode}
+${retroPhotosClientCode}
     const WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbzdxxU7xWb9Vjv_R8v5RncFEG8eHau7J7mI5isKOqNksG2OVk2ohDSqf84tZ-1j_WFpLA/exec";
     const WHATSAPP_NUMERO = "584126571155";
     const MINUTOS_BLOQUEO_ASIENTO = 10;
@@ -1441,6 +1466,12 @@ ${opinionsClientCode}
       renderTrips();
       setupEventListeners();
       initOpinionsSystem();
+
+      // Aplicar modo temporal de preapertura
+      applyPrelaunchModeUI();
+      if (window.location.hash === "#unete-al-equipo") {
+        showRecruitmentView();
+      }
     });
 
     function renderHeroChips() {

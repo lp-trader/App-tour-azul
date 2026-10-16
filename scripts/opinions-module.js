@@ -69,8 +69,8 @@ export const opinionsHtmlSection = `
           </div>
         </div>
 
-        <!-- Banner Llamativo para Opinar y Participar en el Sorteo -->
-        <div class="mt-10 rounded-3xl p-6 md:p-8 bg-gradient-to-r from-[#0B2A6B] via-[#1F3FE0] to-[#22C3D6] text-white shadow-xl relative overflow-hidden">
+        <!-- Banner Llamativo para Opinar y Participar en el Sorteo (PAUSADO TEMPORALMENTE) -->
+        <div id="banner-sorteo-opiniones" class="hidden mt-10 rounded-3xl p-6 md:p-8 bg-gradient-to-r from-[#0B2A6B] via-[#1F3FE0] to-[#22C3D6] text-white shadow-xl relative overflow-hidden">
           <div class="absolute -right-10 -bottom-10 w-48 h-48 bg-white/10 rounded-full blur-2xl pointer-events-none"></div>
           <div class="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
             <div class="space-y-2 text-center md:text-left max-w-xl">
@@ -217,8 +217,8 @@ export const opinionsModalsHtml = `
             </span>
           </label>
 
-          <label class="flex items-start gap-2.5 cursor-pointer">
-            <input type="checkbox" id="opinion-check-sorteo" checked class="mt-0.5 rounded border-slate-300 text-tour-blue focus:ring-tour-blue">
+          <label id="opinion-check-sorteo-wrap" class="hidden items-start gap-2.5 cursor-pointer">
+            <input type="checkbox" id="opinion-check-sorteo" class="mt-0.5 rounded border-slate-300 text-tour-blue focus:ring-tour-blue">
             <span class="text-[11px] text-tour-navy font-bold">
               🎁 Quiero participar en el sorteo del mes por un detalle de Tour Azul
             </span>
@@ -247,7 +247,7 @@ export const opinionsModalsHtml = `
           <p class="text-xs text-slate-600 leading-relaxed">
             Tu comentario ha sido recibido y quedará visible en la web una vez verificado por nuestro equipo.
           </p>
-          <div class="p-3 bg-amber-50 rounded-2xl border border-amber-200 text-amber-900 text-xs font-bold mt-2">
+          <div id="opinion-sorteo-success-badge" class="hidden p-3 bg-amber-50 rounded-2xl border border-amber-200 text-amber-900 text-xs font-bold mt-2">
             🎉 ¡Ya estás participando en el sorteo de este mes por un detalle de Tour Azul!
           </div>
         </div>

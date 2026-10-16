@@ -111,15 +111,11 @@ const html = `<!DOCTYPE html>
         <span class="font-title font-black italic tracking-tight text-xl text-tour-navy">TOUR AZUL</span>
       </a>
 
-      <!-- Pill BCV Tasa del Día -->
+      <!-- Eslogan Tour Azul: Tu escapada perfecta -->
       <div class="flex items-center gap-2">
-        <div id="bcv-pill" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-sky-50 border border-sky-200/70 text-xs font-semibold text-tour-navy shadow-sm">
-          <span class="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-          <span id="tasa-text">1 € = 45,80 Bs</span>
-          <span class="text-sky-300 font-normal">·</span>
-          <span class="text-sky-700">BCV</span>
-          <span class="text-sky-300 font-normal">·</span>
-          <span id="tasa-fecha" class="text-slate-500 text-[11px]">Hoy</span>
+        <div id="header-slogan" class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-sky-50/90 border border-sky-200/90 shadow-2xs">
+          <span class="text-sm select-none">🌴</span>
+          <span class="font-script text-base md:text-xl text-tour-blue font-bold tracking-wide -rotate-1 whitespace-nowrap">Tu escapada perfecta</span>
         </div>
       </div>
     </div>
@@ -247,7 +243,7 @@ const html = `<!DOCTYPE html>
       </div>
     </section>
 
-    <!-- SECCIÓN CÓMO FUNCIONA -->
+    <!-- SECCIÓN CÓMO FUNCIONA (PAUSADA TEMPORALMENTE)
     <section class="bg-gradient-to-b from-[#F8FDFF] to-sky-50/60 py-16 border-t border-sky-100">
       <div class="max-w-6xl mx-auto px-4">
         <div class="text-center max-w-xl mx-auto mb-12 space-y-2">
@@ -263,7 +259,7 @@ const html = `<!DOCTYPE html>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <!-- Paso 1 -->
+          <!-- Paso 1 -- >
           <div class="bg-white rounded-3xl p-6 shadow-sm border border-sky-100 flex flex-col items-center text-center space-y-3">
             <div class="w-14 h-14 rounded-2xl bg-sky-100 text-tour-blue flex items-center justify-center font-bold text-xl shadow-inner">
               <i data-lucide="compass" class="w-7 h-7"></i>
@@ -275,7 +271,7 @@ const html = `<!DOCTYPE html>
             </p>
           </div>
 
-          <!-- Paso 2 -->
+          <!-- Paso 2 -- >
           <div class="bg-white rounded-3xl p-6 shadow-sm border border-sky-100 flex flex-col items-center text-center space-y-3">
             <div class="w-14 h-14 rounded-2xl bg-tour-caribe/20 text-tour-caribe flex items-center justify-center font-bold text-xl shadow-inner">
               <i data-lucide="bus" class="w-7 h-7"></i>
@@ -287,7 +283,7 @@ const html = `<!DOCTYPE html>
             </p>
           </div>
 
-          <!-- Paso 3 -->
+          <!-- Paso 3 -- >
           <div class="bg-white rounded-3xl p-6 shadow-sm border border-sky-100 flex flex-col items-center text-center space-y-3">
             <div class="w-14 h-14 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center font-bold text-xl shadow-inner">
               <i data-lucide="users" class="w-7 h-7"></i>
@@ -299,7 +295,7 @@ const html = `<!DOCTYPE html>
             </p>
           </div>
 
-          <!-- Paso 4 -->
+          <!-- Paso 4 -- >
           <div class="bg-white rounded-3xl p-6 shadow-sm border border-sky-100 flex flex-col items-center text-center space-y-3">
             <div class="w-14 h-14 rounded-2xl bg-emerald-100 text-tour-emerald flex items-center justify-center font-bold text-xl shadow-inner">
               <i data-lucide="ticket" class="w-7 h-7"></i>
@@ -313,10 +309,11 @@ const html = `<!DOCTYPE html>
         </div>
       </div>
     </section>
+    -->
   </main>
 
-  <!-- BOTÓN FLOTANTE WHATSAPP -->
-  <a id="btn-whatsapp-float" href="#" target="_blank" rel="noopener noreferrer" class="fixed bottom-6 right-6 z-40 w-14 h-14 rounded-full bg-emerald-500 text-white shadow-xl hover:shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all group" title="Contactar por WhatsApp">
+  <!-- BOTÓN FLOTANTE WHATSAPP (OCULTO POR LOS MOMENTOS) -->
+  <a id="btn-whatsapp-float" href="#" target="_blank" rel="noopener noreferrer" class="hidden fixed bottom-6 right-6 z-40 w-14 h-14 rounded-full bg-emerald-500 text-white shadow-xl hover:shadow-2xl items-center justify-center hover:scale-110 active:scale-95 transition-all group" title="Contactar por WhatsApp">
     <span class="absolute -top-10 right-0 bg-slate-900 text-white text-[11px] px-2.5 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition pointer-events-none whitespace-nowrap shadow">¿Dudas? Escríbenos</span>
     <i data-lucide="message-circle" class="w-7 h-7"></i>
   </a>

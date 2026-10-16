@@ -154,27 +154,11 @@ export const rateClientCode = `
       state.tasaDisponible = true;
       state.fuenteTasa = fuente;
 
+      // La tasa BCV y fecha actualizada se ocultan de la cabecera
       const pillContainer = document.getElementById("bcv-pill-container");
-      const formattedRate = formatVzla(tasa);
-      const fechaFormateada = formatDateDisplay(fechaRaw);
-      const esAntigua = checkIsOlderThan3Days(fechaRaw);
-
-      let avisoFecha = \`Actualizado \${fechaFormateada}\`;
-      if (fuente === "cache") {
-        avisoFecha = \`Última tasa guardada: \${fechaFormateada}\`;
-      } else if (esAntigua) {
-        avisoFecha = \`Tasa del \${fechaFormateada}\`;
+      if (pillContainer) {
+        pillContainer.classList.add("hidden");
       }
-
-      pillContainer.innerHTML = \`
-        <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-sky-50 border border-sky-200/80 text-xs font-semibold text-tour-navy shadow-sm transition-all">
-          <span class="text-sm">🇻🇪</span>
-          <span>Tasa BCV Euro:</span>
-          <span class="font-bold text-tour-blue">1 € = Bs. \${formattedRate}</span>
-          <span class="text-sky-300 font-normal">·</span>
-          <span class="text-slate-500 text-[11px] \${esAntigua ? 'text-amber-700 font-medium' : ''}">\${avisoFecha}</span>
-        </div>
-      \`;
 
       // Habilitar Pago Móvil
       const pmRadio = document.querySelector("input[name='paymentMethod'][value='Pago Móvil']");
@@ -198,12 +182,9 @@ export const rateClientCode = `
       state.tasaDisponible = false;
 
       const pillContainer = document.getElementById("bcv-pill-container");
-      pillContainer.innerHTML = \`
-        <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-50 border border-amber-200 text-xs font-semibold text-amber-900 shadow-sm">
-          <span class="text-sm">🇻🇪</span>
-          <span>Tasa BCV Euro: No disponible, consulta por WhatsApp</span>
-        </div>
-      \`;
+      if (pillContainer) {
+        pillContainer.classList.add("hidden");
+      }
 
       // Deshabilitar Pago Móvil, forzar Efectivo
       const pmRadio = document.querySelector("input[name='paymentMethod'][value='Pago Móvil']");
