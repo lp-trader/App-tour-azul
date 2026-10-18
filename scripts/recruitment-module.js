@@ -16,10 +16,10 @@ export const prelaunchHeaderButtonHtml = `
     type="button" 
     id="btn-nav-equipo" 
     onclick="showRecruitmentView()" 
-    class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-gradient-to-r from-tour-blue to-tour-caribe text-white text-xs font-bold shadow-md hover:shadow-lg hover:scale-105 active:scale-95 transition-all cursor-pointer"
+    class="inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-1.5 rounded-full bg-gradient-to-r from-tour-blue to-tour-caribe text-white text-xs font-bold shadow-md hover:shadow-lg transition-all cursor-pointer shrink-0 whitespace-nowrap select-none active:scale-95"
     title="Convocatoria de futuros trabajadores"
   >
-    <i data-lucide="sparkles" class="w-3.5 h-3.5 text-tour-yellow"></i>
+    <i data-lucide="sparkles" class="w-3.5 h-3.5 text-tour-yellow shrink-0"></i>
     <span>Únete al equipo</span>
   </button>
 `;

@@ -12,6 +12,8 @@ import {
 } from './recruitment-module.js';
 import {
   retroPhotosCss,
+  retroPhotosLeftHtml,
+  retroPhotosRightHtml,
   retroPhotosHeroHtml,
   retroPhotosModalsHtml,
   retroPhotosClientCode
@@ -116,18 +118,18 @@ ${retroPhotosCss}
 
   <!-- BARRA SUPERIOR FIJA (GLASSMORPHISM) -->
   <header class="fixed top-0 inset-x-0 z-40 bg-white/85 backdrop-blur-md border-b border-sky-100/80 transition-all duration-300">
-    <div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
-      <!-- Logo Brand -->
-      <a href="#" class="flex items-center gap-2.5 group">
-        <img src="${logoBase64}" alt="Tour Azul Logo" class="h-10 w-10 object-contain drop-shadow-sm group-hover:scale-105 transition-transform">
-        <span class="font-title font-black italic tracking-tight text-xl text-tour-navy">TOUR AZUL</span>
+    <div class="max-w-6xl mx-auto px-3 sm:px-4 h-16 flex items-center justify-between gap-2">
+      <!-- Logo Brand (Fijo, nunca se encoge ni se solapa con nada) -->
+      <a href="#" class="flex items-center gap-2 shrink-0 group min-w-0 select-none">
+        <img src="${logoBase64}" alt="Tour Azul Logo" class="h-9 w-9 sm:h-10 sm:w-10 object-contain drop-shadow-sm group-hover:scale-105 transition-transform shrink-0">
+        <span class="font-title font-black italic tracking-tight text-lg sm:text-xl text-tour-navy whitespace-nowrap shrink-0">TOUR AZUL</span>
       </a>
 
-      <!-- Acciones de Cabecera -->
-      <div class="flex items-center gap-2 sm:gap-3">
+      <!-- Acciones de Cabecera (Alineadas a la derecha, fijas sin moverse) -->
+      <div class="flex items-center gap-2 shrink-0">
 ${prelaunchHeaderButtonHtml}
-        <!-- Eslogan Tour Azul: Tu escapada perfecta -->
-        <div id="header-slogan" class="flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full bg-sky-50/90 border border-sky-200/90 shadow-2xs">
+        <!-- Eslogan Tour Azul: Tu escapada perfecta (Oculto en móviles para evitar colisiones y que no tape nada) -->
+        <div id="header-slogan" class="hidden md:flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full bg-sky-50/90 border border-sky-200/90 shadow-2xs shrink-0">
           <span class="text-sm sm:text-base select-none">🌴</span>
           <span class="font-script text-base sm:text-lg md:text-xl text-tour-blue font-bold tracking-wide -rotate-1 whitespace-nowrap">Tu escapada perfecta</span>
         </div>
@@ -146,13 +148,16 @@ ${prelaunchHeaderButtonHtml}
     <section class="relative min-h-[90vh] flex flex-col justify-center items-center text-center px-4 overflow-hidden hero-gradient text-white pt-10 pb-28">
       <div class="absolute -top-24 left-1/2 -translate-x-1/2 w-96 h-96 bg-tour-caribe-light/30 rounded-full blur-3xl pointer-events-none"></div>
 
-${retroPhotosHeroHtml}
+      <!-- Main Logo Big con Fotos Retro al Lado (Más arriba, más pequeñas que el logo, sin tapar letras en móvil) -->
+      <div class="relative z-10 mb-5 flex items-center justify-center gap-2.5 sm:gap-4 md:gap-6 animate-float">
+        ${retroPhotosLeftHtml}
 
-      <!-- Main Logo Big -->
-      <div class="relative z-10 mb-4 animate-float">
-        <div class="p-3 bg-white/10 backdrop-blur-md rounded-3xl border border-white/20 shadow-2xl inline-block">
-          <img src="${logoBase64}" alt="Tour Azul Logo" class="h-28 w-28 md:h-36 md:w-36 object-contain drop-shadow-xl">
+        <!-- LOGO PRINCIPAL (CENTRO) -->
+        <div class="p-2 sm:p-3 bg-white/10 backdrop-blur-md rounded-2xl sm:rounded-3xl border border-white/20 shadow-2xl inline-block shrink-0">
+          <img src="${logoBase64}" alt="Tour Azul Logo" class="h-20 w-20 sm:h-28 sm:w-28 md:h-36 md:w-36 object-contain drop-shadow-xl">
         </div>
+
+        ${retroPhotosRightHtml}
       </div>
 
       <!-- Hero Titles -->
@@ -283,7 +288,7 @@ ${featuredSectionHtml}
       </div>
     </section>
 
-${opinionsHtmlSection}
+    <!-- SECCIÓN EXPERIENCIAS REALES / OPINIONES (PAUSADA TEMPORALMENTE) -->
 
     <!-- SECCIÓN CÓMO FUNCIONA (PAUSADA TEMPORALMENTE)
     <section class="bg-gradient-to-b from-[#F8FDFF] to-sky-50/60 py-16 border-t border-sky-100">
