@@ -132,19 +132,14 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack }) => {
   if (!isAuthenticated) {
 const handleAuthSubmit = (e) => {
   e.preventDefault();
-  const entered = passwordInput ? passwordInput.trim() : "";
-  
-  // Imprime en la consola del navegador lo que estás escribiendo exactamente
-  console.log("Clave ingresada:", JSON.stringify(entered));
+  const entered = (passwordInput || "").trim();
 
-  // Acepta la clave si coincide exactamente o si contiene la secuencia numérica
-  if (entered === "010203*" || entered === "010203" || entered.includes("010203")) {
+  if (entered === "0102") {
     sessionStorage.setItem("tour_azul_admin_auth", "true");
     setIsAuthenticated(true);
     setAuthError(null);
   } else {
-    // Te mostrará en pantalla exactamente qué texto capturó el sistema
-    setAuthError("Clave incorrecta. Capturó: [" + entered + "]");
+    setAuthError("Contraseña inválida. Por favor, verifica la clave e inténtalo de nuevo");
   }
 };
     return (
