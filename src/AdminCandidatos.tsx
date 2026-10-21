@@ -42,7 +42,7 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack }) => {
   const [filtroDisponibilidad, setFiltroDisponibilidad] = useState<string>('todos');
 
   // URL de Google Apps Script configurada por el usuario
-  const URL_APPS_SCRIPT = "https://script.google.com/macros/s/AKfycbzKQPZdUVabTJUTZ4S3WcdIQp8rNDAbE8yhye45C7nqXhsiFEeQUoBbBmNOOm5C8m8YrQ/exec";
+  const URL_APPS_SCRIPT = "https://script.google.com/macros/s/AKfycbw0pYzZ6KZsypsJn0kE5dRSq8hwMnrUWeJT1TPTby5a9bFui9dkCsKDjx_GkOIq2jPtjw/exec";
 
   const cargarCandidatos = async () => {
     setCargando(true);
