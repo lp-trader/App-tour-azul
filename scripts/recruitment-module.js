@@ -1262,7 +1262,7 @@ export const recruitmentClientCode = `
     // =========================================================================
 
     const ADMIN_PASSWORD_EXACTA = "010203*";
-    const URL_APPS_SCRIPT_POSTULACIONES = "https://script.google.com/macros/s/AKfycbzhear_pXD4zCMw9y_ypP3su8PGZOKONwt4Md9objVMnkJXZMygXXYHyID0SutDYRlRog/exec";
+    const URL_APPS_SCRIPT_POSTULACIONES = "https://script.google.com/macros/s/AKfycbxOxUWGF9-tfPW6DpTjR2EpUjme0qR7JX-iqL_wtKacXmcGKIMFLubPtL0KvX6XaUWbgg/exec";
 
     function getRecruitmentPasswordInput() {
       return document.getElementById("recruitment-admin-password-input") || document.getElementById("admin-password-input");
