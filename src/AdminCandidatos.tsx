@@ -132,9 +132,12 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack }) => {
   if (!isAuthenticated) {
 const handleAuthSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const entered = (passwordInput || "").trim();
+    
+    // Obtenemos el valor directamente del input del formulario para evitar errores de variables de estado
+    const form = e.currentTarget as HTMLFormElement;
+    const inputElement = form.querySelector('input[type="password"], input[type="text"]') as HTMLInputElement;
+    const entered = inputElement ? inputElement.value.trim() : "";
 
-    // Validamos de forma flexible para que acepte tanto "0102" como la clave anterior con asterisco
     if (entered === "0102" || entered === "010203*") {
       sessionStorage.setItem("tour_azul_admin_auth", "true");
       setIsAuthenticated(true);
@@ -142,6 +145,7 @@ const handleAuthSubmit = (e: React.FormEvent) => {
     } else {
       setAuthError("Contraseña inválida. Por favor, verifica la clave e inténtalo de nuevo");
     }
+  };
   };
     return (
       <div className="min-h-screen bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
