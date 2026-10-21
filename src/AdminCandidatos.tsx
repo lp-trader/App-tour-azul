@@ -129,14 +129,9 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack }) => {
     }
   };
 
-  if (!isAuthenticated) {
-const handleAuthSubmit = (e: React.FormEvent) => {
+  const handleAuthSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Obtenemos el valor directamente del input del formulario para evitar errores de variables de estado
-    const form = e.currentTarget as HTMLFormElement;
-    const inputElement = form.querySelector('input[type="password"], input[type="text"]') as HTMLInputElement;
-    const entered = inputElement ? inputElement.value.trim() : "";
+    const entered = (passwordInput || "").trim();
 
     if (entered === "0102" || entered === "010203*") {
       sessionStorage.setItem("tour_azul_admin_auth", "true");
@@ -146,6 +141,8 @@ const handleAuthSubmit = (e: React.FormEvent) => {
       setAuthError("Contraseña inválida. Por favor, verifica la clave e inténtalo de nuevo");
     }
   };
+
+  if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
         <div className="relative w-full max-w-sm bg-white rounded-3xl p-6 sm:p-7 shadow-2xl border border-sky-100 text-center animate-float">
@@ -165,7 +162,7 @@ const handleAuthSubmit = (e: React.FormEvent) => {
                     setPasswordInput(e.target.value);
                     setAuthError(null);
                   }}
-                  placeholder="Ingresa la clave (010203*)"
+                  placeholder="Ingresa la clave (0102)"
                   className="w-full px-4 py-2.5 pr-10 rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600 text-xs md:text-sm text-slate-800 transition bg-slate-50/50 focus:bg-white font-mono"
                   autoFocus
                 />
@@ -382,7 +379,6 @@ const handleAuthSubmit = (e: React.FormEvent) => {
                                 alt={nombre} 
                                 className="h-11 w-11 rounded-full object-cover shadow-xs border border-slate-200" 
                                 onError={(e) => {
-                                  // Fallback si la URL de la imagen falla
                                   (e.target as HTMLElement).style.display = 'none';
                                 }}
                               />
