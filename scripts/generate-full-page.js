@@ -395,6 +395,11 @@ ${recruitmentHtmlSection}
           <span>Políticas de Reserva y Viaje 📜</span>
         </button>
 
+        <button type="button" onclick="if(window.openAdminCandidatos){window.openAdminCandidatos();}else{window.location.hash='#/admin-candidatos';}" class="inline-flex items-center gap-1.5 font-bold text-slate-600 hover:text-tour-navy bg-slate-100 hover:bg-sky-100 px-3.5 py-1.5 rounded-full border border-slate-200 shadow-2xs transition cursor-pointer text-xs" title="Panel Administrativo de Candidatos (Google Sheets)">
+          <i data-lucide="shield-check" class="w-4 h-4 text-tour-blue"></i>
+          <span>Panel Candidatos (Admin)</span>
+        </button>
+
         <span class="text-slate-300 hidden">·</span>
 
         <a href="https://wa.me/584126571155?text=%C2%A1Hola%20Tour%20Azul!%20Tengo%20una%20duda." target="_blank" rel="noopener noreferrer" class="hidden inline-flex items-center gap-1.5 font-bold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-3.5 py-1.5 rounded-full border border-emerald-200 shadow-sm transition">
@@ -3298,6 +3303,10 @@ ${opinionsClientCode}
       floatWa.href = \`https://wa.me/\${WHATSAPP_NUMERO}?text=\${encodeURIComponent(defaultWaMsg)}\`;
     }
   </script>
+
+  <!-- CONTENEDOR REACT PARA PANEL DE ADMINISTRACIÓN Y COMPONENTES -->
+  <div id="root"></div>
+  <script type="module" src="/src/main.tsx"></script>
 </body>
 </html>`;
 

@@ -1,0 +1,6 @@
+{
+  "summary": "Plan técnico integral y actualizado para la integración de Firebase (Cloud Firestore y Firebase Storage) en el módulo de convocatoria de Tour Azul. Incluye subida segura y privada de fotografías de candidatos (JPG/PNG/WEBP <= 5 MB), guardado de metadatos en Firestore, reglas independientes de seguridad Zero-Trust para Firestore y Storage, política de no-huérfanos, auditoría del pipeline de build para Vercel y total preservación de los sistemas de reservas, asientos y Google Sheets.",
+  "updatedAt": "2026-10-18T18:14:02.625748634Z",
+  "requestFeedback": true,
+  "userFacing": true
+}

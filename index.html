@@ -300,7 +300,7 @@
         <a 
           href="https://wa.me/584126571155?text=%C2%A1Hola%20Tour%20Azul!%20Quisiera%20m%C3%A1s%20informaci%C3%B3n%20sobre%20la%20preapertura%20y%20el%20equipo." 
           target="_blank" 
-          rel="noopener noreferrer"
+          rel="noopener noreferrer" 
           class="hidden w-full sm:w-auto px-6 py-3.5 rounded-full bg-white/10 hover:bg-white/20 text-white font-bold text-xs tracking-wide border border-white/20 transition-all items-center justify-center gap-2 cursor-pointer"
         >
           <i data-lucide="message-circle" class="w-4 h-4 text-emerald-400"></i>
@@ -561,13 +561,27 @@
           <span>Volver a la portada</span>
         </button>
 
-        <!-- Indicador de preguntas completadas -->
-        <div class="flex items-center gap-2 text-xs font-medium text-slate-600">
-          <span class="hidden sm:inline">Progreso:</span>
-          <div class="w-24 sm:w-32 h-2.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
-            <div id="recruitment-progress-bar" class="h-full bg-gradient-to-r from-tour-blue to-tour-caribe w-0 transition-all duration-300"></div>
+        <!-- Indicador de preguntas completadas y acceso admin -->
+        <div class="flex items-center gap-3">
+          <div class="flex items-center gap-2 text-xs font-medium text-slate-600">
+            <span class="hidden sm:inline">Progreso:</span>
+            <div class="w-20 sm:w-32 h-2.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
+              <div id="recruitment-progress-bar" class="h-full bg-gradient-to-r from-tour-blue to-tour-caribe w-0 transition-all duration-300"></div>
+            </div>
+            <span id="recruitment-progress-text" class="font-bold text-tour-blue">0/8</span>
           </div>
-          <span id="recruitment-progress-text" class="font-bold text-tour-blue">0/8</span>
+
+          <!-- Botón de Acceso Administrativo Seguro -->
+          <button 
+            type="button" 
+            id="btn-admin-postulaciones"
+            onclick="openAdminPostulacionesModal()" 
+            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-sky-50 hover:bg-sky-100 text-tour-blue text-xs font-bold transition-all border border-sky-200 cursor-pointer shadow-2xs active:scale-95"
+            title="Panel de Gestión de Postulaciones (Google Sheets)"
+          >
+            <i data-lucide="shield-check" class="w-3.5 h-3.5 text-tour-blue"></i>
+            <span class="hidden md:inline">Admin</span>
+          </button>
         </div>
       </div>
     </div>
@@ -613,7 +627,7 @@
             ¡Hola! 💙 Gracias por tu interés en formar parte de Tour Azul.
           </p>
           <p>
-            Buscamos personas dinámicas, responsables, proactivas y con buena actitud para acompañar a nuestros pasajeros en excursiones a distintos destinos de Venezuela.
+            Buscamos personas dinámicas, responsabilidades, proactivas y con buena actitud para acompañar a nuestros pasajeros en excursiones a distintos destinos de Venezuela.
           </p>
           <p>
             Salimos desde Barquisimeto hacia lugares como Chichiriviche y sus cayos, Colonia Tovar, Mérida, Puerto Cabello, Isla Larga y muchos destinos más.
@@ -640,9 +654,7 @@
       <!-- FORMULARIO DE LAS 10 PREGUNTAS -->
       <form id="form-postulacion" onsubmit="handleRecruitmentSubmit(event)" novalidate class="space-y-6">
         
-        <!-- ========================================== -->
         <!-- PREGUNTA 1: Nombres y apellidos -->
-        <!-- ========================================== -->
         <div id="q-card-nombre" class="bg-white rounded-3xl p-5 md:p-6 shadow-sm border border-slate-200/90 transition-all focus-within:border-tour-blue focus-within:ring-2 focus-within:ring-sky-100">
           <div class="flex items-center justify-between mb-2">
             <label for="postulacion-nombre" class="font-title font-bold text-sm md:text-base text-tour-navy block">
@@ -655,6 +667,7 @@
             type="text" 
             id="postulacion-nombre" 
             name="nombre" 
+            maxlength="150"
             placeholder="Ej. María Valentina Colmenárez García" 
             oninput="updateRecruitmentProgress(); clearFieldError('nombre')" 
             class="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-tour-blue text-xs md:text-sm text-slate-800 transition bg-slate-50/40 focus:bg-white"
@@ -666,9 +679,7 @@
           </p>
         </div>
 
-        <!-- ========================================== -->
         <!-- PREGUNTA 2: ¿Qué edad tienes? -->
-        <!-- ========================================== -->
         <div id="q-card-edad" class="bg-white rounded-3xl p-5 md:p-6 shadow-sm border border-slate-200/90 transition-all focus-within:border-tour-blue focus-within:ring-2 focus-within:ring-sky-100">
           <div class="flex items-center justify-between mb-2">
             <label for="postulacion-edad" class="font-title font-bold text-sm md:text-base text-tour-navy block">
@@ -676,7 +687,7 @@
             </label>
             <span class="text-[10px] uppercase font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md">Respuesta corta</span>
           </div>
-          <p class="text-xs text-slate-500 mb-3">Ingresa solo el número de tus años cumplidos (ej. 23).</p>
+          <p class="text-xs text-slate-500 mb-3">Ingresa solo el número de tus años cumplidos (ej. 24).</p>
           <input 
             type="number" 
             id="postulacion-edad" 
@@ -689,13 +700,11 @@
           >
           <p id="error-edad" class="hidden text-xs font-semibold text-rose-600 mt-2 flex items-center gap-1.5">
             <i data-lucide="alert-circle" class="w-3.5 h-3.5"></i>
-            <span>Por favor, introduce una edad numérica razonable (entre 16 y 80 años).</span>
+            <span>Por favor, introduce una edad numérica válida (entre 16 y 80 años).</span>
           </p>
         </div>
 
-        <!-- ========================================== -->
         <!-- PREGUNTA 3: Número de teléfono y WhatsApp -->
-        <!-- ========================================== -->
         <div id="q-card-telefono" class="bg-white rounded-3xl p-5 md:p-6 shadow-sm border border-slate-200/90 transition-all focus-within:border-tour-blue focus-within:ring-2 focus-within:ring-sky-100">
           <div class="flex items-center justify-between mb-2">
             <label for="postulacion-telefono" class="font-title font-bold text-sm md:text-base text-tour-navy block">
@@ -708,6 +717,7 @@
             type="tel" 
             id="postulacion-telefono" 
             name="telefono" 
+            maxlength="30"
             placeholder="Ej. 0412-1234567 o 0424-9876543" 
             oninput="updateRecruitmentProgress(); clearFieldError('telefono')" 
             class="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-tour-blue text-xs md:text-sm text-slate-800 transition bg-slate-50/40 focus:bg-white"
@@ -719,9 +729,7 @@
           </p>
         </div>
 
-        <!-- ========================================== -->
         <!-- PREGUNTA 4: ¿En qué zona de Barquisimeto o sus alrededores resides? -->
-        <!-- ========================================== -->
         <div id="q-card-zona" class="bg-white rounded-3xl p-5 md:p-6 shadow-sm border border-slate-200/90 transition-all focus-within:border-tour-blue focus-within:ring-2 focus-within:ring-sky-100">
           <div class="flex items-center justify-between mb-2">
             <label for="postulacion-zona" class="font-title font-bold text-sm md:text-base text-tour-navy block">
@@ -734,6 +742,7 @@
             type="text" 
             id="postulacion-zona" 
             name="zona" 
+            maxlength="120"
             placeholder="Ej. Cabudare Centro / Los Cardones / Zona Este" 
             oninput="updateRecruitmentProgress(); clearFieldError('zona')" 
             class="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-tour-blue text-xs md:text-sm text-slate-800 transition bg-slate-50/40 focus:bg-white"
@@ -744,9 +753,7 @@
           </p>
         </div>
 
-        <!-- ========================================== -->
         <!-- PREGUNTA 5: Experiencia -->
-        <!-- ========================================== -->
         <div id="q-card-experiencia" class="bg-white rounded-3xl p-5 md:p-6 shadow-sm border border-slate-200/90 transition-all">
           <div class="flex items-center justify-between mb-2">
             <label class="font-title font-bold text-sm md:text-base text-tour-navy block">
@@ -757,17 +764,14 @@
           <p class="text-xs text-slate-500 mb-3">Selecciona la opción que mejor describa tu trayectoria.</p>
           
           <div class="space-y-2.5">
-            <!-- Opción 1 -->
             <label class="postulacion-radio-label flex items-center gap-3 p-3.5 rounded-2xl border-2 border-slate-200 hover:border-sky-300 hover:bg-sky-50/40 transition cursor-pointer">
               <input type="radio" name="experiencia" value="Sí, tengo experiencia." onchange="handleRadioSelect(this, 'experiencia')" class="w-4 h-4 text-tour-blue focus:ring-tour-blue">
               <span class="text-xs md:text-sm font-medium text-slate-700">Sí, tengo experiencia.</span>
             </label>
-            <!-- Opción 2 -->
             <label class="postulacion-radio-label flex items-center gap-3 p-3.5 rounded-2xl border-2 border-slate-200 hover:border-sky-300 hover:bg-sky-50/40 transition cursor-pointer">
               <input type="radio" name="experiencia" value="Tengo algo de experiencia." onchange="handleRadioSelect(this, 'experiencia')" class="w-4 h-4 text-tour-blue focus:ring-tour-blue">
               <span class="text-xs md:text-sm font-medium text-slate-700">Tengo algo de experiencia.</span>
             </label>
-            <!-- Opción 3 -->
             <label class="postulacion-radio-label flex items-center gap-3 p-3.5 rounded-2xl border-2 border-slate-200 hover:border-sky-300 hover:bg-sky-50/40 transition cursor-pointer">
               <input type="radio" name="experiencia" value="No tengo experiencia, pero quiero aprender." onchange="handleRadioSelect(this, 'experiencia')" class="w-4 h-4 text-tour-blue focus:ring-tour-blue">
               <span class="text-xs md:text-sm font-medium text-slate-700">No tengo experiencia, pero quiero aprender.</span>
@@ -779,9 +783,7 @@
           </p>
         </div>
 
-        <!-- ========================================== -->
         <!-- PREGUNTA 6: Disponibilidad fines de semana y feriados -->
-        <!-- ========================================== -->
         <div id="q-card-disponibilidad" class="bg-white rounded-3xl p-5 md:p-6 shadow-sm border border-slate-200/90 transition-all">
           <div class="flex items-center justify-between mb-2">
             <label class="font-title font-bold text-sm md:text-base text-tour-navy block">
@@ -792,17 +794,14 @@
           <p class="text-xs text-slate-500 mb-3">La mayoría de nuestras excursiones turísticas se realizan durante los fines de semana.</p>
 
           <div class="space-y-2.5">
-            <!-- Opción 1 -->
             <label class="postulacion-radio-label flex items-center gap-3 p-3.5 rounded-2xl border-2 border-slate-200 hover:border-sky-300 hover:bg-sky-50/40 transition cursor-pointer">
               <input type="radio" name="disponibilidad" value="Sí, tengo disponibilidad." onchange="handleRadioSelect(this, 'disponibilidad')" class="w-4 h-4 text-tour-blue focus:ring-tour-blue">
               <span class="text-xs md:text-sm font-medium text-slate-700">Sí, tengo disponibilidad.</span>
             </label>
-            <!-- Opción 2 -->
             <label class="postulacion-radio-label flex items-center gap-3 p-3.5 rounded-2xl border-2 border-slate-200 hover:border-sky-300 hover:bg-sky-50/40 transition cursor-pointer">
               <input type="radio" name="disponibilidad" value="Tengo disponibilidad parcial." onchange="handleRadioSelect(this, 'disponibilidad')" class="w-4 h-4 text-tour-blue focus:ring-tour-blue">
               <span class="text-xs md:text-sm font-medium text-slate-700">Tengo disponibilidad parcial.</span>
             </label>
-            <!-- Opción 3 -->
             <label class="postulacion-radio-label flex items-center gap-3 p-3.5 rounded-2xl border-2 border-slate-200 hover:border-sky-300 hover:bg-sky-50/40 transition cursor-pointer">
               <input type="radio" name="disponibilidad" value="No tengo disponibilidad habitual." onchange="handleRadioSelect(this, 'disponibilidad')" class="w-4 h-4 text-tour-blue focus:ring-tour-blue">
               <span class="text-xs md:text-sm font-medium text-slate-700">No tengo disponibilidad habitual.</span>
@@ -814,9 +813,7 @@
           </p>
         </div>
 
-        <!-- ========================================== -->
         <!-- PREGUNTA 7: Punto de partida Barquisimeto -->
-        <!-- ========================================== -->
         <div id="q-card-punto_partida" class="bg-white rounded-3xl p-5 md:p-6 shadow-sm border border-slate-200/90 transition-all">
           <div class="flex items-center justify-between mb-2">
             <label class="font-title font-bold text-sm md:text-base text-tour-navy block">
@@ -827,17 +824,14 @@
           <p class="text-xs text-slate-500 mb-3">Nuestras salidas inician habitualmente en la madrugada o primeras horas de la mañana.</p>
 
           <div class="space-y-2.5">
-            <!-- Opción 1 -->
             <label class="postulacion-radio-label flex items-center gap-3 p-3.5 rounded-2xl border-2 border-slate-200 hover:border-sky-300 hover:bg-sky-50/40 transition cursor-pointer">
               <input type="radio" name="punto_partida" value="Sí, sin inconvenientes." onchange="handleRadioSelect(this, 'punto_partida')" class="w-4 h-4 text-tour-blue focus:ring-tour-blue">
               <span class="text-xs md:text-sm font-medium text-slate-700">Sí, sin inconvenientes.</span>
             </label>
-            <!-- Opción 2 -->
             <label class="postulacion-radio-label flex items-center gap-3 p-3.5 rounded-2xl border-2 border-slate-200 hover:border-sky-300 hover:bg-sky-50/40 transition cursor-pointer">
               <input type="radio" name="punto_partida" value="Sí, pero necesito conocer el horario con anticipación." onchange="handleRadioSelect(this, 'punto_partida')" class="w-4 h-4 text-tour-blue focus:ring-tour-blue">
               <span class="text-xs md:text-sm font-medium text-slate-700">Sí, pero necesito conocer el horario con anticipación.</span>
             </label>
-            <!-- Opción 3 -->
             <label class="postulacion-radio-label flex items-center gap-3 p-3.5 rounded-2xl border-2 border-slate-200 hover:border-sky-300 hover:bg-sky-50/40 transition cursor-pointer">
               <input type="radio" name="punto_partida" value="Se me dificulta llegar al punto de partida." onchange="handleRadioSelect(this, 'punto_partida')" class="w-4 h-4 text-tour-blue focus:ring-tour-blue">
               <span class="text-xs md:text-sm font-medium text-slate-700">Se me dificulta llegar al punto de partida.</span>
@@ -849,9 +843,7 @@
           </p>
         </div>
 
-        <!-- ========================================== -->
         <!-- PREGUNTA 8: Motivación y aporte -->
-        <!-- ========================================== -->
         <div id="q-card-motivacion" class="bg-white rounded-3xl p-5 md:p-6 shadow-sm border border-slate-200/90 transition-all focus-within:border-tour-blue focus-within:ring-2 focus-within:ring-sky-100">
           <div class="flex items-center justify-between mb-2">
             <label for="postulacion-motivacion" class="font-title font-bold text-sm md:text-base text-tour-navy block">
@@ -864,6 +856,7 @@
             id="postulacion-motivacion" 
             name="motivacion" 
             rows="4" 
+            maxlength="2500"
             placeholder="Me gustaría formar parte de Tour Azul porque me apasiona viajar y hacer que las personas disfruten cada momento..." 
             oninput="updateRecruitmentProgress(); clearFieldError('motivacion')" 
             class="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-tour-blue text-xs md:text-sm text-slate-800 transition bg-slate-50/40 focus:bg-white resize-y"
@@ -874,9 +867,7 @@
           </p>
         </div>
 
-        <!-- ========================================== -->
-        <!-- PREGUNTA 9: Fotografía (Opcional, Local Preview) -->
-        <!-- ========================================== -->
+        <!-- PREGUNTA 9: Fotografía (Opcional, Máx. 5 MB) -->
         <div id="q-card-foto" class="bg-white rounded-3xl p-5 md:p-6 shadow-sm border border-slate-200/90 transition-all">
           <div class="flex items-center justify-between mb-2">
             <label class="font-title font-bold text-sm md:text-base text-tour-navy block">
@@ -947,9 +938,7 @@
           </p>
         </div>
 
-        <!-- ========================================== -->
-        <!-- PREGUNTA 10: Talento más inútil o extraño -->
-        <!-- ========================================== -->
+        <!-- PREGUNTA 10: Talento curioso -->
         <div id="q-card-talento" class="bg-white rounded-3xl p-5 md:p-6 shadow-sm border border-slate-200/90 transition-all focus-within:border-tour-blue focus-within:ring-2 focus-within:ring-sky-100">
           <div class="flex items-center justify-between mb-2">
             <label for="postulacion-talento" class="font-title font-bold text-sm md:text-base text-tour-navy block">
@@ -962,6 +951,7 @@
             type="text" 
             id="postulacion-talento" 
             name="talento" 
+            maxlength="500"
             placeholder="Ej. Sé imitar el sonido de una trompeta con la boca / Puedo adivinar canciones en 2 segundos..." 
             class="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-tour-blue text-xs md:text-sm text-slate-800 transition bg-slate-50/40 focus:bg-white"
           >
@@ -978,14 +968,14 @@
             <span>Volver a la portada</span>
           </button>
 
-          <!-- Botón de Envío Requerido -->
+          <!-- Botón de Envío -->
           <button 
             type="submit" 
             id="btn-submit-postulacion" 
             class="w-full sm:w-auto px-8 py-4 rounded-2xl bg-gradient-to-r from-tour-blue via-blue-600 to-tour-caribe hover:opacity-95 text-white font-title font-black uppercase text-xs md:text-sm tracking-wider shadow-xl hover:shadow-2xl transition-all active:scale-95 cursor-pointer order-1 sm:order-2 flex items-center justify-center gap-2.5 group"
           >
             <i data-lucide="send" class="w-4 h-4 text-tour-yellow group-hover:translate-x-0.5 transition-transform"></i>
-            <span>Enviar mi postulación</span>
+            <span id="btn-submit-text">Enviar mi postulación</span>
           </button>
         </div>
 
@@ -1030,6 +1020,11 @@
         <button type="button" onclick="openPoliticasModal()" class="inline-flex items-center gap-1.5 font-bold text-tour-blue hover:text-blue-800 bg-sky-50 hover:bg-sky-100 px-3.5 py-1.5 rounded-full border border-sky-200 shadow-2xs transition cursor-pointer">
           <i data-lucide="scroll-text" class="w-4 h-4 text-tour-blue"></i>
           <span>Políticas de Reserva y Viaje 📜</span>
+        </button>
+
+        <button type="button" onclick="if(window.openAdminCandidatos){window.openAdminCandidatos();}else{window.location.hash='#/admin-candidatos';}" class="inline-flex items-center gap-1.5 font-bold text-slate-600 hover:text-tour-navy bg-slate-100 hover:bg-sky-100 px-3.5 py-1.5 rounded-full border border-slate-200 shadow-2xs transition cursor-pointer text-xs" title="Panel Administrativo de Candidatos (Google Sheets)">
+          <i data-lucide="shield-check" class="w-4 h-4 text-tour-blue"></i>
+          <span>Panel Candidatos (Admin)</span>
         </button>
 
         <span class="text-slate-300 hidden">·</span>
@@ -2077,92 +2072,249 @@
 
 
 
-  <!-- MODAL DE CONFIRMACIÓN PROVISIONAL HONESTO (ETAPA DE PREAPERTURA) -->
-  <div id="modal-postulacion-provisional" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-md hidden items-center justify-center p-4 overflow-y-auto">
-    <div class="max-w-lg w-full bg-white rounded-3xl p-6 md:p-8 shadow-2xl space-y-5 my-8 relative border border-sky-100 animate-float text-center">
-      
-      <!-- Icono Ilustrativo -->
-      <div class="w-16 h-16 rounded-3xl bg-gradient-to-tr from-sky-100 to-blue-50 text-tour-blue flex items-center justify-center mx-auto shadow-inner border border-sky-200">
-        <i data-lucide="sparkles" class="w-8 h-8 text-tour-blue"></i>
+  <!-- MODAL 1: CONFIRMACIÓN DE ÉXITO DE POSTULACIÓN -->
+  <div id="modal-postulacion-exitosa" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-md hidden items-center justify-center p-4 overflow-y-auto">
+    <div class="max-w-lg w-full bg-white rounded-3xl p-6 md:p-8 shadow-2xl space-y-5 my-8 relative border border-emerald-100 animate-float text-center">
+      <!-- Icono de Éxito -->
+      <div class="w-16 h-16 rounded-3xl bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto shadow-inner border border-emerald-200">
+        <i data-lucide="check-circle" class="w-8 h-8 text-emerald-600"></i>
       </div>
 
-      <!-- Badge de Preapertura -->
-      <span class="inline-block px-3.5 py-1 rounded-full bg-sky-100 text-tour-navy text-[11px] font-bold uppercase tracking-wider">
-        Fase de preapertura · En preparación
+      <span class="inline-block px-3.5 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-bold uppercase tracking-wider">
+        Postulación Registrada Exitosamente
       </span>
 
-      <!-- Título de Verificación -->
       <div>
         <h3 class="font-title font-black text-2xl uppercase text-tour-navy tracking-tight leading-snug">
-          ¡Formulario completado correctamente!
+          ¡Bienvenido a la tripulación!
         </h3>
         <p class="font-script text-xl text-tour-caribe mt-0.5">
-          Gracias por querer ser parte de Tour Azul 💙
+          Tus datos ya están guardados de forma segura 💙
         </p>
       </div>
 
-      <!-- Aviso Honesto Requerido (Sin simulación de éxito falso) -->
-      <div class="p-4 rounded-2xl bg-sky-50/80 border border-sky-200/80 text-left text-xs text-slate-700 space-y-2.5 leading-relaxed">
-        <div class="flex items-center gap-2 font-bold text-tour-navy">
-          <i data-lucide="info" class="w-4 h-4 text-tour-blue shrink-0"></i>
-          <span>Aviso importante sobre el estado de postulación:</span>
-        </div>
-        <p>
-          Esta aplicación se encuentra actualmente en su <strong>etapa de preapertura</strong> y estamos preparando la infraestructura de almacenamiento y base de datos para la recepción definitiva de postulaciones.
-        </p>
-        <p>
-          Tus respuestas han sido <strong>validadas con éxito en tu navegador</strong> y se mantendrán intactas en el formulario para que puedas revisarlas o modificarlas en cualquier momento.
-        </p>
-        <p class="text-[11px] text-slate-500 pt-1 border-t border-sky-200/60">
-          El envío definitivo y almacenamiento oficial estará activo en cuanto concluyamos la configuración técnica del sistema. ¡Nos pondremos en contacto tan pronto comiencen las entrevistas!
-        </p>
-      </div>
-
-      <!-- Resumen rápido de datos ingresados -->
-      <div class="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 text-left text-xs space-y-1">
-        <div class="flex justify-between items-center text-slate-500">
-          <span>Candidato(a):</span>
-          <strong id="modal-candidato-nombre" class="text-tour-navy font-bold truncate max-w-[200px]">--</strong>
+      <div class="p-4 rounded-2xl bg-sky-50/80 border border-sky-200/80 text-left text-xs text-slate-700 space-y-2 leading-relaxed">
+        <div class="flex justify-between items-center text-slate-500 pb-1 border-b border-sky-100">
+          <span>Código de postulación:</span>
+          <strong id="modal-exito-id" class="font-mono text-tour-blue font-bold text-xs">--</strong>
         </div>
         <div class="flex justify-between items-center text-slate-500">
-          <span>Contacto WhatsApp:</span>
-          <strong id="modal-candidato-telefono" class="text-tour-navy font-bold">--</strong>
+          <span>Aspirante:</span>
+          <strong id="modal-exito-nombre" class="text-tour-navy font-bold truncate max-w-[200px]">--</strong>
+        </div>
+        <div class="flex justify-between items-center text-slate-500">
+          <span>WhatsApp de contacto:</span>
+          <strong id="modal-exito-telefono" class="text-tour-navy font-bold">--</strong>
         </div>
         <div class="flex justify-between items-center text-slate-500">
           <span>Fotografía adjunta:</span>
-          <strong id="modal-candidato-foto" class="text-emerald-600 font-bold">No adjunta</strong>
+          <strong id="modal-exito-foto" class="text-emerald-700 font-bold">--</strong>
         </div>
       </div>
 
-      <!-- Botones de Acción del Modal -->
-      <div class="space-y-2 pt-2">
-        <button 
-          type="button" 
-          onclick="closeRecruitmentProvisionalModal()" 
-          class="w-full py-3.5 rounded-2xl bg-tour-blue hover:bg-blue-700 text-white font-title font-black uppercase text-xs tracking-wider shadow-lg transition active:scale-95 cursor-pointer flex items-center justify-center gap-2"
-        >
-          <i data-lucide="edit-3" class="w-4 h-4"></i>
-          <span>Revisar mis respuestas en el formulario</span>
-        </button>
+      <p class="text-xs text-slate-500 text-left">
+        Tu información ha sido registrada en el sistema de Tour Azul. Puedes enviar una copia directa a nuestro WhatsApp oficial para coordinar las siguientes etapas.
+      </p>
 
+      <div class="space-y-2 pt-2">
         <a 
-          id="btn-modal-wa-reclutamiento" 
+          id="btn-modal-exito-wa" 
           href="https://wa.me/584126571155" 
           target="_blank" 
           rel="noopener noreferrer" 
-          class="hidden w-full py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white font-title font-bold text-xs uppercase tracking-wider shadow-md transition items-center justify-center gap-2 cursor-pointer"
+          class="w-full py-3.5 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white font-title font-black uppercase text-xs tracking-wider shadow-lg transition active:scale-95 cursor-pointer flex items-center justify-center gap-2"
         >
           <i data-lucide="message-circle" class="w-4 h-4"></i>
-          <span>Escribir al WhatsApp oficial</span>
+          <span>Enviar postulación por WhatsApp</span>
         </a>
 
         <button 
           type="button" 
-          onclick="closeRecruitmentProvisionalModal(); showHomeView()" 
+          onclick="closeRecruitmentSuccessModal(); showHomeView()" 
           class="w-full py-2.5 text-xs text-slate-500 hover:text-tour-navy font-bold transition cursor-pointer"
         >
           Volver a la portada principal
         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL FLOTANTE Y CENTRADO: AUTENTICACIÓN ADMIN -->
+  <div id="modal-admin-auth" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs hidden items-center justify-center p-4 overflow-y-auto">
+    <!-- Fondo para cerrar al hacer clic afuera sin afectar logos ni componentes -->
+    <div class="fixed inset-0" onclick="closeAdminPasswordModal()"></div>
+
+    <div class="relative w-full max-w-sm bg-white rounded-3xl p-6 sm:p-7 shadow-2xl border border-sky-100 text-center animate-float z-10">
+      
+      <!-- Botón de Cerrar Flotante -->
+      <button 
+        type="button" 
+        onclick="closeAdminPasswordModal()" 
+        class="absolute top-4 right-4 p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition active:scale-95 cursor-pointer"
+        title="Cerrar"
+      >
+        <i data-lucide="x" class="w-4 h-4"></i>
+      </button>
+
+      <!-- Icono Seguro -->
+      <div class="w-12 h-12 rounded-2xl bg-sky-50 text-tour-blue border border-sky-200/80 flex items-center justify-center mx-auto mb-3 shadow-inner">
+        <i data-lucide="shield-check" class="w-6 h-6 text-tour-blue"></i>
+      </div>
+
+      <h3 class="font-title font-black text-lg uppercase text-tour-navy tracking-tight">
+        Acceso Administrador
+      </h3>
+      <p class="text-xs text-slate-500 mt-1 mb-5 leading-relaxed">
+        Ingresa la clave de administrador para consultar las postulaciones en tiempo real desde Google Sheets.
+      </p>
+
+      <!-- Formulario Flotante de Clave -->
+      <form id="form-admin-password" onsubmit="handleAdminPasswordSubmit(event); return false;" novalidate class="space-y-4">
+        <div class="text-left space-y-1.5">
+          <label for="admin-password-input" class="block text-[11px] font-bold uppercase tracking-wider text-slate-600">
+            Contraseña de Administrador
+          </label>
+          <div class="relative">
+            <input 
+              type="password" 
+              id="admin-password-input" 
+              name="admin-password" 
+              placeholder="Ingresa la clave" 
+              autocomplete="current-password"
+              oninput="document.getElementById('admin-password-error').classList.add('hidden'); this.classList.remove('border-rose-400', 'ring-2', 'ring-rose-200');"
+              class="w-full px-4 py-2.5 pr-10 rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-tour-blue text-xs md:text-sm text-slate-800 transition bg-slate-50/50 focus:bg-white font-mono"
+            >
+            <button 
+              type="button" 
+              onclick="toggleAdminPasswordVisibility()" 
+              class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 cursor-pointer transition"
+              title="Mostrar / Ocultar clave"
+            >
+              <i id="icon-toggle-pwd" data-lucide="eye" class="w-4 h-4"></i>
+            </button>
+          </div>
+
+          <!-- Mensaje de error / Alerta si la clave es inválida -->
+          <div id="admin-password-error" class="hidden mt-2 p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center gap-2 text-left">
+            <i data-lucide="alert-circle" class="w-4 h-4 shrink-0 text-rose-600"></i>
+            <span id="admin-password-error-text">Contraseña inválida. Inténtalo de nuevo.</span>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2 pt-1">
+          <button 
+            type="button" 
+            onclick="closeAdminPasswordModal()" 
+            class="flex-1 py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition active:scale-95 cursor-pointer"
+          >
+            Cancelar
+          </button>
+          <button 
+            type="submit" 
+            id="btn-admin-submit-auth"
+            class="flex-1 py-2.5 px-4 rounded-xl bg-gradient-to-r from-tour-blue to-tour-navy hover:opacity-95 text-white text-xs font-title font-black uppercase tracking-wider shadow-md hover:shadow-lg transition active:scale-95 cursor-pointer flex items-center justify-center gap-1.5"
+          >
+            <i data-lucide="lock-keyhole" class="w-3.5 h-3.5 text-tour-yellow"></i>
+            <span>Ingresar</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL 2: PANEL DE GESTIÓN DE POSTULACIONES -->
+  <div id="modal-admin-postulaciones" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-md hidden items-center justify-center p-3 sm:p-4 overflow-y-auto">
+    <div class="max-w-4xl w-full bg-white rounded-3xl shadow-2xl my-6 relative border border-sky-100 flex flex-col max-h-[92vh] overflow-hidden">
+      
+      <!-- Cabecera del Panel Admin -->
+      <div class="p-5 md:p-6 bg-gradient-to-r from-tour-navy to-tour-blue text-white flex items-center justify-between shrink-0">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center">
+            <i data-lucide="shield-check" class="w-5 h-5 text-tour-yellow"></i>
+          </div>
+          <div>
+            <h3 class="font-title font-black uppercase text-base md:text-lg leading-tight tracking-wide">
+              Panel Administrativo de Postulaciones
+            </h3>
+            <span class="text-[11px] text-sky-200">Gestión de aspirantes registrados en tiempo real</span>
+          </div>
+        </div>
+
+        <button 
+          type="button" 
+          onclick="closeAdminPostulacionesModal()" 
+          class="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition active:scale-95 cursor-pointer"
+        >
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Contenido del Panel -->
+      <div class="flex-1 overflow-y-auto p-4 md:p-6 space-y-4">
+        <!-- Barra de Estado Admin -->
+        <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span class="text-slate-600">Origen de datos:</span>
+            <strong class="text-tour-navy font-bold">Google Sheets en tiempo real</strong>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <button 
+              type="button" 
+              onclick="exportarPostulacionesJSON()" 
+              class="px-3 py-1.5 rounded-xl bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-bold transition flex items-center gap-1 cursor-pointer"
+              title="Descargar copia de respaldo en JSON"
+            >
+              <i data-lucide="download" class="w-3.5 h-3.5"></i>
+              <span>Exportar JSON</span>
+            </button>
+            <button 
+              type="button" 
+              onclick="cargarPostulacionesAdmin()" 
+              class="px-3 py-1.5 rounded-xl bg-sky-100 hover:bg-sky-200 text-tour-blue font-bold transition flex items-center gap-1 cursor-pointer"
+            >
+              <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+              <span>Refrescar</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Métricas Rápidas -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div class="bg-white p-3.5 rounded-2xl border border-slate-200 text-center shadow-2xs">
+            <span class="text-[10px] font-bold uppercase text-slate-400 block">Total Recibidas</span>
+            <span id="metric-total-postulaciones" class="text-xl font-title font-black text-tour-navy">0</span>
+          </div>
+          <div class="bg-white p-3.5 rounded-2xl border border-slate-200 text-center shadow-2xs">
+            <span class="text-[10px] font-bold uppercase text-slate-400 block">Con Fotografía</span>
+            <span id="metric-con-foto" class="text-xl font-title font-black text-tour-blue">0</span>
+          </div>
+          <div class="bg-white p-3.5 rounded-2xl border border-slate-200 text-center shadow-2xs">
+            <span class="text-[10px] font-bold uppercase text-slate-400 block">Contactadas</span>
+            <span id="metric-contactadas" class="text-xl font-title font-black text-emerald-600">0</span>
+          </div>
+          <div class="bg-white p-3.5 rounded-2xl border border-slate-200 text-center shadow-2xs">
+            <span class="text-[10px] font-bold uppercase text-slate-400 block">Entrevistadas</span>
+            <span id="metric-entrevistadas" class="text-xl font-title font-black text-amber-600">0</span>
+          </div>
+        </div>
+
+        <!-- Filtros Rápidos -->
+        <div class="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
+          <button type="button" onclick="filterAdminPostulaciones('todas')" class="admin-filter-btn px-3 py-1.5 rounded-xl bg-tour-navy text-white font-bold transition">Todas</button>
+          <button type="button" onclick="filterAdminPostulaciones('recibida')" class="admin-filter-btn px-3 py-1.5 rounded-xl bg-slate-100 text-slate-700 font-bold hover:bg-sky-100 transition">Nuevas</button>
+          <button type="button" onclick="filterAdminPostulaciones('contactada')" class="admin-filter-btn px-3 py-1.5 rounded-xl bg-slate-100 text-slate-700 font-bold hover:bg-sky-100 transition">Contactadas</button>
+          <button type="button" onclick="filterAdminPostulaciones('entrevistada')" class="admin-filter-btn px-3 py-1.5 rounded-xl bg-slate-100 text-slate-700 font-bold hover:bg-sky-100 transition">Entrevistadas</button>
+        </div>
+
+        <!-- Lista de Postulaciones -->
+        <div id="admin-postulaciones-list" class="space-y-3">
+          <div class="text-center py-8 text-slate-400 text-xs">
+            Cargando postulaciones...
+          </div>
+        </div>
+
       </div>
 
     </div>
@@ -2202,6 +2354,12 @@
     };
     window.APP_CONFIG = APP_CONFIG;
 
+    // Clave para almacenamiento local de postulaciones (persistencia directa en navegador)
+    const STORAGE_KEY_POSTULACIONES = "tour_azul_postulaciones";
+
+    let adminPostulacionesCache = [];
+    let currentAdminFilter = "todas";
+
     // Estado aislado para el formulario de postulación
     const recruitmentState = {
       currentView: "home", // "home" | "recruitment"
@@ -2211,14 +2369,11 @@
     };
 
     /**
-     * Aplica el modo de preapertura en la portada:
-     * Oculta temporalmente los accesos públicos para consultar destinos y reservar,
-     * sin borrar el código de viajes, calendario ni lógica de reservas.
+     * Aplica el modo de preapertura en la portada
      */
     function applyPrelaunchModeUI() {
       const isPrelaunch = Boolean(APP_CONFIG.prelaunchMode);
       
-      // 1. Botón "Ver viajes" en el Hero
       const heroCtaContainer = document.querySelector(".hero-gradient .pt-4");
       if (heroCtaContainer) {
         if (isPrelaunch) {
@@ -2228,7 +2383,6 @@
         }
       }
 
-      // 2. Destinos Populares Chips en el Hero
       const heroChipsSection = document.getElementById("hero-chips") ? document.getElementById("hero-chips").closest(".relative.z-10.mt-10") : null;
       if (heroChipsSection) {
         if (isPrelaunch) {
@@ -2238,7 +2392,6 @@
         }
       }
 
-      // 3. Sección "Viajes Destacados"
       const featuredSec = document.getElementById("viajes-destacados");
       if (featuredSec) {
         if (isPrelaunch) {
@@ -2248,7 +2401,6 @@
         }
       }
 
-      // 4. Sección "Viajes del Mes" y Calendario
       const viajesSec = document.getElementById("viajes");
       if (viajesSec) {
         if (isPrelaunch) {
@@ -2258,7 +2410,6 @@
         }
       }
 
-      // 5. Mostrar u ocultar la tarjeta de aviso de preapertura en el Hero
       const prelaunchHeroCard = document.getElementById("prelaunch-hero-card");
       if (prelaunchHeroCard) {
         if (isPrelaunch) {
@@ -2268,7 +2419,6 @@
         }
       }
 
-      // 6. Botón de la cabecera
       const btnNavEquipo = document.getElementById("btn-nav-equipo");
       if (btnNavEquipo) {
         btnNavEquipo.classList.remove("hidden");
@@ -2299,7 +2449,6 @@
       updateRecruitmentProgress();
       if (window.lucide) lucide.createIcons();
 
-      // Actualizar hash de URL sin recargar para navegación limpia
       if (window.location.hash !== "#unete-al-equipo") {
         window.history.pushState({ view: "recruitment" }, "", "#unete-al-equipo");
       }
@@ -2328,7 +2477,6 @@
     }
     window.showHomeView = showHomeView;
 
-    // Escuchar el evento popstate para soportar el botón Atrás del navegador
     window.addEventListener("popstate", () => {
       if (window.location.hash === "#unete-al-equipo") {
         showRecruitmentView();
@@ -2360,7 +2508,7 @@
     window.handleRadioSelect = handleRadioSelect;
 
     /**
-     * Limpia el mensaje de error de un campo cuando el usuario escribe o selecciona
+     * Limpia el mensaje de error de un campo
      */
     function clearFieldError(fieldName) {
       const errEl = document.getElementById(`error-${fieldName}`);
@@ -2373,45 +2521,36 @@
     window.clearFieldError = clearFieldError;
 
     /**
-     * Actualiza la barra de progreso del formulario según campos obligatorios completados
+     * Actualiza la barra de progreso del formulario
      */
     function updateRecruitmentProgress() {
       let completedCount = 0;
       const totalRequired = 8;
 
-      // 1. Nombre
       const nombre = (document.getElementById("postulacion-nombre")?.value || "").trim();
       if (nombre.length >= 3) completedCount++;
 
-      // 2. Edad
       const edadVal = parseInt(document.getElementById("postulacion-edad")?.value, 10);
       if (!isNaN(edadVal) && edadVal >= 16 && edadVal <= 80) completedCount++;
 
-      // 3. Teléfono
       const telf = (document.getElementById("postulacion-telefono")?.value || "").trim();
       if (telf.length >= 7) completedCount++;
 
-      // 4. Zona
       const zona = (document.getElementById("postulacion-zona")?.value || "").trim();
       if (zona.length >= 2) completedCount++;
 
-      // 5. Experiencia
       const exp = document.querySelector('input[name="experiencia"]:checked');
       if (exp) completedCount++;
 
-      // 6. Disponibilidad
       const disp = document.querySelector('input[name="disponibilidad"]:checked');
       if (disp) completedCount++;
 
-      // 7. Punto de partida
       const punto = document.querySelector('input[name="punto_partida"]:checked');
       if (punto) completedCount++;
 
-      // 8. Motivación
       const motiv = (document.getElementById("postulacion-motivacion")?.value || "").trim();
       if (motiv.length >= 10) completedCount++;
 
-      // Actualizar UI
       const percent = Math.round((completedCount / totalRequired) * 100);
       const bar = document.getElementById("recruitment-progress-bar");
       const text = document.getElementById("recruitment-progress-text");
@@ -2421,7 +2560,7 @@
     window.updateRecruitmentProgress = updateRecruitmentProgress;
 
     /**
-     * Manejador de selección de fotografía (previsualización local aislada)
+     * Manejador de selección de fotografía (máx. 5 MB, formatos permitidos)
      */
     function handlePhotoSelect(event) {
       const file = event.target.files && event.target.files[0];
@@ -2437,7 +2576,6 @@
 
       if (!file) return;
 
-      // Validar formato
       const ext = "." + file.name.split(".").pop().toLowerCase();
       const isValidExt = APP_CONFIG.allowedPhotoExtensions.includes(ext);
       const isValidMime = APP_CONFIG.allowedPhotoMimes.includes(file.type);
@@ -2451,17 +2589,15 @@
         return;
       }
 
-      // Validar tamaño (máximo 5 MB)
       if (file.size > APP_CONFIG.maxPhotoSizeBytes) {
         if (errorEl && errorText) {
-          errorText.textContent = `El archivo supera el límite de 5 MB (tamaño actual: ${(file.size / (1024 * 1024)).toFixed(1)} MB).`;
+          errorText.textContent = `El archivo supera el límite de 5 MB (tamaño: ${(file.size / (1024 * 1024)).toFixed(1)} MB).`;
           errorEl.classList.remove("hidden");
         }
         event.target.value = "";
         return;
       }
 
-      // Archivo válido: guardar en estado local y generar vista previa local
       recruitmentState.selectedPhotoFile = file;
 
       if (recruitmentState.selectedPhotoPreviewUrl) {
@@ -2505,9 +2641,9 @@
     window.removeSelectedPhoto = removeSelectedPhoto;
 
     /**
-     * Validación completa del formulario y despliegue del modal de preapertura honesto
+     * Envío y guardado de la postulación (Validación local y envío directo a WhatsApp)
      */
-    function handleRecruitmentSubmit(event) {
+    async function handleRecruitmentSubmit(event) {
       if (event) event.preventDefault();
 
       let hasErrors = false;
@@ -2515,8 +2651,8 @@
 
       function markError(fieldName, message) {
         hasErrors = true;
-        const errEl = document.getElementById(`error-${fieldName}`);
-        const cardEl = document.getElementById(`q-card-${fieldName}`);
+        const errEl = document.getElementById("error-" + fieldName);
+        const cardEl = document.getElementById("q-card-" + fieldName);
         if (errEl) {
           errEl.classList.remove("hidden");
           if (message) {
@@ -2530,60 +2666,52 @@
         }
       }
 
-      // 1. Nombres y apellidos
+      // Validaciones de campos
       const nombreInput = document.getElementById("postulacion-nombre");
       const nombre = (nombreInput?.value || "").trim();
       if (!nombre || nombre.length < 3) {
         markError("nombre", "Por favor ingresa tus nombres y apellidos.");
       }
 
-      // 2. Edad
       const edadInput = document.getElementById("postulacion-edad");
       const edad = parseInt(edadInput?.value, 10);
       if (isNaN(edad) || edad < 16 || edad > 80) {
         markError("edad", "Por favor ingresa una edad numérica razonable (entre 16 y 80 años).");
       }
 
-      // 3. Teléfono y WhatsApp
       const telfInput = document.getElementById("postulacion-telefono");
       const telefono = (telfInput?.value || "").trim();
       if (!telefono || telefono.length < 7) {
         markError("telefono", "Por favor ingresa tu número de teléfono y WhatsApp.");
       }
 
-      // 4. Zona de residencia
       const zonaInput = document.getElementById("postulacion-zona");
       const zona = (zonaInput?.value || "").trim();
       if (!zona || zona.length < 2) {
         markError("zona", "Por favor indica en qué zona de Barquisimeto o alrededores resides.");
       }
 
-      // 5. Experiencia
       const expChecked = document.querySelector('input[name="experiencia"]:checked');
       if (!expChecked) {
         markError("experiencia", "Por favor selecciona una de las opciones de experiencia.");
       }
 
-      // 6. Disponibilidad
       const dispChecked = document.querySelector('input[name="disponibilidad"]:checked');
       if (!dispChecked) {
         markError("disponibilidad", "Por favor indica tu disponibilidad para fines de semana.");
       }
 
-      // 7. Punto de partida
       const puntoChecked = document.querySelector('input[name="punto_partida"]:checked');
       if (!puntoChecked) {
         markError("punto_partida", "Por favor responde si puedes llegar al punto de partida.");
       }
 
-      // 8. Motivación y aporte
       const motivInput = document.getElementById("postulacion-motivacion");
       const motivacion = (motivInput?.value || "").trim();
       if (!motivacion || motivacion.length < 10) {
         markError("motivacion", "Por favor cuéntanos por qué te gustaría formar parte del equipo.");
       }
 
-      // 10. Talento inútil o extraño (opcional)
       const talentoInput = document.getElementById("postulacion-talento");
       const talento = (talentoInput?.value || "").trim();
 
@@ -2592,13 +2720,24 @@
           firstErrorElement.scrollIntoView({ behavior: "smooth", block: "center" });
         }
         if (typeof showToastNotification === "function") {
-          showToastNotification("Por favor completa todas las preguntas obligatorias marcadas con asterisco (*).", "error");
+          showToastNotification("Por favor completa las preguntas obligatorias marcadas con asterisco (*).", "error");
         }
         return false;
       }
 
-      // Formulario Válido: Guardar datos en memoria del estado (aislado, sin persistencia en BD)
-      recruitmentState.lastValidatedFormData = {
+      // Preparar estado de botón de envío
+      const submitBtn = document.getElementById("btn-submit-postulacion");
+      const submitText = document.getElementById("btn-submit-text");
+      if (submitBtn) submitBtn.disabled = true;
+      if (submitText) submitText.textContent = "Guardando en el sistema...";
+
+      // Generar ID único para la postulación
+      const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+      const randomTag = Math.floor(1000 + Math.random() * 9000);
+      const docId = "POST-" + dateStr + "-" + randomTag;
+
+      const candidateData = {
+        id: docId,
         nombre,
         edad,
         telefono,
@@ -2610,43 +2749,499 @@
         talento: talento || "No especificado",
         tieneFoto: Boolean(recruitmentState.selectedPhotoFile),
         fotoNombre: recruitmentState.selectedPhotoFile ? recruitmentState.selectedPhotoFile.name : null,
-        fechaValidacion: new Date().toISOString()
+        estado: "recibida",
+        createdAt: new Date().toISOString()
       };
 
-      // Desplegar datos en el modal provisional
-      document.getElementById("modal-candidato-nombre").textContent = nombre;
-      document.getElementById("modal-candidato-telefono").textContent = telefono;
-      document.getElementById("modal-candidato-foto").textContent = recruitmentState.selectedPhotoFile 
-        ? `Sí (${recruitmentState.selectedPhotoFile.name})` 
-        : "No adjuntada (opcional)";
-
-      // Preparar enlace a WhatsApp
-      const waBtn = document.getElementById("btn-modal-wa-reclutamiento");
-      if (waBtn) {
-        const msgWa = `¡Hola Tour Azul! 👋 Mi nombre es ${nombre}. Acabo de completar el formulario de postulación para el equipo en la web y me encantaría estar al tanto de los próximos pasos de la convocatoria.`;
-        waBtn.href = `https://wa.me/${APP_CONFIG.whatsappNumero}?text=${encodeURIComponent(msgWa)}`;
+      // Guardar de inmediato en almacenamiento local de forma persistente
+      try {
+        const rawLocal = localStorage.getItem(STORAGE_KEY_POSTULACIONES);
+        const list = rawLocal ? JSON.parse(rawLocal) : [];
+        list.unshift(candidateData);
+        localStorage.setItem(STORAGE_KEY_POSTULACIONES, JSON.stringify(list));
+      } catch (e) {
+        console.warn("Aviso de almacenamiento local:", e);
       }
 
-      // Abrir modal honesto de preapertura
-      const modal = document.getElementById("modal-postulacion-provisional");
-      if (modal) {
-        modal.classList.remove("hidden");
-        modal.classList.add("flex");
+      recruitmentState.lastValidatedFormData = candidateData;
+
+      // Proceso de guardado exitoso localmente
+      if (submitBtn) submitBtn.disabled = false;
+      if (submitText) submitText.textContent = "Enviar mi postulación";
+
+      const modalIdEl = document.getElementById("modal-exito-id");
+      const modalNombreEl = document.getElementById("modal-exito-nombre");
+      const modalTelEl = document.getElementById("modal-exito-telefono");
+      const modalFotoEl = document.getElementById("modal-exito-foto");
+
+      if (modalIdEl) modalIdEl.textContent = docId;
+      if (modalNombreEl) modalNombreEl.textContent = nombre;
+      if (modalTelEl) modalTelEl.textContent = telefono;
+      if (modalFotoEl) modalFotoEl.textContent = candidateData.tieneFoto ? ("Sí (" + candidateData.fotoNombre + ")") : "No adjunta";
+
+      // Mensaje completo para WhatsApp oficial
+      const msgWa = [
+        "¡Hola Tour Azul! 👋 Deseo postularme a la convocatoria de tripulación:",
+        "",
+        "📄 Código de postulación: *" + docId + "*",
+        "👤 Nombre: " + nombre,
+        "🎂 Edad: " + edad + " años",
+        "📱 Teléfono/WhatsApp: " + telefono,
+        "📍 Zona de residencia: " + zona,
+        "💼 Experiencia: " + expChecked.value,
+        "⏰ Disponibilidad: " + dispChecked.value,
+        "🚌 Punto de llegada: " + puntoChecked.value,
+        "✨ Motivación: " + motivacion,
+        (talento ? "🤭 Talento curioso: " + talento : ""),
+        (candidateData.tieneFoto ? "📷 Foto: Adjunta en mi teléfono (" + candidateData.fotoNombre + ")" : "📷 Foto: No adjunta")
+      ].filter(Boolean).join("\n");
+
+      const waExitoBtn = document.getElementById("btn-modal-exito-wa");
+      if (waExitoBtn) {
+        waExitoBtn.href = "https://wa.me/" + APP_CONFIG.whatsappNumero + "?text=" + encodeURIComponent(msgWa);
       }
+
+      const modalExito = document.getElementById("modal-postulacion-exitosa");
+      if (modalExito) {
+        modalExito.classList.remove("hidden");
+        modalExito.classList.add("flex");
+      }
+
+      // Limpiar formulario y foto
+      const formEl = document.getElementById("form-postulacion");
+      if (formEl) formEl.reset();
+      removeSelectedPhoto();
+      updateRecruitmentProgress();
 
       if (window.lucide) lucide.createIcons();
+      if (typeof showToastNotification === "function") {
+        showToastNotification("¡Postulación registrada con éxito!", "success");
+      }
       return true;
     }
     window.handleRecruitmentSubmit = handleRecruitmentSubmit;
 
-    function closeRecruitmentProvisionalModal() {
-      const modal = document.getElementById("modal-postulacion-provisional");
+    function closeRecruitmentSuccessModal() {
+      const modal = document.getElementById("modal-postulacion-exitosa");
       if (modal) {
         modal.classList.add("hidden");
         modal.classList.remove("flex");
       }
     }
-    window.closeRecruitmentProvisionalModal = closeRecruitmentProvisionalModal;
+    window.closeRecruitmentSuccessModal = closeRecruitmentSuccessModal;
+
+    // =========================================================================
+    // PANEL ADMINISTRATIVO CON CONTRASEÑA Y CONEXIÓN EN VIVO A GOOGLE SHEETS
+    // =========================================================================
+
+    const ADMIN_PASSWORD_EXACTA = "010203*";
+    const URL_APPS_SCRIPT_POSTULACIONES = "https://script.google.com/macros/s/AKfycbzhear_pXD4zCMw9y_ypP3su8PGZOKONwt4Md9objVMnkJXZMygXXYHyID0SutDYRlRog/exec";
+
+    /**
+     * Despliega el formulario flotante y centrado solicitando la contraseña de administrador
+     */
+    function openAdminPostulacionesModal() {
+      const authModal = document.getElementById("modal-admin-auth");
+      if (authModal) {
+        authModal.classList.remove("hidden");
+        authModal.classList.add("flex");
+      }
+      
+      const pwdInput = document.getElementById("admin-password-input");
+      if (pwdInput) {
+        pwdInput.value = "";
+        pwdInput.classList.remove("border-rose-400", "ring-2", "ring-rose-200");
+        setTimeout(() => pwdInput.focus(), 80);
+      }
+      
+      const errBox = document.getElementById("admin-password-error");
+      if (errBox) {
+        errBox.classList.add("hidden");
+      }
+      
+      if (window.lucide) lucide.createIcons();
+    }
+    window.openAdminPostulacionesModal = openAdminPostulacionesModal;
+
+    /**
+     * Cierra el cuadro de diálogo de contraseña
+     */
+    function closeAdminPasswordModal() {
+      const authModal = document.getElementById("modal-admin-auth");
+      if (authModal) {
+        authModal.classList.add("hidden");
+        authModal.classList.remove("flex");
+      }
+      const pwdInput = document.getElementById("admin-password-input");
+      if (pwdInput) {
+        pwdInput.value = "";
+        pwdInput.classList.remove("border-rose-400", "ring-2", "ring-rose-200");
+      }
+      const errBox = document.getElementById("admin-password-error");
+      if (errBox) errBox.classList.add("hidden");
+    }
+    window.closeAdminPasswordModal = closeAdminPasswordModal;
+
+    /**
+     * Alterna la visibilidad del texto de la contraseña
+     */
+    function toggleAdminPasswordVisibility() {
+      const pwdInput = document.getElementById("admin-password-input");
+      const icon = document.getElementById("icon-toggle-pwd");
+      if (!pwdInput) return;
+      if (pwdInput.type === "password") {
+        pwdInput.type = "text";
+        if (icon) icon.setAttribute("data-lucide", "eye-off");
+      } else {
+        pwdInput.type = "password";
+        if (icon) icon.setAttribute("data-lucide", "eye");
+      }
+      if (window.lucide) lucide.createIcons();
+    }
+    window.toggleAdminPasswordVisibility = toggleAdminPasswordVisibility;
+
+    /**
+     * Valida la contraseña de administrador. Si es 010203*, abre el modal de postulaciones.
+     * Si es incorrecta, muestra alerta / mensaje de error indicando clave inválida.
+     */
+    function handleAdminPasswordSubmit(event) {
+      if (event && event.preventDefault) event.preventDefault();
+
+      const pwdInput = document.getElementById("admin-password-input");
+      const errBox = document.getElementById("admin-password-error");
+      const errText = document.getElementById("admin-password-error-text");
+      const password = pwdInput ? (pwdInput.value || "") : "";
+
+      if (password === ADMIN_PASSWORD_EXACTA) {
+        // Contraseña correcta: cerramos el cuadro de contraseña
+        closeAdminPasswordModal();
+
+        // Abrimos el modal con la lista de postulaciones
+        const modalPostulaciones = document.getElementById("modal-admin-postulaciones");
+        if (modalPostulaciones) {
+          modalPostulaciones.classList.remove("hidden");
+          modalPostulaciones.classList.add("flex");
+        }
+
+        // Cargar registros en tiempo real desde Google Apps Script
+        cargarPostulacionesAdmin();
+
+        if (window.lucide) lucide.createIcons();
+        if (typeof showToastNotification === "function") {
+          showToastNotification("Contraseña correcta. Conectando con Google Sheets...", "success");
+        }
+        return false;
+      } else {
+        // Contraseña inválida: mostrar alerta o mensaje de error visible
+        if (errBox) {
+          errBox.classList.remove("hidden");
+        }
+        if (errText) {
+          errText.textContent = "Contraseña inválida. Por favor, verifica la clave e inténtalo de nuevo.";
+        }
+        if (pwdInput) {
+          pwdInput.classList.add("border-rose-400", "ring-2", "ring-rose-200");
+          pwdInput.select();
+          pwdInput.focus();
+        }
+        if (typeof showToastNotification === "function") {
+          showToastNotification("Clave de administrador inválida.", "error");
+        }
+        return false;
+      }
+    }
+    window.handleAdminPasswordSubmit = handleAdminPasswordSubmit;
+
+    function closeAdminPostulacionesModal() {
+      const modal = document.getElementById("modal-admin-postulaciones");
+      if (modal) {
+        modal.classList.add("hidden");
+        modal.classList.remove("flex");
+      }
+    }
+    window.closeAdminPostulacionesModal = closeAdminPostulacionesModal;
+
+    /**
+     * Normalizador flexible de registros provenientes de Google Sheets
+     */
+    function normalizarCandidatoPostulacion(item, idx) {
+      if (!item || typeof item !== "object") return null;
+
+      const nombre = item.Nombre || item.nombre || item["Nombre y Apellido"] || item["Nombres y apellidos"] || item.name || "Aspirante sin nombre";
+      const id = item.Código || item.codigo || item.id || item.ID || item["Código de postulación"] || ("POST-" + (idx + 1));
+      const edad = item.Edad !== undefined ? item.Edad : (item.edad !== undefined ? item.edad : "--");
+      const telefono = item.Teléfono || item.telefono || item.Telefono || item.WhatsApp || item.whatsapp || item.celular || "--";
+      const zona = item.Zona || item.zona || item.Sector || item.sector || item["Zona de residencia"] || "--";
+      const experiencia = item.Experiencia || item.experiencia || "--";
+      const disponibilidad = item.Disponibilidad || item.disponibilidad || "--";
+      const punto_partida = item["Punto de partida"] || item.punto_partida || item.puntoPartida || item.punto || "--";
+      const motivacion = item.Motivación || item.motivacion || item.Motivacion || item["Por qué te gustaría formar parte"] || "--";
+      const talento = item.Talento || item.talento || item["Talento curioso"] || "";
+      const foto = item.Foto || item.foto || item.Fotografia || item.fotografia || item.fotoNombre || "";
+      const tieneFoto = Boolean(foto && foto !== "No adjunta" && foto !== "No" && foto !== "-" && foto !== "null");
+      const estado = (item.Estado || item.estado || "recibida").toLowerCase();
+      const createdAt = item.Fecha || item.fecha || item.createdAt || item.timestamp || item["Marca temporal"] || item["Fecha de registro"] || "";
+
+      return {
+        ...item,
+        id,
+        nombre,
+        edad,
+        telefono,
+        zona,
+        experiencia,
+        disponibilidad,
+        punto_partida,
+        motivacion,
+        talento,
+        foto,
+        tieneFoto,
+        fotoNombre: typeof foto === "string" && foto.length > 0 ? (foto.length > 40 ? "Fotografía adjunta" : foto) : (tieneFoto ? "Sí" : null),
+        fotoUrl: typeof foto === "string" && (foto.startsWith("http://") || foto.startsWith("https://") || foto.startsWith("data:image/")) ? foto : null,
+        estado,
+        createdAt
+      };
+    }
+
+    /**
+     * Carga la lista de postulaciones mediante petición fetch directa a Google Apps Script
+     * Trae los datos en tiempo real desde la hoja de Google Sheets en lugar de usar localStorage
+     */
+    async function cargarPostulacionesAdmin() {
+      const listEl = document.getElementById("admin-postulaciones-list");
+      if (!listEl) return;
+
+      listEl.innerHTML = '<div class="text-center py-12 text-slate-500 text-xs space-y-3">' +
+        '<div class="w-8 h-8 border-3 border-tour-blue border-t-transparent rounded-full animate-spin mx-auto"></div>' +
+        '<p class="font-bold text-tour-navy text-sm">Consultando Google Sheets en tiempo real...</p>' +
+        '<p class="text-[11px] text-slate-400">Petición fetch directa a Google Apps Script</p>' +
+      '</div>';
+
+      try {
+        const respuesta = await fetch(URL_APPS_SCRIPT_POSTULACIONES, {
+          method: "GET",
+          headers: {
+            "Accept": "application/json"
+          }
+        });
+
+        if (!respuesta.ok) {
+          throw new Error("HTTP " + respuesta.status + ": " + respuesta.statusText);
+        }
+
+        const resultado = await respuesta.json();
+
+        let rawItems = [];
+        if (Array.isArray(resultado)) {
+          rawItems = resultado;
+        } else if (resultado && Array.isArray(resultado.data)) {
+          rawItems = resultado.data;
+        } else if (resultado && Array.isArray(resultado.postulaciones)) {
+          rawItems = resultado.postulaciones;
+        } else if (resultado && Array.isArray(resultado.candidatos)) {
+          rawItems = resultado.candidatos;
+        } else if (resultado && resultado.status === "success" && !resultado.data) {
+          rawItems = [];
+        }
+
+        const items = rawItems.map((item, idx) => normalizarCandidatoPostulacion(item, idx)).filter(Boolean);
+
+        // Ordenar por fecha descendente si la tienen
+        items.sort((a, b) => {
+          const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          return (isNaN(dateB) ? 0 : dateB) - (isNaN(dateA) ? 0 : dateA);
+        });
+
+        adminPostulacionesCache = items;
+
+        actualizarMetricasAdmin(items);
+        renderAdminPostulacionesList(items);
+
+        if (window.lucide) lucide.createIcons();
+      } catch (err) {
+        console.error("Error al cargar postulaciones desde Google Apps Script:", err);
+        listEl.innerHTML = '<div class="p-6 bg-rose-50 border border-rose-200 rounded-2xl text-center space-y-3">' +
+          '<div class="w-10 h-10 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto">' +
+            '<i data-lucide="alert-triangle" class="w-5 h-5"></i>' +
+          '</div>' +
+          '<div>' +
+            '<p class="text-xs font-bold text-rose-900">Error al consultar Google Sheets en vivo</p>' +
+            '<p class="text-[11px] text-rose-600 mt-1 max-w-md mx-auto">' + (err.message || 'No se pudo completar la petición fetch con Google Apps Script.') + '</p>' +
+          '</div>' +
+          '<button type="button" onclick="cargarPostulacionesAdmin()" class="px-4 py-2 rounded-xl bg-white hover:bg-rose-100 text-rose-700 text-xs font-bold border border-rose-200 transition cursor-pointer active:scale-95 shadow-xs">' +
+            'Reintentar conexión' +
+          '</button>' +
+        '</div>';
+        if (window.lucide) lucide.createIcons();
+      }
+    }
+    window.cargarPostulacionesAdmin = cargarPostulacionesAdmin;
+
+    function actualizarMetricasAdmin(items) {
+      const total = items.length;
+      const conFoto = items.filter(i => i.tieneFoto).length;
+      const contactadas = items.filter(i => i.estado === "contactada").length;
+      const entrevistadas = items.filter(i => i.estado === "entrevistada").length;
+
+      const elTotal = document.getElementById("metric-total-postulaciones");
+      const elFoto = document.getElementById("metric-con-foto");
+      const elCont = document.getElementById("metric-contactadas");
+      const elEnt = document.getElementById("metric-entrevistadas");
+
+      if (elTotal) elTotal.textContent = total;
+      if (elFoto) elFoto.textContent = conFoto;
+      if (elCont) elCont.textContent = contactadas;
+      if (elEnt) elEnt.textContent = entrevistadas;
+    }
+
+    function filterAdminPostulaciones(filtro) {
+      currentAdminFilter = filtro;
+      const buttons = document.querySelectorAll(".admin-filter-btn");
+      buttons.forEach(btn => {
+        btn.classList.remove("bg-tour-navy", "text-white");
+        btn.classList.add("bg-slate-100", "text-slate-700");
+      });
+      if (typeof event !== "undefined" && event && event.target && event.target.classList) {
+        event.target.classList.remove("bg-slate-100", "text-slate-700");
+        event.target.classList.add("bg-tour-navy", "text-white");
+      }
+
+      let filtered = adminPostulacionesCache;
+      if (filtro !== "todas") {
+        filtered = adminPostulacionesCache.filter(item => item.estado === filtro);
+      }
+      renderAdminPostulacionesList(filtered);
+    }
+    window.filterAdminPostulaciones = filterAdminPostulaciones;
+
+    function renderAdminPostulacionesList(items) {
+      const listEl = document.getElementById("admin-postulaciones-list");
+      if (!listEl) return;
+
+      if (items.length === 0) {
+        listEl.innerHTML = '<div class="text-center py-12 px-4 bg-slate-50 rounded-2xl border border-dashed border-slate-200 space-y-2">' +
+          '<div class="w-10 h-10 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">' +
+            '<i data-lucide="inbox" class="w-5 h-5"></i>' +
+          '</div>' +
+          '<p class="text-xs font-bold text-slate-700">No hay postulaciones registradas en esta vista.</p>' +
+          '<p class="text-[11px] text-slate-400">Los registros cargados en tiempo real desde la hoja de cálculo de Google Sheets aparecerán aquí.</p>' +
+        '</div>';
+        if (window.lucide) lucide.createIcons();
+        return;
+      }
+
+      listEl.innerHTML = items.map(post => {
+        const fechaTxt = post.createdAt ? (isNaN(new Date(post.createdAt).getTime()) ? post.createdAt : new Date(post.createdAt).toLocaleString("es-VE", { dateStyle: "short", timeStyle: "short" })) : "Fecha no registrada";
+        const statusColors = {
+          recibida: "bg-sky-100 text-tour-blue",
+          contactada: "bg-emerald-100 text-emerald-800",
+          entrevistada: "bg-amber-100 text-amber-800",
+          descartada: "bg-rose-100 text-rose-800"
+        };
+        const stBadge = statusColors[post.estado] || statusColors.recibida;
+
+        // Limpieza de teléfono para enlace directo a WhatsApp
+        const cleanTelf = String(post.telefono || "").replace(/[^0-9]/g, "");
+        const waLink = cleanTelf ? ("https://wa.me/" + (cleanTelf.startsWith("58") ? cleanTelf : ("58" + cleanTelf.replace(/^0/, "")))) : null;
+
+        return '<div class="bg-white rounded-2xl p-4 md:p-5 border border-slate-200 shadow-2xs space-y-3 transition hover:border-sky-200">' +
+          '<div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2.5">' +
+            '<div>' +
+              '<span class="font-mono text-[10px] text-slate-400 block">' + post.id + ' · ' + fechaTxt + '</span>' +
+              '<h4 class="font-title font-bold text-sm md:text-base text-tour-navy">' + (post.nombre || "Sin nombre") + '</h4>' +
+            '</div>' +
+            '<div class="flex items-center gap-2">' +
+              '<span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ' + stBadge + '">' +
+                (post.estado || "recibida") +
+              '</span>' +
+              '<select data-post-id="' + post.id + '" onchange="cambiarEstadoPostulacion(this.dataset.postId, this.value)" class="text-[11px] font-bold border border-slate-200 rounded-xl px-2 py-1 bg-slate-50 text-slate-700 cursor-pointer">' +
+                '<option value="recibida"' + (post.estado === "recibida" ? " selected" : "") + '>Recibida</option>' +
+                '<option value="contactada"' + (post.estado === "contactada" ? " selected" : "") + '>Contactada</option>' +
+                '<option value="entrevistada"' + (post.estado === "entrevistada" ? " selected" : "") + '>Entrevistada</option>' +
+                '<option value="descartada"' + (post.estado === "descartada" ? " selected" : "") + '>Descartada</option>' +
+              '</select>' +
+              '<button type="button" data-post-id="' + post.id + '" onclick="eliminarPostulacionAdmin(this.dataset.postId)" class="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer" title="Eliminar registro de la vista">' +
+                '<i data-lucide="trash-2" class="w-3.5 h-3.5"></i>' +
+              '</button>' +
+            '</div>' +
+          '</div>' +
+          '<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 text-xs text-slate-600">' +
+            '<div><strong class="text-slate-800">Edad:</strong> ' + (post.edad || "--") + '</div>' +
+            '<div><strong class="text-slate-800">Zona:</strong> ' + (post.zona || "--") + '</div>' +
+            '<div><strong class="text-slate-800">Teléfono:</strong> ' + (post.telefono || "--") + '</div>' +
+            '<div class="sm:col-span-2 md:col-span-3"><strong class="text-slate-800">Experiencia:</strong> ' + (post.experiencia || "--") + '</div>' +
+            '<div class="sm:col-span-2 md:col-span-3"><strong class="text-slate-800">Disponibilidad:</strong> ' + (post.disponibilidad || "--") + '</div>' +
+            '<div class="sm:col-span-2 md:col-span-3"><strong class="text-slate-800">Llegada a punto Barquisimeto:</strong> ' + (post.punto_partida || "--") + '</div>' +
+          '</div>' +
+          '<div class="p-3 bg-slate-50 rounded-xl border border-slate-100 text-xs space-y-1">' +
+            '<div><strong class="text-tour-navy block">Motivación y Aporte:</strong> <p class="text-slate-600 mt-0.5 whitespace-pre-line">' + (post.motivacion || "--") + '</p></div>' +
+            (post.talento && post.talento !== "No especificado" ? ('<div class="pt-1 border-t border-slate-200/60"><strong class="text-tour-blue">Talento curioso:</strong> <span class="text-slate-600">' + post.talento + '</span></div>') : "") +
+          '</div>' +
+          '<div class="flex flex-wrap items-center justify-between gap-2 pt-1">' +
+            '<div>' +
+              (post.fotoUrl ? ('<a href="' + post.fotoUrl + '" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 text-[11px] font-bold text-tour-blue bg-sky-50 hover:bg-sky-100 px-2.5 py-1 rounded-lg border border-sky-100 transition"><i data-lucide="image" class="w-3.5 h-3.5"></i><span>Ver fotografía</span></a>') : (post.tieneFoto ? ('<span class="inline-flex items-center gap-1 text-[11px] font-bold text-tour-blue bg-sky-50 px-2 py-1 rounded-lg border border-sky-100"><i data-lucide="image" class="w-3 h-3"></i><span>Foto: ' + (post.fotoNombre || "Adjunta") + '</span></span>') : '<span class="text-[11px] text-slate-400 italic">Sin fotografía adjunta</span>')) +
+            '</div>' +
+            '<div>' +
+              (waLink ? ('<a href="' + waLink + '?text=' + encodeURIComponent("¡Hola " + (post.nombre || "") + "! Te saludamos desde Tour Azul en relación a tu postulación de trabajo.") + '" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs transition active:scale-95 cursor-pointer shadow-xs"><i data-lucide="message-circle" class="w-3.5 h-3.5"></i><span>Contactar por WhatsApp</span></a>') : "") +
+            '</div>' +
+          '</div>' +
+        '</div>';
+      }).join("");
+
+      if (window.lucide) lucide.createIcons();
+    }
+
+    /**
+     * Actualiza el estado de una postulación en memoria y en la vista
+     */
+    function cambiarEstadoPostulacion(docId, nuevoEstado) {
+      const target = adminPostulacionesCache.find(p => p.id === docId);
+      if (target) {
+        target.estado = nuevoEstado;
+        target.updatedAt = new Date().toISOString();
+      }
+      actualizarMetricasAdmin(adminPostulacionesCache);
+      if (typeof showToastNotification === "function") {
+        showToastNotification("Estado actualizado a: " + nuevoEstado, "success");
+      }
+    }
+    window.cambiarEstadoPostulacion = cambiarEstadoPostulacion;
+
+    /**
+     * Elimina una postulación de la vista activa
+     */
+    function eliminarPostulacionAdmin(docId) {
+      if (!confirm("¿Deseas quitar este registro de la lista visible?")) return;
+      adminPostulacionesCache = adminPostulacionesCache.filter(p => p.id !== docId);
+      actualizarMetricasAdmin(adminPostulacionesCache);
+      filterAdminPostulaciones(currentAdminFilter);
+      if (typeof showToastNotification === "function") {
+        showToastNotification("Registro removido de la vista", "info");
+      }
+    }
+    window.eliminarPostulacionAdmin = eliminarPostulacionAdmin;
+
+    /**
+     * Descarga todas las postulaciones en formato JSON
+     */
+    function exportarPostulacionesJSON() {
+      try {
+        const raw = JSON.stringify(adminPostulacionesCache, null, 2);
+        const blob = new Blob([raw], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "postulaciones_tour_azul_" + new Date().toISOString().slice(0, 10) + ".json";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        alert("Error al exportar: " + err.message);
+      }
+    }
+    window.exportarPostulacionesJSON = exportarPostulacionesJSON;
 
 
   // Fotos retro de fachada: decorativas, no interactivas
@@ -7008,5 +7603,9 @@
       floatWa.href = `https://wa.me/${WHATSAPP_NUMERO}?text=${encodeURIComponent(defaultWaMsg)}`;
     }
   </script>
+
+  <!-- CONTENEDOR REACT PARA PANEL DE ADMINISTRACIÓN Y COMPONENTES -->
+  <div id="root"></div>
+  <script type="module" src="/src/main.tsx"></script>
 </body>
 </html>
