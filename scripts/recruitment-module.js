@@ -99,16 +99,16 @@ export const recruitmentHtmlSection = `
             <span id="recruitment-progress-text" class="font-bold text-tour-blue">0/8</span>
           </div>
 
-          <!-- Botón de Acceso Administrativo Seguro -->
+          <!-- Botón de Acceso al Panel de Candidatos -->
           <button 
             type="button" 
             id="btn-admin-postulaciones"
-            onclick="openAdminPostulacionesModal()" 
-            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-sky-50 hover:bg-sky-100 text-tour-blue text-xs font-bold transition-all border border-sky-200 cursor-pointer shadow-2xs active:scale-95"
-            title="Panel de Gestión de Postulaciones (Google Sheets)"
+            onclick="if(window.openAdminCandidatos){ window.openAdminCandidatos(); } else { window.location.hash = '#/admin-candidatos'; }" 
+            class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all border border-blue-500 cursor-pointer shadow-xs active:scale-95"
+            title="Abrir Panel de Administración de Candidatos (Google Sheets)"
           >
-            <i data-lucide="shield-check" class="w-3.5 h-3.5 text-tour-blue"></i>
-            <span class="hidden md:inline">Admin</span>
+            <i data-lucide="shield-check" class="w-3.5 h-3.5 text-white"></i>
+            <span>Panel Candidatos</span>
           </button>
         </div>
       </div>
@@ -1288,7 +1288,7 @@ export const recruitmentClientCode = `
     // =========================================================================
 
     const ADMIN_PASSWORD_EXACTA = "010203*";
-    const URL_APPS_SCRIPT_POSTULACIONES = "https://script.google.com/macros/s/AKfycbw0pYzZ6KZsypsJn0kE5dRSq8hwMnrUWeJT1TPTby5a9bFui9dkCsKDjx_GkOIq2jPtjw/exec";
+    const URL_APPS_SCRIPT_POSTULACIONES = "https://script.google.com/macros/s/AKfycbylCyLwuyD_HJ90eYYw8Fle1kAOi-b9mQGmTjrORJKv6-WJv0o1wg1N1sKhkXDpbMHEVw/exec";
 
     function getPostulacionesWebhookUrl() {
       try {
@@ -1306,8 +1306,8 @@ export const recruitmentClientCode = `
       const urlPrincipal = getPostulacionesWebhookUrl();
       const urlsAProbar = [
         urlPrincipal,
-        "https://script.google.com/macros/s/AKfycbw0pYzZ6KZsypsJn0kE5dRSq8hwMnrUWeJT1TPTby5a9bFui9dkCsKDjx_GkOIq2jPtjw/exec",
-        "https://script.google.com/macros/s/AKfycbxOxUWGF9-tfPW6DpTjR2EpUjme0qR7JX-iqL_wtKacXmcGKIMFLubPtL0KvX6XaUWbgg/exec"
+        "https://script.google.com/macros/s/AKfycbylCyLwuyD_HJ90eYYw8Fle1kAOi-b9mQGmTjrORJKv6-WJv0o1wg1N1sKhkXDpbMHEVw/exec",
+        "https://script.google.com/macros/s/AKfycbw0pYzZ6KZsypsJn0kE5dRSq8hwMnrUWeJT1TPTby5a9bFui9dkCsKDjx_GkOIq2jPtjw/exec"
       ];
       const urlsUnicas = [...new Set(urlsAProbar.filter(Boolean))];
 

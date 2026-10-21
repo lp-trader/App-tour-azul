@@ -128,8 +128,19 @@ ${retroPhotosCss}
       <!-- Acciones de Cabecera (Alineadas a la derecha, fijas sin moverse) -->
       <div class="flex items-center gap-2 shrink-0">
 ${prelaunchHeaderButtonHtml}
+        <!-- Botón de Acceso Directo al Panel de Candidatos (Admin) -->
+        <button 
+          type="button" 
+          id="btn-nav-admin-candidatos" 
+          onclick="if(window.openAdminCandidatos){ window.openAdminCandidatos(); } else { window.location.hash = '#/admin-candidatos'; }" 
+          class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 hover:bg-blue-50 text-slate-700 hover:text-blue-700 text-xs font-bold transition-all cursor-pointer shrink-0 border border-slate-200 active:scale-95"
+          title="Ver Panel de Candidatos y Postulaciones (Google Sheets)"
+        >
+          <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+          <span>🛡️ Panel Candidatos</span>
+        </button>
         <!-- Eslogan Tour Azul: Tu escapada perfecta (Oculto en móviles para evitar colisiones y que no tape nada) -->
-        <div id="header-slogan" class="hidden md:flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full bg-sky-50/90 border border-sky-200/90 shadow-2xs shrink-0">
+        <div id="header-slogan" class="hidden lg:flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full bg-sky-50/90 border border-sky-200/90 shadow-2xs shrink-0">
           <span class="text-sm sm:text-base select-none">🌴</span>
           <span class="font-script text-base sm:text-lg md:text-xl text-tour-blue font-bold tracking-wide -rotate-1 whitespace-nowrap">Tu escapada perfecta</span>
         </div>

@@ -39,7 +39,7 @@ interface AdminCandidatosProps {
   onBack?: () => void;
 }
 
-const DEFAULT_APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw0pYzZ6KZsypsJn0kE5dRSq8hwMnrUWeJT1TPTby5a9bFui9dkCsKDjx_GkOIq2jPtjw/exec";
+const DEFAULT_APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbylCyLwuyD_HJ90eYYw8Fle1kAOi-b9mQGmTjrORJKv6-WJv0o1wg1N1sKhkXDpbMHEVw/exec";
 const STORAGE_KEY_WEBHOOK = "tour_azul_webhook_postulaciones_url";
 const STORAGE_KEY_POSTULACIONES = "tour_azul_postulaciones";
 

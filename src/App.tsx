@@ -80,19 +80,21 @@ export default function App() {
 
   // Cuando está en la portada, renderizar acceso directo al panel admin sin pedir contraseñas
   return (
-    <div className="fixed bottom-5 left-5 z-40">
+    <div className="fixed bottom-5 left-5 z-50">
       <button
         type="button"
+        id="btn-flotante-admin-candidatos"
         onClick={() => {
           setIsAdminView(true);
           window.location.hash = '#/admin-candidatos';
         }}
-        className="inline-flex items-center gap-2 px-3 py-2 rounded-2xl bg-white/90 hover:bg-white text-slate-700 hover:text-blue-700 font-bold text-xs shadow-lg hover:shadow-xl border border-slate-200/90 backdrop-blur-md transition-all active:scale-95 cursor-pointer group"
-        title="Ver panel de administración de postulaciones (Google Sheets)"
+        className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-2xl bg-gradient-to-r from-blue-700 to-sky-600 hover:from-blue-800 hover:to-sky-700 text-white font-bold text-xs sm:text-sm shadow-xl hover:shadow-2xl border-2 border-white/60 backdrop-blur-md transition-all active:scale-95 cursor-pointer group"
+        title="Abrir Panel de Administración de Candidatos (Google Sheets)"
       >
-        <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 group-hover:scale-125 transition-transform"></span>
-        <span className="hidden sm:inline">Panel Candidatos (Admin)</span>
-        <span className="sm:hidden">Admin</span>
+        <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 group-hover:scale-125 transition-transform animate-pulse"></span>
+        <span className="text-sm">🛡️</span>
+        <span>Panel Candidatos</span>
+        <span className="text-[10px] bg-white/20 px-1.5 py-0.5 rounded-md font-mono hidden sm:inline">Admin</span>
       </button>
     </div>
   );
