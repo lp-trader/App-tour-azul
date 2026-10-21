@@ -38,16 +38,32 @@ const TASA_POR_DEFECTO = 45.80; // Tasa de respaldo si falla el scraping del BCV
 function doGet(e) {
   try {
     const params = e ? e.parameter : {};
-    const accion = params.accion || "tasa";
+    const accion = params.accion || "";
     const ss = SpreadsheetApp.getActiveSpreadsheet();
 
-    // 1. OBTENER TASA BCV
+    // Asegurar estructura de las hojas requeridas
+    inicializarHojasSiNoExisten(ss);
+
+    // 1. OBTENER CANDIDATOS / POSTULACIONES (Para el panel de administración)
+    // Soportado explícitamente con accion=candidatos o accion=postulaciones, o por defecto si no se indica accion
+    if (accion === "candidatos" || accion === "postulaciones" || accion === "") {
+      const candidatos = obtenerCandidatosPostulaciones(ss);
+      return jsonResponse({
+        status: "success",
+        ok: true,
+        data: candidatos,
+        postulaciones: candidatos,
+        total: candidatos.length
+      });
+    }
+
+    // 2. OBTENER TASA BCV
     if (accion === "tasa") {
       const dataTasa = obtenerOGenerarTasaBCV(ss);
       return jsonResponse({ ok: true, tasa: dataTasa.tasa, fecha: dataTasa.fecha });
     }
 
-    // 2. OBTENER ASIENTOS OCUPADOS Y BLOQUEADOS
+    // 3. OBTENER ASIENTOS OCUPADOS Y BLOQUEADOS
     if (accion === "asientos") {
       const destino = params.destino || "";
       const destinoHoja = params.destinoHoja || "";
@@ -67,7 +83,7 @@ function doGet(e) {
       });
     }
 
-    // 3. OBTENER BUSES ABIERTOS PARA UN DESTINO Y FECHA
+    // 4. OBTENER BUSES ABIERTOS PARA UN DESTINO Y FECHA
     if (accion === "buses") {
       const destino = params.destino || "";
       const fecha = params.fecha || "";
@@ -75,7 +91,7 @@ function doGet(e) {
       return jsonResponse({ ok: true, buses: buses });
     }
 
-    // 4. OBTENER COMENTARIOS APROBADOS
+    // 5. OBTENER COMENTARIOS APROBADOS
     if (accion === "comentarios") {
       const comentarios = obtenerComentariosAprobados(ss);
       return jsonResponse({ ok: true, comentarios: comentarios });
@@ -193,17 +209,34 @@ function doPost(e) {
       });
     }
 
-    // 3. REGISTRAR COMENTARIO Y OPINIÓN
+    // 3. REGISTRAR POSTULACIÓN DE CANDIDATO EN HOJA "Tour Azul Postulaciones"
+    if (accion === "postulacion" || accion === "candidato" || accion === "guardar_postulacion") {
+      return jsonResponse(guardarPostulacionEnHoja(ss, data));
+    }
+
+    // 4. OBTENER CANDIDATOS VÍA POST (Alternativa para clientes sin GET directo)
+    if (accion === "candidatos" || accion === "obtener_candidatos" || accion === "postulaciones") {
+      const candidatos = obtenerCandidatosPostulaciones(ss);
+      return jsonResponse({
+        status: "success",
+        ok: true,
+        data: candidatos,
+        postulaciones: candidatos,
+        total: candidatos.length
+      });
+    }
+
+    // 5. REGISTRAR COMENTARIO Y OPINIÓN
     if (accion === "comentario") {
       return jsonResponse(registrarComentario(ss, data));
     }
 
-    // 4. VERIFICAR ADMIN DEL SORTEO
+    // 6. VERIFICAR ADMIN DEL SORTEO
     if (accion === "sorteo_verificar_admin") {
       return jsonResponse(verificarAdminSorteo(ss, data.clave));
     }
 
-    // 5. ELEGIR GANADOR DEL SORTEO
+    // 7. ELEGIR GANADOR DEL SORTEO
     if (accion === "sorteo_ganador") {
       return jsonResponse(elegirGanadorSorteo(ss, data));
     }
@@ -825,6 +858,218 @@ function inicializarHojasSiNoExisten(ss) {
     sSorteos.getRange(1, 1, 1, hSort.length).setFontWeight("bold").setBackground("#B45309").setFontColor("#FFFFFF");
     sSorteos.setFrozenRows(1);
   }
+
+  // 8. Hoja "Tour Azul Postulaciones" (Módulo de Candidatos y Convocatoria)
+  let sPostulaciones = getHojaPostulaciones(ss);
+  if (!sPostulaciones) {
+    sPostulaciones = ss.insertSheet("Tour Azul Postulaciones");
+    const hPost = [
+      "Código", "Fecha Registro", "Nombre Completo", "Edad", "Teléfono", 
+      "Zona", "Experiencia", "Disponibilidad", "Punto de partida", 
+      "Motivación", "Talento Curioso", "Foto", "Estado"
+    ];
+    sPostulaciones.appendRow(hPost);
+    sPostulaciones.getRange(1, 1, 1, hPost.length).setFontWeight("bold").setBackground("#0B2A6B").setFontColor("#FFFFFF");
+    sPostulaciones.setFrozenRows(1);
+
+    // Formato condicional para columna Estado (Columna 13 / M)
+    const ruleRecibida = SpreadsheetApp.newConditionalFormatRule()
+      .whenTextEqualTo("Recibida")
+      .setBackground("#E0F2FE")
+      .setFontColor("#0369A1")
+      .setRanges([sPostulaciones.getRange("M2:M1000")])
+      .build();
+
+    const ruleContactada = SpreadsheetApp.newConditionalFormatRule()
+      .whenTextEqualTo("Contactada")
+      .setBackground("#DCFCE7")
+      .setFontColor("#15803D")
+      .setRanges([sPostulaciones.getRange("M2:M1000")])
+      .build();
+
+    const ruleEntrevistada = SpreadsheetApp.newConditionalFormatRule()
+      .whenTextEqualTo("Entrevistada")
+      .setBackground("#FEF3C7")
+      .setFontColor("#B45309")
+      .setRanges([sPostulaciones.getRange("M2:M1000")])
+      .build();
+
+    const ruleDescartada = SpreadsheetApp.newConditionalFormatRule()
+      .whenTextEqualTo("Descartada")
+      .setBackground("#FFE4E6")
+      .setFontColor("#BE123C")
+      .setRanges([sPostulaciones.getRange("M2:M1000")])
+      .build();
+
+    sPostulaciones.setConditionalFormatRules([ruleRecibida, ruleContactada, ruleEntrevistada, ruleDescartada]);
+  }
+}
+
+/**
+ * Busca de forma flexible la hoja de postulaciones (respetando variantes de mayúsculas/minúsculas)
+ */
+function getHojaPostulaciones(ss) {
+  let s = ss.getSheetByName("Tour Azul Postulaciones");
+  if (!s) s = ss.getSheetByName("tour azul postulaciones");
+  if (!s) s = ss.getSheetByName("Tour Azul - Postulaciones");
+  if (!s) s = ss.getSheetByName("Postulaciones");
+  if (!s) s = ss.getSheetByName("postulaciones");
+  if (!s) s = ss.getSheetByName("Candidatos");
+  return s;
+}
+
+/**
+ * Registra una postulación en la hoja "Tour Azul Postulaciones"
+ */
+function guardarPostulacionEnHoja(ss, data) {
+  inicializarHojasSiNoExisten(ss);
+  let sheet = getHojaPostulaciones(ss);
+  if (!sheet) {
+    sheet = ss.insertSheet("Tour Azul Postulaciones");
+    const h = ["Código", "Fecha Registro", "Nombre Completo", "Edad", "Teléfono", "Zona", "Experiencia", "Disponibilidad", "Punto de partida", "Motivación", "Talento Curioso", "Foto", "Estado"];
+    sheet.appendRow(h);
+    sheet.getRange(1, 1, 1, h.length).setFontWeight("bold").setBackground("#0B2A6B").setFontColor("#FFFFFF");
+    sheet.setFrozenRows(1);
+  }
+
+  const now = new Date();
+  const fechaRegistro = data.fecha || data.createdAt || Utilities.formatDate(now, Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm:ss");
+  const dateStr = Utilities.formatDate(now, Session.getScriptTimeZone(), "yyyyMMdd");
+  const nextNum = Math.max(1, sheet.getLastRow());
+  const idPostulacion = data.id || data.codigo || data.Código || `POST-${dateStr}-${pad(nextNum, 3)}`;
+
+  const nombre = data.nombre || data.Nombre || data.nombreCompleto || "Sin nombre";
+  const edad = data.edad !== undefined ? data.edad : (data.Edad !== undefined ? data.Edad : "");
+  const telefono = data.telefono || data.Teléfono || data.whatsapp || "";
+  const zona = data.zona || data.Zona || "";
+  const experiencia = data.experiencia || data.Experiencia || "";
+  const disponibilidad = data.disponibilidad || data.Disponibilidad || "";
+  const puntoPartida = data.punto_partida || data.puntoPartida || data["Punto de partida"] || "";
+  const motivacion = data.motivacion || data.Motivación || "";
+  const talento = data.talento || data.Talento || "No especificado";
+  const foto = data.foto || data.Foto || data.fotoNombre || data.fotoUrl || data.fotoBase64 || (data.tieneFoto ? "Sí adjunta" : "No adjunta");
+  const estado = data.estado || data.Estado || "Recibida";
+
+  const fila = [
+    idPostulacion,
+    fechaRegistro,
+    nombre,
+    edad,
+    telefono,
+    zona,
+    experiencia,
+    disponibilidad,
+    puntoPartida,
+    motivacion,
+    talento,
+    foto,
+    estado
+  ];
+
+  sheet.appendRow(fila);
+
+  return {
+    status: "success",
+    ok: true,
+    id: idPostulacion,
+    codigo: idPostulacion,
+    nombre: nombre,
+    mensaje: "Postulación registrada con éxito en Google Sheets (Tour Azul Postulaciones)"
+  };
+}
+
+/**
+ * Obtiene todas las postulaciones desde la hoja "Tour Azul Postulaciones"
+ */
+function obtenerCandidatosPostulaciones(ss) {
+  let sheet = getHojaPostulaciones(ss);
+  if (!sheet) {
+    inicializarHojasSiNoExisten(ss);
+    sheet = getHojaPostulaciones(ss);
+  }
+  if (!sheet) return [];
+
+  const rows = sheet.getDataRange().getValues();
+  if (rows.length <= 1) return [];
+
+  const headers = rows[0].map(h => String(h || "").trim().toLowerCase());
+
+  // Mapeador flexible de índices de columnas
+  const findIdx = (predicate, defaultIdx) => {
+    const idx = headers.findIndex(predicate);
+    return idx !== -1 ? idx : defaultIdx;
+  };
+
+  const idxCodigo = findIdx(h => h.includes("código") || h.includes("codigo") || h === "id", 0);
+  const idxFecha = findIdx(h => h.includes("fecha") || h.includes("timestamp") || h.includes("marca"), 1);
+  const idxNombre = findIdx(h => h.includes("nombre"), 2);
+  const idxEdad = findIdx(h => h.includes("edad"), 3);
+  const idxTelefono = findIdx(h => h.includes("tel") || h.includes("whatsapp") || h.includes("cel"), 4);
+  const idxZona = findIdx(h => h.includes("zona") || h.includes("sector") || h.includes("residencia"), 5);
+  const idxExp = findIdx(h => h.includes("experiencia"), 6);
+  const idxDisp = findIdx(h => h.includes("disponibilidad"), 7);
+  const idxPunto = findIdx(h => h.includes("punto"), 8);
+  const idxMotiv = findIdx(h => h.includes("motivaci") || h.includes("aporte"), 9);
+  const idxTalento = findIdx(h => h.includes("talento"), 10);
+  const idxFoto = findIdx(h => h.includes("foto") || h.includes("imagen"), 11);
+  const idxEstado = findIdx(h => h.includes("estado"), 12);
+
+  const candidatos = [];
+
+  for (let i = 1; i < rows.length; i++) {
+    const r = rows[i];
+    const nom = String(r[idxNombre] || "").trim();
+    if (!nom) continue; // Ignorar filas vacías
+
+    const cod = String(r[idxCodigo] || ("POST-" + i)).trim();
+    const fechaVal = r[idxFecha] ? (r[idxFecha] instanceof Date ? Utilities.formatDate(r[idxFecha], Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm:ss") : String(r[idxFecha])) : "";
+    const edadVal = r[idxEdad] !== undefined ? r[idxEdad] : "--";
+    const telVal = String(r[idxTelefono] || "").trim();
+    const zonVal = String(r[idxZona] || "").trim();
+    const expVal = String(r[idxExp] || "").trim();
+    const dispVal = String(r[idxDisp] || "").trim();
+    const puntoVal = String(r[idxPunto] || "").trim();
+    const motivVal = String(r[idxMotiv] || "").trim();
+    const talentoVal = String(r[idxTalento] || "").trim();
+    const fotoVal = String(r[idxFoto] || "").trim();
+    const estadoVal = String(r[idxEstado] || "Recibida").trim();
+
+    // Objeto compatible con ambas nomenclaturas (PascalCase y camelCase) para que AdminCandidatos.tsx lo lea sin problemas
+    candidatos.push({
+      id: cod,
+      Código: cod,
+      codigo: cod,
+      Fecha: fechaVal,
+      fecha: fechaVal,
+      createdAt: fechaVal,
+      Nombre: nom,
+      nombre: nom,
+      Edad: edadVal,
+      edad: edadVal,
+      Teléfono: telVal,
+      telefono: telVal,
+      Zona: zonVal,
+      zona: zonVal,
+      Experiencia: expVal,
+      experiencia: expVal,
+      Disponibilidad: dispVal,
+      disponibilidad: dispVal,
+      "Punto de partida": puntoVal,
+      punto_partida: puntoVal,
+      puntoPartida: puntoVal,
+      Motivación: motivVal,
+      motivacion: motivVal,
+      Talento: talentoVal,
+      talento: talentoVal,
+      Foto: fotoVal,
+      foto: fotoVal,
+      Estado: estadoVal,
+      estado: estadoVal
+    });
+  }
+
+  // Devolver del más reciente al más antiguo
+  return candidatos.reverse();
 }
 
 /**

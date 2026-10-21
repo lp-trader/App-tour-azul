@@ -792,6 +792,7 @@ export const recruitmentClientCode = `
       currentView: "home", // "home" | "recruitment"
       selectedPhotoFile: null,
       selectedPhotoPreviewUrl: null,
+      selectedPhotoBase64: null,
       lastValidatedFormData: null
     };
 
@@ -1027,6 +1028,17 @@ export const recruitmentClientCode = `
 
       recruitmentState.selectedPhotoFile = file;
 
+      // Leer vista previa en base64 para sincronización con Google Sheets
+      try {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          recruitmentState.selectedPhotoBase64 = e.target.result;
+        };
+        reader.readAsDataURL(file);
+      } catch (err) {
+        console.warn("Aviso al leer imagen como DataURL:", err);
+      }
+
       if (recruitmentState.selectedPhotoPreviewUrl) {
         URL.revokeObjectURL(recruitmentState.selectedPhotoPreviewUrl);
       }
@@ -1059,6 +1071,7 @@ export const recruitmentClientCode = `
       }
       recruitmentState.selectedPhotoFile = null;
       recruitmentState.selectedPhotoPreviewUrl = null;
+      recruitmentState.selectedPhotoBase64 = null;
 
       if (previewImg) previewImg.src = "";
       if (dropzone) dropzone.classList.remove("hidden");
@@ -1192,6 +1205,19 @@ export const recruitmentClientCode = `
 
       recruitmentState.lastValidatedFormData = candidateData;
 
+      // Enviar la postulación a Google Apps Script para registrarla en la hoja "Tour Azul Postulaciones"
+      try {
+        const payloadSheets = {
+          accion: "postulacion",
+          ...candidateData,
+          codigo: docId,
+          foto: recruitmentState.selectedPhotoBase64 || (recruitmentState.selectedPhotoFile ? recruitmentState.selectedPhotoFile.name : "No adjunta")
+        };
+        enviarPostulacionAGoogleSheets(payloadSheets);
+      } catch (errSheets) {
+        console.warn("Aviso al enviar a Google Sheets:", errSheets);
+      }
+
       // Proceso de guardado exitoso localmente
       if (submitBtn) submitBtn.disabled = false;
       if (submitText) submitText.textContent = "Enviar mi postulación";
@@ -1242,7 +1268,7 @@ export const recruitmentClientCode = `
 
       if (window.lucide) lucide.createIcons();
       if (typeof showToastNotification === "function") {
-        showToastNotification("¡Postulación registrada con éxito!", "success");
+        showToastNotification("¡Postulación enviada y registrada con éxito!", "success");
       }
       return true;
     }
@@ -1262,7 +1288,45 @@ export const recruitmentClientCode = `
     // =========================================================================
 
     const ADMIN_PASSWORD_EXACTA = "010203*";
-    const URL_APPS_SCRIPT_POSTULACIONES = "https://script.google.com/macros/s/AKfycbxOxUWGF9-tfPW6DpTjR2EpUjme0qR7JX-iqL_wtKacXmcGKIMFLubPtL0KvX6XaUWbgg/exec";
+    const URL_APPS_SCRIPT_POSTULACIONES = "https://script.google.com/macros/s/AKfycbw0pYzZ6KZsypsJn0kE5dRSq8hwMnrUWeJT1TPTby5a9bFui9dkCsKDjx_GkOIq2jPtjw/exec";
+
+    function getPostulacionesWebhookUrl() {
+      try {
+        const custom = localStorage.getItem("tour_azul_webhook_postulaciones_url");
+        if (custom && custom.startsWith("http")) return custom.trim();
+      } catch (_) {}
+      return URL_APPS_SCRIPT_POSTULACIONES;
+    }
+    window.getPostulacionesWebhookUrl = getPostulacionesWebhookUrl;
+
+    /**
+     * Envía de forma asíncrona la postulación a Google Apps Script para guardarla en la hoja "Tour Azul Postulaciones"
+     */
+    async function enviarPostulacionAGoogleSheets(data) {
+      const urlPrincipal = getPostulacionesWebhookUrl();
+      const urlsAProbar = [
+        urlPrincipal,
+        "https://script.google.com/macros/s/AKfycbw0pYzZ6KZsypsJn0kE5dRSq8hwMnrUWeJT1TPTby5a9bFui9dkCsKDjx_GkOIq2jPtjw/exec",
+        "https://script.google.com/macros/s/AKfycbxOxUWGF9-tfPW6DpTjR2EpUjme0qR7JX-iqL_wtKacXmcGKIMFLubPtL0KvX6XaUWbgg/exec"
+      ];
+      const urlsUnicas = [...new Set(urlsAProbar.filter(Boolean))];
+
+      for (const targetUrl of urlsUnicas) {
+        try {
+          await fetch(targetUrl, {
+            method: "POST",
+            headers: { "Content-Type": "text/plain;charset=utf-8" },
+            body: JSON.stringify(data),
+            redirect: "follow"
+          });
+          console.log("Postulación guardada exitosamente en Google Sheets:", targetUrl);
+          break;
+        } catch (err) {
+          console.warn("Aviso al enviar a", targetUrl, ":", err);
+        }
+      }
+    }
+    window.enviarPostulacionAGoogleSheets = enviarPostulacionAGoogleSheets;
 
     function getRecruitmentPasswordInput() {
       return document.getElementById("recruitment-admin-password-input") || document.getElementById("admin-password-input");
@@ -1454,15 +1518,27 @@ export const recruitmentClientCode = `
       listEl.innerHTML = '<div class="text-center py-12 text-slate-500 text-xs space-y-3">' +
         '<div class="w-8 h-8 border-3 border-tour-blue border-t-transparent rounded-full animate-spin mx-auto"></div>' +
         '<p class="font-bold text-tour-navy text-sm">Consultando Google Sheets en tiempo real...</p>' +
-        '<p class="text-[11px] text-slate-400">Petición fetch directa a Google Apps Script</p>' +
+        '<p class="text-[11px] text-slate-400">Petición fetch directa a Google Apps Script (Hoja: Tour Azul Postulaciones)</p>' +
       '</div>';
 
+      // 1. Obtener postulaciones locales como respaldo base
+      let localItems = [];
       try {
-        const respuesta = await fetch(URL_APPS_SCRIPT_POSTULACIONES, {
+        const rawLocal = localStorage.getItem(STORAGE_KEY_POSTULACIONES);
+        if (rawLocal) {
+          const parsed = JSON.parse(rawLocal);
+          if (Array.isArray(parsed)) localItems = parsed;
+        }
+      } catch (_) {}
+
+      try {
+        const baseUrl = getPostulacionesWebhookUrl();
+        const separator = baseUrl.includes("?") ? "&" : "?";
+        const fetchUrl = baseUrl + separator + "accion=candidatos&_t=" + Date.now();
+
+        const respuesta = await fetch(fetchUrl, {
           method: "GET",
-          headers: {
-            "Accept": "application/json"
-          }
+          headers: { "Accept": "application/json" }
         });
 
         if (!respuesta.ok) {
@@ -1484,9 +1560,18 @@ export const recruitmentClientCode = `
           rawItems = [];
         }
 
-        const items = rawItems.map((item, idx) => normalizarCandidatoPostulacion(item, idx)).filter(Boolean);
+        const remoteNormalized = rawItems.map((item, idx) => normalizarCandidatoPostulacion(item, idx)).filter(Boolean);
 
-        // Ordenar por fecha descendente si la tienen
+        // Fusionar con locales que no estén todavía en Sheets
+        const idsRemotos = new Set(remoteNormalized.map(r => String(r.id || r.codigo || "").toLowerCase()));
+        const localesPendientes = localItems
+          .map((item, idx) => normalizarCandidatoPostulacion(item, idx))
+          .filter(Boolean)
+          .filter(l => !idsRemotos.has(String(l.id || l.codigo || "").toLowerCase()));
+
+        const items = [...localesPendientes, ...remoteNormalized];
+
+        // Ordenar por fecha descendente
         items.sort((a, b) => {
           const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
           const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
@@ -1494,25 +1579,35 @@ export const recruitmentClientCode = `
         });
 
         adminPostulacionesCache = items;
-
         actualizarMetricasAdmin(items);
         renderAdminPostulacionesList(items);
 
         if (window.lucide) lucide.createIcons();
       } catch (err) {
-        console.error("Error al cargar postulaciones desde Google Apps Script:", err);
-        listEl.innerHTML = '<div class="p-6 bg-rose-50 border border-rose-200 rounded-2xl text-center space-y-3">' +
-          '<div class="w-10 h-10 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto">' +
-            '<i data-lucide="alert-triangle" class="w-5 h-5"></i>' +
-          '</div>' +
-          '<div>' +
-            '<p class="text-xs font-bold text-rose-900">Error al consultar Google Sheets en vivo</p>' +
-            '<p class="text-[11px] text-rose-600 mt-1 max-w-md mx-auto">' + (err.message || 'No se pudo completar la petición fetch con Google Apps Script.') + '</p>' +
-          '</div>' +
-          '<button type="button" onclick="cargarPostulacionesAdmin()" class="px-4 py-2 rounded-xl bg-white hover:bg-rose-100 text-rose-700 text-xs font-bold border border-rose-200 transition cursor-pointer active:scale-95 shadow-xs">' +
-            'Reintentar conexión' +
-          '</button>' +
-        '</div>';
+        console.warn("Fallo temporal al conectar con Google Apps Script, mostrando registros guardados localmente:", err);
+
+        if (localItems.length > 0) {
+          const items = localItems.map((item, idx) => normalizarCandidatoPostulacion(item, idx)).filter(Boolean);
+          adminPostulacionesCache = items;
+          actualizarMetricasAdmin(items);
+          renderAdminPostulacionesList(items);
+          if (typeof showToastNotification === "function") {
+            showToastNotification("Mostrando " + items.length + " postulaciones guardadas localmente.", "info");
+          }
+        } else {
+          listEl.innerHTML = '<div class="p-6 bg-amber-50 border border-amber-200 rounded-2xl text-center space-y-3">' +
+            '<div class="w-10 h-10 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center mx-auto">' +
+              '<i data-lucide="alert-triangle" class="w-5 h-5"></i>' +
+            '</div>' +
+            '<div>' +
+              '<p class="text-xs font-bold text-amber-900">No se pudieron cargar postulaciones remotas</p>' +
+              '<p class="text-[11px] text-amber-700 mt-1 max-w-md mx-auto">' + (err.message || 'Error de conexión con el Webhook de Google Apps Script.') + '</p>' +
+            '</div>' +
+            '<button type="button" onclick="cargarPostulacionesAdmin()" class="px-4 py-2 rounded-xl bg-white hover:bg-amber-100 text-amber-800 text-xs font-bold border border-amber-200 transition cursor-pointer active:scale-95 shadow-xs">' +
+              'Reintentar conexión' +
+            '</button>' +
+          '</div>';
+        }
         if (window.lucide) lucide.createIcons();
       }
     }
