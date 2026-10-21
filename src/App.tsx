@@ -78,18 +78,14 @@ export default function App() {
     return <AdminCandidatos onBack={handleCloseAdmin} />;
   }
 
-  // Cuando está en la portada, renderizar acceso directo discreto al panel admin
+  // Cuando está en la portada, renderizar acceso directo al panel admin sin pedir contraseñas
   return (
     <div className="fixed bottom-5 left-5 z-40">
       <button
         type="button"
         onClick={() => {
-          if (typeof (window as any).openAdminPostulacionesModal === 'function') {
-            (window as any).openAdminPostulacionesModal();
-          } else {
-            setIsAdminView(true);
-            window.location.hash = '#/admin-candidatos';
-          }
+          setIsAdminView(true);
+          window.location.hash = '#/admin-candidatos';
         }}
         className="inline-flex items-center gap-2 px-3 py-2 rounded-2xl bg-white/90 hover:bg-white text-slate-700 hover:text-blue-700 font-bold text-xs shadow-lg hover:shadow-xl border border-slate-200/90 backdrop-blur-md transition-all active:scale-95 cursor-pointer group"
         title="Ver panel de administración de postulaciones (Google Sheets)"

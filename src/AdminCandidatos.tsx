@@ -31,12 +31,8 @@ interface AdminCandidatosProps {
 }
 
 export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack }) => {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-    return sessionStorage.getItem("tour_azul_admin_auth") === "true";
-  });
-  const [passwordInput, setPasswordInput] = useState<string>('');
-  const [showPassword, setShowPassword] = useState<boolean>(false);
-  const [authError, setAuthError] = useState<string | null>(null);
+  // Autenticación forzada en true para entrar sin contraseña por ahora
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(true);
 
   const [candidatos, setCandidatos] = useState<Candidato[]>([]);
   const [cargando, setCargando] = useState<boolean>(true);
@@ -128,80 +124,6 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack }) => {
       window.location.hash = '';
     }
   };
-
-  const handleAuthSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const entered = (passwordInput || "").trim();
-
-    if (entered === "0102" || entered === "010203*") {
-      sessionStorage.setItem("tour_azul_admin_auth", "true");
-      setIsAuthenticated(true);
-      setAuthError(null);
-    } else {
-      setAuthError("Contraseña inválida. Por favor, verifica la clave e inténtalo de nuevo");
-    }
-  };
-
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-        <div className="relative w-full max-w-sm bg-white rounded-3xl p-6 sm:p-7 shadow-2xl border border-sky-100 text-center animate-float">
-          <div className="w-12 h-12 rounded-2xl bg-sky-50 text-blue-700 border border-sky-200/80 flex items-center justify-center mx-auto mb-3 shadow-inner text-xl">
-            🛡️
-          </div>
-          <h3 className="text-lg font-black uppercase text-slate-900 tracking-tight">Acceso Administrador</h3>
-          <p className="text-xs text-slate-500 mt-1 mb-5">Ingresa la clave de administrador para consultar las postulaciones en tiempo real.</p>
-          <form onSubmit={handleAuthSubmit} className="space-y-4">
-            <div className="text-left space-y-1.5">
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600">Contraseña requerida</label>
-              <div className="relative">
-                <input
-                  type={showPassword ? "text" : "password"}
-                  value={passwordInput}
-                  onChange={(e) => {
-                    setPasswordInput(e.target.value);
-                    setAuthError(null);
-                  }}
-                  placeholder="Ingresa la clave (0102)"
-                  className="w-full px-4 py-2.5 pr-10 rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600 text-xs md:text-sm text-slate-800 transition bg-slate-50/50 focus:bg-white font-mono"
-                  autoFocus
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 cursor-pointer transition text-xs select-none"
-                  title="Mostrar / Ocultar clave"
-                >
-                  {showPassword ? "🙈" : "👁️"}
-                </button>
-              </div>
-              {authError && (
-                <div className="mt-2 p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center gap-2">
-                  <span>⚠️</span>
-                  <span>{authError}</span>
-                </div>
-              )}
-            </div>
-            <div className="flex items-center gap-2 pt-1">
-              <button
-                type="button"
-                onClick={handleVolver}
-                className="flex-1 py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition active:scale-95 cursor-pointer"
-              >
-                Volver
-              </button>
-              <button
-                type="submit"
-                className="flex-1 py-2.5 px-4 rounded-xl bg-gradient-to-r from-blue-700 to-indigo-900 hover:opacity-95 text-white text-xs font-black uppercase tracking-wider shadow-md transition active:scale-95 cursor-pointer"
-              >
-                Ingresar
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-slate-100 text-slate-800 p-4 sm:p-6 md:p-8 font-sans antialiased">
