@@ -1,0 +1,19 @@
+[
+  {
+    "nombre": "Luis Perera Prueba",
+    "edad": 29,
+    "telefono": "0412-1234567",
+    "zona": "Cabudare",
+    "experiencia": "Sí, tengo experiencia.",
+    "disponibilidad": "Sí, tengo disponibilidad.",
+    "punto_partida": "Sí, sin inconvenientes.",
+    "motivacion": "Postulación de prueba multi-dispositivo para Tour Azul.",
+    "talento": "Organización turística",
+    "id": "POST-20261021-3511",
+    "codigo": "POST-20261021-3511",
+    "createdAt": "2026-10-21T23:27:39.897Z",
+    "fecha": "21/10/2026, 11:27:39 p. m.",
+    "syncedToSheets": true,
+    "_origen": "server"
+  }
+]

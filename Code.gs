@@ -906,29 +906,55 @@ function inicializarHojasSiNoExisten(ss) {
 }
 
 /**
- * Busca de forma flexible la hoja de postulaciones (respetando variantes de mayúsculas/minúsculas)
+ * Busca de forma flexible la hoja de postulaciones dentro de la hoja de cálculo "Registro Tour Azul"
  */
 function getHojaPostulaciones(ss) {
-  let s = ss.getSheetByName("Tour Azul Postulaciones");
-  if (!s) s = ss.getSheetByName("tour azul postulaciones");
-  if (!s) s = ss.getSheetByName("Tour Azul - Postulaciones");
-  if (!s) s = ss.getSheetByName("Postulaciones");
-  if (!s) s = ss.getSheetByName("postulaciones");
-  if (!s) s = ss.getSheetByName("Candidatos");
-  return s;
+  // 1. Variantes de nombres comunes
+  const variantes = [
+    "Tour Azul Postulaciones",
+    "Tour Azul - Postulaciones",
+    "tour azul postulaciones",
+    "Tour azul postulaciones",
+    "Postulaciones Tour Azul",
+    "Postulaciones",
+    "postulaciones",
+    "Candidatos",
+    "candidatos"
+  ];
+  for (let i = 0; i < variantes.length; i++) {
+    const s = ss.getSheetByName(variantes[i]);
+    if (s) return s;
+  }
+  // 2. Búsqueda insensible a mayúsculas y espacios
+  const sheets = ss.getSheets();
+  for (let j = 0; j < sheets.length; j++) {
+    const name = sheets[j].getName().trim().toLowerCase();
+    if (name.includes("postulaci") || name.includes("candidat")) {
+      return sheets[j];
+    }
+  }
+  return null;
 }
 
 /**
  * Registra una postulación en la hoja "Tour Azul Postulaciones"
  */
 function guardarPostulacionEnHoja(ss, data) {
-  inicializarHojasSiNoExisten(ss);
   let sheet = getHojaPostulaciones(ss);
   if (!sheet) {
     sheet = ss.insertSheet("Tour Azul Postulaciones");
-    const h = ["Código", "Fecha Registro", "Nombre Completo", "Edad", "Teléfono", "Zona", "Experiencia", "Disponibilidad", "Punto de partida", "Motivación", "Talento Curioso", "Foto", "Estado"];
-    sheet.appendRow(h);
-    sheet.getRange(1, 1, 1, h.length).setFontWeight("bold").setBackground("#0B2A6B").setFontColor("#FFFFFF");
+  }
+
+  const hDefault = [
+    "Código", "Fecha Registro", "Nombre Completo", "Edad", "Teléfono", 
+    "Zona", "Experiencia", "Disponibilidad", "Punto de partida", 
+    "Motivación", "Talento Curioso", "Foto", "Estado"
+  ];
+
+  // Si la hoja está totalmente vacía, insertar cabecera oficial
+  if (sheet.getLastRow() === 0) {
+    sheet.appendRow(hDefault);
+    sheet.getRange(1, 1, 1, hDefault.length).setFontWeight("bold").setBackground("#0B2A6B").setFontColor("#FFFFFF");
     sheet.setFrozenRows(1);
   }
 
@@ -947,26 +973,58 @@ function guardarPostulacionEnHoja(ss, data) {
   const puntoPartida = data.punto_partida || data.puntoPartida || data["Punto de partida"] || "";
   const motivacion = data.motivacion || data.Motivación || "";
   const talento = data.talento || data.Talento || "No especificado";
-  const foto = data.foto || data.Foto || data.fotoNombre || data.fotoUrl || data.fotoBase64 || (data.tieneFoto ? "Sí adjunta" : "No adjunta");
+
+  // SANITIZACIÓN DE FOTO: NUNCA insertar cadenas base64 gigantes que superen el límite de 50.000 caracteres de Google Sheets
+  let foto = data.foto || data.Foto || data.fotoNombre || data.fotoUrl || (data.tieneFoto ? "Sí adjunta" : "No adjunta");
+  if (typeof foto === "string" && foto.length > 500) {
+    foto = data.fotoNombre ? ("Sí adjunta (" + data.fotoNombre + ")") : "Sí adjunta (imagen seleccionada)";
+  }
   const estado = data.estado || data.Estado || "Recibida";
 
-  const fila = [
-    idPostulacion,
-    fechaRegistro,
-    nombre,
-    edad,
-    telefono,
-    zona,
-    experiencia,
-    disponibilidad,
-    puntoPartida,
-    motivacion,
-    talento,
-    foto,
-    estado
-  ];
+  // Mapear según cabeceras existentes si las hay
+  const lastCol = Math.max(1, sheet.getLastColumn());
+  const headerValues = sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(h => String(h || "").trim().toLowerCase());
 
-  sheet.appendRow(fila);
+  // Si tiene cabeceras reconocibles, armar fila ordenada para las columnas existentes
+  if (headerValues.some(h => h.includes("nombre") || h.includes("código") || h.includes("codigo") || h.includes("tel"))) {
+    const filaDinamica = [];
+    for (let c = 0; c < headerValues.length; c++) {
+      const h = headerValues[c];
+      if (h.includes("código") || h.includes("codigo") || h === "id") filaDinamica.push(idPostulacion);
+      else if (h.includes("fecha") || h.includes("timestamp") || h.includes("marca")) filaDinamica.push(fechaRegistro);
+      else if (h.includes("nombre")) filaDinamica.push(nombre);
+      else if (h.includes("edad")) filaDinamica.push(edad);
+      else if (h.includes("tel") || h.includes("whatsapp") || h.includes("cel")) filaDinamica.push(telefono);
+      else if (h.includes("zona") || h.includes("sector") || h.includes("residencia")) filaDinamica.push(zona);
+      else if (h.includes("experiencia")) filaDinamica.push(experiencia);
+      else if (h.includes("disponibilidad")) filaDinamica.push(disponibilidad);
+      else if (h.includes("partida") || h.includes("punto")) filaDinamica.push(puntoPartida);
+      else if (h.includes("motivaci") || h.includes("aporte")) filaDinamica.push(motivacion);
+      else if (h.includes("talento")) filaDinamica.push(talento);
+      else if (h.includes("foto") || h.includes("imagen")) filaDinamica.push(foto);
+      else if (h.includes("estado")) filaDinamica.push(estado);
+      else filaDinamica.push("");
+    }
+    sheet.appendRow(filaDinamica);
+  } else {
+    // Fila estándar por defecto
+    const fila = [
+      idPostulacion,
+      fechaRegistro,
+      nombre,
+      edad,
+      telefono,
+      zona,
+      experiencia,
+      disponibilidad,
+      puntoPartida,
+      motivacion,
+      talento,
+      foto,
+      estado
+    ];
+    sheet.appendRow(fila);
+  }
 
   return {
     status: "success",
@@ -1257,7 +1315,7 @@ function getClaveAdminConfig(ss) {
       return String(vals[2][0]).trim();
     }
   }
-  return "touradmin2026"; // Clave por defecto si no está configurada en la hoja Config
+  return "010203"; // Clave oficial del administrador (010203)
 }
 
 function obtenerParticipantesSorteoMes(ss) {

@@ -620,7 +620,7 @@ export const recruitmentModalsHtml = `
               type="password" 
               id="recruitment-admin-password-input" 
               name="recruitment-admin-password" 
-              placeholder="Ingresa la clave (010203*)" 
+              placeholder="Ingresa la clave (010203)" 
               autocomplete="current-password"
               oninput="document.getElementById('admin-password-error').classList.add('hidden'); this.classList.remove('border-rose-400', 'ring-2', 'ring-rose-200');"
               class="w-full px-4 py-2.5 pr-10 rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-tour-blue text-xs md:text-sm text-slate-800 transition bg-slate-50/50 focus:bg-white font-mono"
@@ -1205,13 +1205,28 @@ export const recruitmentClientCode = `
 
       recruitmentState.lastValidatedFormData = candidateData;
 
-      // Enviar la postulación a Google Apps Script para registrarla en la hoja "Tour Azul Postulaciones"
+      // 1. Enviar la postulación al servidor central (/api/candidatos) para que esté visible en TODOS los dispositivos
+      try {
+        fetch("/api/candidatos", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(candidateData)
+        }).then(res => res.json()).then(resData => {
+          console.log("Postulación guardada en servidor central:", resData);
+        }).catch(errApi => {
+          console.warn("Aviso servidor central:", errApi);
+        });
+      } catch (errApiGlobal) {
+        console.warn("Error enviando a /api/candidatos:", errApiGlobal);
+      }
+
+      // 2. Reenviar de respaldo directo a Google Apps Script para la hoja "Tour Azul Postulaciones"
       try {
         const payloadSheets = {
           accion: "postulacion",
           ...candidateData,
           codigo: docId,
-          foto: recruitmentState.selectedPhotoBase64 || (recruitmentState.selectedPhotoFile ? recruitmentState.selectedPhotoFile.name : "No adjunta")
+          foto: candidateData.tieneFoto ? (candidateData.fotoNombre ? ("Sí (" + candidateData.fotoNombre + ")") : "Sí adjunta") : "No adjunta"
         };
         enviarPostulacionAGoogleSheets(payloadSheets);
       } catch (errSheets) {
@@ -1284,10 +1299,10 @@ export const recruitmentClientCode = `
     window.closeRecruitmentSuccessModal = closeRecruitmentSuccessModal;
 
     // =========================================================================
-    // PANEL ADMINISTRATIVO CON CONTRASEÑA Y CONEXIÓN EN VIVO A GOOGLE SHEETS
+    // PANEL ADMINISTRATIVO CON CONTRASEÑA OFICIAL (010203)
     // =========================================================================
 
-    const ADMIN_PASSWORD_EXACTA = "010203*";
+    const ADMIN_PASSWORD_EXACTA = "010203";
     const URL_APPS_SCRIPT_POSTULACIONES = "https://script.google.com/macros/s/AKfycbylCyLwuyD_HJ90eYYw8Fle1kAOi-b9mQGmTjrORJKv6-WJv0o1wg1N1sKhkXDpbMHEVw/exec";
 
     function getPostulacionesWebhookUrl() {
@@ -1304,26 +1319,18 @@ export const recruitmentClientCode = `
      */
     async function enviarPostulacionAGoogleSheets(data) {
       const urlPrincipal = getPostulacionesWebhookUrl();
-      const urlsAProbar = [
-        urlPrincipal,
-        "https://script.google.com/macros/s/AKfycbylCyLwuyD_HJ90eYYw8Fle1kAOi-b9mQGmTjrORJKv6-WJv0o1wg1N1sKhkXDpbMHEVw/exec",
-        "https://script.google.com/macros/s/AKfycbw0pYzZ6KZsypsJn0kE5dRSq8hwMnrUWeJT1TPTby5a9bFui9dkCsKDjx_GkOIq2jPtjw/exec"
-      ];
-      const urlsUnicas = [...new Set(urlsAProbar.filter(Boolean))];
+      if (!urlPrincipal || !urlPrincipal.startsWith("http")) return;
 
-      for (const targetUrl of urlsUnicas) {
-        try {
-          await fetch(targetUrl, {
-            method: "POST",
-            headers: { "Content-Type": "text/plain;charset=utf-8" },
-            body: JSON.stringify(data),
-            redirect: "follow"
-          });
-          console.log("Postulación guardada exitosamente en Google Sheets:", targetUrl);
-          break;
-        } catch (err) {
-          console.warn("Aviso al enviar a", targetUrl, ":", err);
-        }
+      try {
+        await fetch(urlPrincipal, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify(data),
+          redirect: "follow"
+        });
+        console.log("Postulación guardada exitosamente en Google Sheets:", urlPrincipal);
+      } catch (err) {
+        console.warn("Aviso al enviar a Google Sheets:", err);
       }
     }
     window.enviarPostulacionAGoogleSheets = enviarPostulacionAGoogleSheets;
@@ -1336,6 +1343,16 @@ export const recruitmentClientCode = `
      * Despliega el formulario flotante y centrado solicitando la contraseña de administrador
      */
     function openAdminPostulacionesModal() {
+      // Si ya está autenticado en la sesión actual con la clave 010203, abrir directamente el panel
+      if (sessionStorage.getItem("tour_azul_admin_auth") === "010203") {
+        if (window.openAdminCandidatos) {
+          window.openAdminCandidatos();
+        } else {
+          window.location.hash = "#/admin-candidatos";
+        }
+        return;
+      }
+
       const authModal = document.getElementById("modal-admin-auth");
       if (authModal) {
         authModal.classList.remove("hidden");
@@ -1396,8 +1413,7 @@ export const recruitmentClientCode = `
     window.toggleAdminPasswordVisibility = toggleAdminPasswordVisibility;
 
     /**
-     * Valida la contraseña de administrador. Si es 010203*, abre el modal de postulaciones.
-     * Si es incorrecta, muestra alerta / mensaje de error indicando clave inválida.
+     * Valida la contraseña de administrador (010203). Si es correcta, abre el panel.
      */
     function handleAdminPasswordSubmit(event) {
       if (event && event.preventDefault) event.preventDefault();
@@ -1408,8 +1424,8 @@ export const recruitmentClientCode = `
       const rawPassword = pwdInput ? (pwdInput.value || "") : "";
       const password = rawPassword.trim();
 
-      // Comprobación de la clave oficial: 010203* (y variante común 010203)
-      const esClaveCorrecta = (password === ADMIN_PASSWORD_EXACTA || password === "010203" || rawPassword === ADMIN_PASSWORD_EXACTA);
+      // Comprobación exacta de la clave de administrador: 010203
+      const esClaveCorrecta = (password === "010203");
 
       if (esClaveCorrecta) {
         // Contraseña correcta: cerramos el cuadro de contraseña
@@ -1417,31 +1433,28 @@ export const recruitmentClientCode = `
 
         // Guardar sesión para navegación fluida
         try {
-          sessionStorage.setItem("tour_azul_admin_auth", "true");
+          sessionStorage.setItem("tour_azul_admin_auth", "010203");
         } catch (e) {}
 
-        // Abrimos el modal con la lista de postulaciones
-        const modalPostulaciones = document.getElementById("modal-admin-postulaciones");
-        if (modalPostulaciones) {
-          modalPostulaciones.classList.remove("hidden");
-          modalPostulaciones.classList.add("flex");
+        // Abrir panel React de Administración de Candidatos
+        if (window.openAdminCandidatos) {
+          window.openAdminCandidatos();
+        } else {
+          window.location.hash = "#/admin-candidatos";
         }
-
-        // Cargar registros en tiempo real desde Google Apps Script
-        cargarPostulacionesAdmin();
 
         if (window.lucide) lucide.createIcons();
         if (typeof showToastNotification === "function") {
-          showToastNotification("Contraseña correcta. Conectando con Google Sheets...", "success");
+          showToastNotification("Contraseña correcta. Acceso concedido al Administrador.", "success");
         }
         return false;
       } else {
-        // Contraseña inválida: mostrar alerta o mensaje de error visible
+        // Contraseña inválida: mostrar alerta
         if (errBox) {
           errBox.classList.remove("hidden");
         }
         if (errText) {
-          errText.textContent = "Contraseña inválida. Por favor, verifica la clave e inténtalo de nuevo.";
+          errText.textContent = "Clave de administrador incorrecta. Solo el administrador tiene acceso.";
         }
         if (pwdInput) {
           pwdInput.classList.add("border-rose-400", "ring-2", "ring-rose-200");

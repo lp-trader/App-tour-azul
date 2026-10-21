@@ -30,20 +30,22 @@ export interface Candidato {
   Fecha?: string;
   fecha?: string;
   createdAt?: string;
-  _origen?: 'sheets' | 'local';
+  syncedToSheets?: boolean;
+  _origen?: 'server' | 'sheets' | 'local';
   _isLocalOnly?: boolean;
   [key: string]: any;
 }
 
 interface AdminCandidatosProps {
   onBack?: () => void;
+  onLogout?: () => void;
 }
 
-const DEFAULT_APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbylCyLwuyD_HJ90eYYw8Fle1kAOi-b9mQGmTjrORJKv6-WJv0o1wg1N1sKhkXDpbMHEVw/exec";
 const STORAGE_KEY_WEBHOOK = "tour_azul_webhook_postulaciones_url";
 const STORAGE_KEY_POSTULACIONES = "tour_azul_postulaciones";
+const DEFAULT_URL = "https://script.google.com/macros/s/AKfycbylCyLwuyD_HJ90eYYw8Fle1kAOi-b9mQGmTjrORJKv6-WJv0o1wg1N1sKhkXDpbMHEVw/exec";
 
-export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack }) => {
+export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack, onLogout }) => {
   const [candidatos, setCandidatos] = useState<Candidato[]>([]);
   const [cargando, setCargando] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -52,21 +54,25 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack }) => {
   const [busqueda, setBusqueda] = useState<string>('');
   const [filtroDisponibilidad, setFiltroDisponibilidad] = useState<string>('todos');
 
-  // Configuración de URL de Google Apps Script
+  // Configuración de Webhook de Google Apps Script
   const [scriptUrl, setScriptUrl] = useState<string>(() => {
-    return localStorage.getItem(STORAGE_KEY_WEBHOOK) || DEFAULT_APPS_SCRIPT_URL;
+    return localStorage.getItem(STORAGE_KEY_WEBHOOK) || DEFAULT_URL;
   });
+  const [sheetName, setSheetName] = useState<string>("Tour Azul Postulaciones");
+  const [spreadsheetName, setSpreadsheetName] = useState<string>("Registro Tour Azul");
   const [mostrarConfigUrl, setMostrarConfigUrl] = useState<boolean>(false);
+  const [mostrarGuiaCodeGs, setMostrarGuiaCodeGs] = useState<boolean>(false);
   const [inputUrl, setInputUrl] = useState<string>(scriptUrl);
   const [probandoConexion, setProbandoConexion] = useState<boolean>(false);
   const [resultadoTest, setResultadoTest] = useState<{ ok: boolean; msg: string } | null>(null);
-  const [sincronizandoLocales, setSincronizandoLocales] = useState<boolean>(false);
+  const [sincronizando, setSincronizando] = useState<boolean>(false);
+  const [copiadoCodeGs, setCopiadoCodeGs] = useState<boolean>(false);
 
-  // Normalizadores de campos para soportar variaciones de claves
+  // Normalizadores de campos
   const getNombre = (c: Candidato) => c.Nombre || c.nombre || "Sin nombre";
   const getCodigo = (c: Candidato) => c.Código || c.codigo || c.id || "S/C";
   const getFoto = (c: Candidato) => c.Foto || c.foto || "";
-  const getEdad = (c: Candidato) => c.Edad || c.edad || "--";
+  const getEdad = (c: Candidato) => c.Edad !== undefined ? c.Edad : (c.edad !== undefined ? c.edad : "--");
   const getZona = (c: Candidato) => c.Zona || c.zona || "No especificada";
   const getTelefono = (c: Candidato) => c.Teléfono || c.telefono || "--";
   const getDisponibilidad = (c: Candidato) => c.Disponibilidad || c.disponibilidad || "No indicada";
@@ -77,103 +83,82 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack }) => {
   const getEstado = (c: Candidato) => c.Estado || c.estado || "Recibida";
   const getFecha = (c: Candidato) => c.Fecha || c.fecha || c.createdAt || "";
 
-  // Lee postulaciones que hayan sido llenadas localmente en este navegador
-  const obtenerPostulacionesLocales = (): Candidato[] => {
+  // 1. Cargar configuración del servidor central
+  const cargarConfiguracionServidor = async () => {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY_POSTULACIONES);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) {
-          return parsed.map((item: any, idx: number) => ({
-            ...item,
-            id: item.id || item.codigo || `LOCAL-${idx + 1}`,
-            codigo: item.codigo || item.id || `LOCAL-${idx + 1}`,
-            _origen: 'local',
-            _isLocalOnly: true
-          }));
+      const res = await fetch('/api/config');
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.config) {
+          if (data.config.webhookUrl) {
+            setScriptUrl(data.config.webhookUrl);
+            setInputUrl(data.config.webhookUrl);
+            localStorage.setItem(STORAGE_KEY_WEBHOOK, data.config.webhookUrl);
+          }
+          if (data.config.sheetName) setSheetName(data.config.sheetName);
+          if (data.config.spreadsheetName) setSpreadsheetName(data.config.spreadsheetName);
         }
       }
-    } catch (e) {
-      console.warn("Aviso al leer postulaciones locales:", e);
+    } catch (err) {
+      console.warn("Aviso al obtener /api/config:", err);
     }
-    return [];
   };
 
+  // 2. Cargar candidatos desde el servidor central (reúne registros de TODOS los dispositivos)
   const cargarCandidatos = async () => {
     setCargando(true);
     setError(null);
     setAlertaInfo(null);
 
-    const locales = obtenerPostulacionesLocales();
-
     try {
-      const urlAUsar = (localStorage.getItem(STORAGE_KEY_WEBHOOK) || scriptUrl).trim();
-      const separador = urlAUsar.includes('?') ? '&' : '?';
-      const fetchUrl = `${urlAUsar}${separador}accion=candidatos&_t=${Date.now()}`;
-
-      const respuesta = await fetch(fetchUrl, {
-        method: "GET",
-        headers: { "Accept": "application/json" }
-      });
-
-      if (!respuesta.ok) {
-        throw new Error(`Respuesta HTTP ${respuesta.status}: ${respuesta.statusText}`);
+      // 2.1 Enviar al servidor cualquier postulación previa guardada en el localStorage de este navegador
+      try {
+        const rawLocal = localStorage.getItem(STORAGE_KEY_POSTULACIONES);
+        if (rawLocal) {
+          const listLocal = JSON.parse(rawLocal);
+          if (Array.isArray(listLocal) && listLocal.length > 0) {
+            for (const item of listLocal) {
+              await fetch('/api/candidatos', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(item)
+              });
+            }
+          }
+        }
+      } catch (errLocalSync) {
+        console.warn("Aviso al migrar locales al servidor:", errLocalSync);
       }
 
-      const resultado = await respuesta.json();
-      let remotos: Candidato[] = [];
-
-      if (resultado && resultado.status === "success" && Array.isArray(resultado.data)) {
-        remotos = resultado.data;
-      } else if (Array.isArray(resultado)) {
-        remotos = resultado;
-      } else if (resultado && Array.isArray(resultado.postulaciones)) {
-        remotos = resultado.postulaciones;
-      } else if (resultado && Array.isArray(resultado.candidatos)) {
-        remotos = resultado.candidatos;
-      } else if (resultado && resultado.status === "success" && !resultado.data) {
-        remotos = [];
-      } else {
-        // Podría ser respuesta de otra acción si no está soportada aún en el script
-        console.warn("Estructura devuelta por Apps Script:", resultado);
+      // 2.2 Consultar lista unificada del servidor central con sincronización activa
+      const resp = await fetch(`/api/candidatos?sync=true&_t=${Date.now()}`);
+      if (!resp.ok) {
+        throw new Error(`Error en servidor: HTTP ${resp.status}`);
       }
 
-      // Marcar remotos con origen sheets
-      const remotosMarcados: Candidato[] = remotos.map(r => ({
-        ...r,
-        _origen: 'sheets',
-        _isLocalOnly: false
-      }));
+      const resJson = await resp.json();
+      const listado: Candidato[] = Array.isArray(resJson.candidatos) ? resJson.candidatos : [];
 
-      // Identificar cuáles locales aún NO están en Google Sheets (comparar por ID / código o nombre+teléfono)
-      const idsRemotos = new Set(
-        remotosMarcados.map(r => String(getCodigo(r) || '').toLowerCase().trim())
-      );
-      const nombresTelRemotos = new Set(
-        remotosMarcados.map(r => `${getNombre(r).toLowerCase().trim()}_${getTelefono(r).replace(/[^0-9]/g, '')}`)
-      );
+      setCandidatos(listado);
 
-      const localesNoSincronizados = locales.filter(l => {
-        const idLocal = String(getCodigo(l) || '').toLowerCase().trim();
-        const keyNomTel = `${getNombre(l).toLowerCase().trim()}_${getTelefono(l).replace(/[^0-9]/g, '')}`;
-        return !idsRemotos.has(idLocal) && !nombresTelRemotos.has(keyNomTel);
-      });
-
-      // Lista combinada: primero los no sincronizados, luego los remotos
-      const combinados = [...localesNoSincronizados, ...remotosMarcados];
-      setCandidatos(combinados);
-
-      if (localesNoSincronizados.length > 0) {
-        setAlertaInfo(`Tienes ${localesNoSincronizados.length} postulación(es) registradas en este navegador pendientes de sincronizar con Google Sheets.`);
+      const sinSync = listado.filter(c => !c.syncedToSheets).length;
+      if (sinSync > 0) {
+        setAlertaInfo(`Hay ${sinSync} postulación(es) guardadas en el sistema pendientes de escribir en la hoja "${sheetName}" de tu Google Sheet "${spreadsheetName}". Puedes sincronizarlas con el botón abajo.`);
       }
     } catch (err: any) {
-      console.warn("No se pudo conectar directamente con Google Sheets:", err);
-      // Fallback: mostrar las postulaciones locales para que nunca se pierda nada
-      if (locales.length > 0) {
-        setCandidatos(locales);
-        setAlertaInfo(`Mostrando ${locales.length} formulario(s) guardados en este navegador. (Nota: No se pudo conectar en vivo con Google Sheets: ${err.message || err})`);
-      } else {
-        setError(`No se pudieron obtener postulaciones desde Google Sheets (${err.message || err}). Verifica la URL del Webhook o despliega el código actualizado de Code.gs en tu hoja.`);
+      console.warn("Error cargando desde /api/candidatos:", err);
+      // Fallback a localStorage si el servidor está temporalmente inaccesible
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY_POSTULACIONES);
+        if (raw) {
+          const locales = JSON.parse(raw);
+          setCandidatos(locales);
+          setAlertaInfo("Mostrando registros locales almacenados en este dispositivo.");
+        } else {
+          setError(`No se pudieron cargar candidatos: ${err.message || err}`);
+        }
+      } catch (_) {
+        setError(`No se pudieron cargar candidatos: ${err.message || err}`);
       }
     } finally {
       setCargando(false);
@@ -181,146 +166,137 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack }) => {
   };
 
   useEffect(() => {
+    cargarConfiguracionServidor();
     cargarCandidatos();
-  }, [scriptUrl]);
+  }, []);
 
-  // Probar conexión directa con Google Apps Script
+  // Probar conexión en vivo con Google Apps Script
   const handleProbarConexion = async () => {
     setProbandoConexion(true);
     setResultadoTest(null);
-    try {
-      const separador = inputUrl.includes('?') ? '&' : '?';
-      const testUrl = `${inputUrl.trim()}${separador}accion=candidatos&_t=${Date.now()}`;
-      const res = await fetch(testUrl);
-      const data = await res.json();
 
-      if (data && (data.status === "success" || data.ok || Array.isArray(data))) {
-        const total = Array.isArray(data.data) ? data.data.length : (Array.isArray(data) ? data.length : 0);
-        setResultadoTest({
-          ok: true,
-          msg: `¡Conexión exitosa! Google Sheets respondió correctamente. Total de candidatos en la hoja: ${total}.`
-        });
-      } else {
-        setResultadoTest({
-          ok: false,
-          msg: `El script respondió pero con formato no esperado: ${JSON.stringify(data).slice(0, 150)}`
-        });
-      }
+    const limpia = inputUrl.trim();
+    if (!limpia.startsWith('http')) {
+      setResultadoTest({
+        ok: false,
+        msg: "Por favor introduce una URL válida (debe empezar con https://script.google.com/macros/s/.../exec)"
+      });
+      setProbandoConexion(false);
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/test-sheets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: limpia })
+      });
+      const data = await res.json();
+      setResultadoTest({
+        ok: data.ok,
+        msg: data.message || (data.ok ? "Conexión exitosa" : "Error de conexión")
+      });
     } catch (e: any) {
       setResultadoTest({
         ok: false,
-        msg: `Error de conexión: ${e.message || e}. Verifica que el Webhook esté implementado como 'Cualquier usuario' (Anyone).`
+        msg: `Error de red: ${e.message || e}. Verifica que el Webhook esté implementado con acceso 'Cualquier usuario' (Anyone).`
       });
     } finally {
       setProbandoConexion(false);
     }
   };
 
-  // Guardar la URL configurada por el usuario
-  const handleGuardarUrl = () => {
+  // Guardar URL en el servidor para que aplique a TODOS los dispositivos
+  const handleGuardarUrl = async () => {
     const limpia = inputUrl.trim();
     if (!limpia.startsWith('http')) {
-      alert("Por favor ingresa una URL válida de Google Apps Script (debe comenzar con https://script.google.com/...)");
-      return;
-    }
-    localStorage.setItem(STORAGE_KEY_WEBHOOK, limpia);
-    setScriptUrl(limpia);
-    setMostrarConfigUrl(false);
-    setResultadoTest(null);
-  };
-
-  const handleRestablecerUrl = () => {
-    localStorage.removeItem(STORAGE_KEY_WEBHOOK);
-    setScriptUrl(DEFAULT_APPS_SCRIPT_URL);
-    setInputUrl(DEFAULT_APPS_SCRIPT_URL);
-    setResultadoTest(null);
-  };
-
-  // Sincronizar postulaciones pendientes con Google Sheets
-  const handleSincronizarPendientes = async () => {
-    const pendientes = candidatos.filter(c => c._isLocalOnly);
-    if (pendientes.length === 0) {
-      alert("No hay postulaciones pendientes de sincronizar.");
+      alert("Por favor ingresa una URL válida de Google Apps Script.");
       return;
     }
 
-    setSincronizandoLocales(true);
-    let enviadas = 0;
-
-    for (const c of pendientes) {
-      try {
-        const payload = {
-          accion: "postulacion",
-          id: getCodigo(c),
-          codigo: getCodigo(c),
-          nombre: getNombre(c),
-          nombreCompleto: getNombre(c),
-          edad: getEdad(c),
-          telefono: getTelefono(c),
-          zona: getZona(c),
-          experiencia: getExperiencia(c),
-          disponibilidad: getDisponibilidad(c),
-          punto_partida: getPuntoPartida(c),
-          motivacion: getMotivacion(c),
-          talento: getTalento(c),
-          foto: getFoto(c) || "No adjunta",
-          estado: getEstado(c) || "Recibida",
-          fecha: getFecha(c) || new Date().toLocaleString("es-VE")
-        };
-
-        await fetch(scriptUrl, {
-          method: "POST",
-          headers: { "Content-Type": "text/plain;charset=utf-8" },
-          body: JSON.stringify(payload),
-          redirect: "follow"
-        });
-        enviadas++;
-      } catch (err) {
-        console.warn("Aviso al sincronizar candidato:", c, err);
+    try {
+      const res = await fetch('/api/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          webhookUrl: limpia,
+          sheetName: "Tour Azul Postulaciones",
+          spreadsheetName: "Registro Tour Azul"
+        })
+      });
+      if (res.ok) {
+        setScriptUrl(limpia);
+        localStorage.setItem(STORAGE_KEY_WEBHOOK, limpia);
+        alert(`¡URL guardada exitosamente en el servidor! Ahora todos los dispositivos enviarán las postulaciones a tu hoja "Tour Azul Postulaciones" en Google Sheets.`);
+        setMostrarConfigUrl(false);
+        await cargarCandidatos();
+      } else {
+        alert("No se pudo guardar la configuración en el servidor.");
       }
+    } catch (e: any) {
+      alert(`Error al guardar: ${e.message || e}`);
     }
-
-    setSincronizandoLocales(false);
-    alert(`Se procesaron ${enviadas} de ${pendientes.length} postulaciones hacia Google Sheets.`);
-    cargarCandidatos();
   };
 
-  // Enviar una postulación de prueba para verificar que la hoja se cree y guarde
+  // Sincronizar todos los candidatos pendientes hacia Google Sheets
+  const handleSincronizarHaciaSheets = async () => {
+    setSincronizando(true);
+    try {
+      const res = await fetch('/api/sync-sheets', { method: 'POST' });
+      const data = await res.json();
+      if (data.ok) {
+        alert(data.message || `Sincronización completada.`);
+        await cargarCandidatos();
+      } else {
+        alert(`Aviso: ${data.message || "Error al sincronizar con Google Sheets"}`);
+      }
+    } catch (err: any) {
+      alert(`Error al conectar: ${err.message || err}`);
+    } finally {
+      setSincronizando(false);
+    }
+  };
+
+  // Enviar postulación de prueba para verificar que la hoja en Google Drive se llene
   const handleEnviarPostulacionPrueba = async () => {
-    const confirmar = confirm("¿Deseas enviar una postulación de prueba para comprobar que se escribe en la hoja 'Tour Azul Postulaciones' de tu Google Sheets?");
+    const confirmar = confirm(`¿Deseas enviar un aspirante de prueba para comprobar que se añade la fila en la hoja "${sheetName}" de tu archivo "${spreadsheetName}" en Google Drive?`);
     if (!confirmar) return;
 
     setCargando(true);
     try {
-      const now = new Date();
-      const testId = `TEST-${Date.now().toString().slice(-5)}`;
+      const testId = `PRUEBA-${Date.now().toString().slice(-4)}`;
       const payload = {
-        accion: "postulacion",
         id: testId,
         codigo: testId,
-        nombre: "Postulante de Prueba Tour Azul",
-        edad: 25,
-        telefono: "0412-1234567",
-        zona: "Barquisimeto Centro",
-        experiencia: "Tengo algo de experiencia.",
+        nombre: "Aspirante de Verificación Tour Azul",
+        edad: 26,
+        telefono: "0412-0000000",
+        zona: "Barquisimeto",
+        experiencia: "Tengo experiencia en turismo y recreación.",
         disponibilidad: "Sí, tengo disponibilidad.",
         punto_partida: "Sí, sin inconvenientes.",
-        motivacion: "Postulación de prueba para verificar conexión en vivo con Google Sheets.",
-        talento: "Prueba técnica",
-        foto: "Sin foto",
-        estado: "Recibida",
-        fecha: now.toLocaleString("es-VE")
+        motivacion: "Verificación en vivo: Si ves este registro, significa que la hoja Tour Azul Postulaciones está recibiendo datos con total éxito.",
+        talento: "Prueba técnica completada",
+        foto: "No adjunta",
+        tieneFoto: false,
+        estado: "Recibida"
       };
 
-      await fetch(scriptUrl, {
-        method: "POST",
-        headers: { "Content-Type": "text/plain;charset=utf-8" },
-        body: JSON.stringify(payload),
-        redirect: "follow"
+      const res = await fetch('/api/candidatos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
       });
+      const data = await res.json();
 
-      alert(`¡Postulación de prueba ${testId} enviada con éxito! Ahora revisa tu Google Sheet o actualiza la lista.`);
-      await cargarCandidatos();
+      if (data.ok) {
+        if (data.syncedToSheets) {
+          alert(`¡Éxito total! 🎉 La postulación de prueba ${testId} fue registrada en el servidor y escrita inmediatamente en tu hoja "${sheetName}" de "${spreadsheetName}" en Google Drive.`);
+        } else {
+          alert(`La postulación de prueba se guardó en el servidor compartido, pero el Webhook de Google Sheets respondió: "${data.sheetsResult?.statusText || 'Pendiente'}". Revisa la configuración del Webhook.`);
+        }
+        await cargarCandidatos();
+      }
     } catch (e: any) {
       alert(`Error al enviar prueba: ${e.message || e}`);
     } finally {
@@ -328,7 +304,21 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack }) => {
     }
   };
 
-  // Filtrado de candidatos en tiempo real
+  // Copiar código de Code.gs al portapapeles
+  const handleCopiarCodeGs = async () => {
+    try {
+      const res = await fetch('/Code.gs');
+      const text = await res.text();
+      navigator.clipboard?.writeText(text);
+      setCopiadoCodeGs(true);
+      setTimeout(() => setCopiadoCodeGs(false), 3000);
+      alert("¡Código completo de Code.gs copiado al portapapeles! Ahora pégalo en el editor de Apps Script de tu archivo 'Registro Tour Azul'.");
+    } catch (e) {
+      alert("Para copiar Code.gs, abre el archivo Code.gs de tu proyecto y copia todo su contenido.");
+    }
+  };
+
+  // Filtrado en tiempo real
   const candidatosFiltrados = useMemo(() => {
     return candidatos.filter((c) => {
       const nom = getNombre(c).toLowerCase();
@@ -360,67 +350,70 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack }) => {
     return `https://wa.me/${phoneWithCountry}?text=${encodeURIComponent(mensaje)}`;
   };
 
-  const handleVolver = () => {
-    if (onBack) {
-      onBack();
-    } else {
-      window.location.hash = '';
-    }
-  };
-
-  const copiarTexto = (txt: string) => {
-    navigator.clipboard?.writeText(txt);
-    alert(`Copiado: "${txt}"`);
-  };
-
-  const countLocales = candidatos.filter(c => c._isLocalOnly).length;
-  const countSheets = candidatos.filter(c => !c._isLocalOnly).length;
+  const countSheets = candidatos.filter(c => c.syncedToSheets).length;
+  const countPendientes = candidatos.filter(c => !c.syncedToSheets).length;
 
   return (
     <div className="min-h-screen bg-slate-100 text-slate-800 p-4 sm:p-6 md:p-8 font-sans antialiased">
       <div className="max-w-7xl mx-auto space-y-6">
         
         {/* Barra superior de navegación rápida */}
-        <div className="flex flex-wrap items-center justify-between bg-white px-5 py-3 rounded-2xl shadow-xs border border-slate-200/80 gap-3">
-          <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center justify-between bg-white px-5 py-3.5 rounded-2xl shadow-xs border border-slate-200/80 gap-3">
+          <div className="flex items-center gap-2.5">
             <button 
               type="button"
-              onClick={handleVolver}
-              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-sky-100 text-slate-700 hover:text-blue-700 font-bold text-xs transition cursor-pointer active:scale-95"
+              onClick={onBack ? onBack : () => { window.location.hash = ''; }}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 hover:bg-sky-100 text-slate-700 hover:text-blue-700 font-bold text-xs transition cursor-pointer active:scale-95"
               title="Volver a la portada de Tour Azul"
             >
               <span>← Volver a Tour Azul</span>
             </button>
-            <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+
+            {onLogout && (
+              <button
+                type="button"
+                onClick={onLogout}
+                className="inline-flex items-center gap-1 px-3 py-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-700 font-bold text-xs border border-red-200 transition cursor-pointer active:scale-95"
+                title="Cerrar sesión de administrador"
+              >
+                <span>🔒 Cerrar sesión</span>
+              </button>
+            )}
+
+            <span className="hidden md:inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span>Hoja destino: <strong>Tour Azul Postulaciones</strong></span>
+              <span>Archivo: <strong>{spreadsheetName}</strong> &gt; Hoja: <strong>{sheetName}</strong></span>
             </span>
           </div>
 
           <div className="flex items-center gap-2 text-xs">
-            <span className="text-slate-500 hidden sm:inline">
-              En Sheets: <strong className="text-emerald-700">{countSheets}</strong> · Locales: <strong className="text-amber-700">{countLocales}</strong>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold text-[11px]">
+              <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+              <span>Multi-dispositivo activo</span>
             </span>
             <button
               type="button"
               onClick={() => setMostrarConfigUrl(!mostrarConfigUrl)}
-              className="px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold text-xs transition cursor-pointer flex items-center gap-1.5"
+              className="px-3 py-1.5 rounded-xl border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-800 font-bold text-xs transition cursor-pointer flex items-center gap-1.5"
             >
-              <span>⚙️ Configurar Webhook</span>
+              <span>⚙️ Conexión Google Sheets</span>
             </button>
           </div>
         </div>
 
-        {/* Panel de Configuración de Webhook (Desplegable) */}
+        {/* Panel de Configuración y Solución para "Registro Tour Azul" */}
         {mostrarConfigUrl && (
-          <div className="bg-white p-5 sm:p-6 rounded-2xl shadow-md border-2 border-blue-200 space-y-4 animate-fadeIn">
+          <div className="bg-white p-5 sm:p-7 rounded-3xl shadow-lg border-2 border-blue-200 space-y-5 animate-fadeIn">
             <div className="flex justify-between items-start">
               <div>
-                <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                  <span>⚙️ Configuración del Webhook de Google Sheets</span>
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100 text-blue-800 text-[11px] font-bold uppercase tracking-wider mb-2">
+                  <span>📊 Conexión con tu Google Drive</span>
+                </div>
+                <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
+                  <span>Conexión de la hoja "{sheetName}" en "{spreadsheetName}"</span>
                 </h3>
-                <p className="text-xs text-slate-500 mt-1">
-                  Verifica o actualiza la URL de la aplicación web de Google Apps Script donde se guardan y leen las postulaciones.
+                <p className="text-xs text-slate-500 mt-1 max-w-2xl leading-relaxed">
+                  Para que las postulaciones enviadas desde cualquier dispositivo se escriban automáticamente en tu hoja de cálculo <strong>"{spreadsheetName}"</strong> en Google Drive, debes implementar el código de <strong>Code.gs</strong> como aplicación web dentro de ese archivo.
                 </p>
               </div>
               <button 
@@ -432,110 +425,159 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack }) => {
               </button>
             </div>
 
+            {/* Paso a paso claro para el usuario */}
+            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3 text-xs text-slate-700">
+              <strong className="block text-slate-900 font-bold text-xs uppercase tracking-wide">
+                🧭 ¿Cómo activar la escritura en tu archivo de Google Sheets?
+              </strong>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-3 pt-1">
+                <div className="p-3 bg-white rounded-xl border border-slate-200 space-y-1">
+                  <span className="font-bold text-blue-700 block">Paso 1</span>
+                  <p className="text-[11px] text-slate-600">Abre tu archivo <strong>Registro Tour Azul</strong> en Google Sheets desde tu Google Drive.</p>
+                </div>
+                <div className="p-3 bg-white rounded-xl border border-slate-200 space-y-1">
+                  <span className="font-bold text-blue-700 block">Paso 2</span>
+                  <p className="text-[11px] text-slate-600">En el menú superior haz clic en <strong>Extensiones &gt; Apps Script</strong>.</p>
+                </div>
+                <div className="p-3 bg-white rounded-xl border border-slate-200 space-y-1">
+                  <span className="font-bold text-blue-700 block">Paso 3</span>
+                  <p className="text-[11px] text-slate-600">Borra el código que haya y pega todo el contenido de <strong>Code.gs</strong> (usa el botón de abajo para copiarlo).</p>
+                </div>
+                <div className="p-3 bg-white rounded-xl border border-slate-200 space-y-1">
+                  <span className="font-bold text-blue-700 block">Paso 4</span>
+                  <p className="text-[11px] text-slate-600">Haz clic en <strong>Implementar &gt; Nueva implementación</strong>, tipo <em>Aplicación web</em>, acceso <em>Cualquier usuario</em> (Anyone) y pega la URL aquí.</p>
+                </div>
+              </div>
+
+              <div className="pt-2 flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleCopiarCodeGs}
+                  className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs transition cursor-pointer flex items-center gap-1.5 active:scale-95"
+                >
+                  <span>📋 {copiadoCodeGs ? "¡Copiado!" : "Copiar todo el código de Code.gs"}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMostrarGuiaCodeGs(!mostrarGuiaCodeGs)}
+                  className="px-3.5 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-xs transition cursor-pointer"
+                >
+                  {mostrarGuiaCodeGs ? "Ocultar detalles de Code.gs" : "Ver detalles de Code.gs"}
+                </button>
+              </div>
+
+              {mostrarGuiaCodeGs && (
+                <div className="mt-2 p-3 bg-white rounded-xl border border-slate-200 text-[11px] font-mono text-slate-600 space-y-1">
+                  <p>✓ El archivo Code.gs incluido en este proyecto ya tiene la función <code>guardarPostulacionEnHoja</code> y <code>obtenerCandidatosPostulaciones</code>.</p>
+                  <p>✓ Si tu archivo ya tiene la hoja <strong>"{sheetName}"</strong>, se insertarán automáticamente las filas allí respetando tus columnas.</p>
+                  <p>✓ Si aún no existe la hoja, se creará automáticamente con encabezados estilizados de Tour Azul.</p>
+                  <p>✓ Clave de administrador configurada por defecto: <strong>010203</strong>.</p>
+                </div>
+              )}
+            </div>
+
+            {/* Campo para la URL del Webhook */}
             <div className="space-y-2">
-              <label className="block text-xs font-bold text-slate-700">URL del Webhook de Google Apps Script (/exec):</label>
+              <label className="block text-xs font-bold text-slate-700">URL de la Aplicación Web de Google Apps Script (/exec):</label>
               <div className="flex flex-col sm:flex-row gap-2">
                 <input 
                   type="text" 
                   value={inputUrl} 
                   onChange={(e) => setInputUrl(e.target.value)}
                   placeholder="https://script.google.com/macros/s/.../exec"
-                  className="flex-1 px-3 py-2 text-xs font-mono rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600 bg-slate-50"
+                  className="flex-1 px-3.5 py-2.5 text-xs font-mono rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600 bg-slate-50"
                 />
                 <button
                   type="button"
                   onClick={handleProbarConexion}
                   disabled={probandoConexion}
-                  className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs transition cursor-pointer disabled:opacity-50 whitespace-nowrap"
+                  className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs transition cursor-pointer disabled:opacity-50 whitespace-nowrap"
                 >
                   {probandoConexion ? "Probando..." : "🔌 Probar Conexión"}
                 </button>
                 <button
                   type="button"
                   onClick={handleGuardarUrl}
-                  className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs transition cursor-pointer shadow-xs whitespace-nowrap"
+                  className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs transition cursor-pointer shadow-xs whitespace-nowrap"
                 >
-                  Guardar URL
+                  Guardar para todos los dispositivos
                 </button>
               </div>
             </div>
 
             {resultadoTest && (
-              <div className={`p-3 rounded-xl text-xs font-medium border ${resultadoTest.ok ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-red-50 text-red-800 border-red-200'}`}>
+              <div className={`p-3.5 rounded-2xl text-xs font-medium border ${resultadoTest.ok ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-red-50 text-red-800 border-red-200'}`}>
                 {resultadoTest.msg}
               </div>
             )}
 
-            <div className="bg-sky-50/70 p-3.5 rounded-xl border border-sky-200 text-xs text-sky-900 space-y-1.5 leading-relaxed">
-              <strong className="block text-blue-900 font-bold">📋 Instrucciones clave para Google Sheets:</strong>
-              <p>1. El archivo <strong>Code.gs</strong> incluido en este proyecto ya tiene soporte para la hoja <code className="bg-white px-1.5 py-0.5 rounded border font-bold text-blue-700">Tour Azul Postulaciones</code>.</p>
-              <p>2. Copia y pega el contenido completo de <strong>Code.gs</strong> en tu editor de Google Apps Script (menú <em>Extensiones &gt; Apps Script</em>).</p>
-              <p>3. Haz clic en <strong>Implementar &gt; Nueva implementación</strong>, selecciona tipo <em>Aplicación web</em>, asigna acceso a <em>Cualquier usuario</em> (Anyone) y copia la URL resultante terminada en <code>/exec</code>.</p>
-            </div>
-
-            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 text-xs">
-              <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-slate-100 text-xs">
+              <div className="flex flex-wrap items-center gap-2">
                 <button
                   type="button"
                   onClick={handleEnviarPostulacionPrueba}
-                  className="px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold border border-emerald-200 transition cursor-pointer"
+                  className="px-3.5 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold border border-emerald-200 transition cursor-pointer"
                 >
                   ✉️ Enviar postulación de prueba a Sheets
                 </button>
                 <button
                   type="button"
-                  onClick={() => copiarTexto("Tour Azul Postulaciones")}
-                  className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium transition cursor-pointer"
+                  onClick={handleSincronizarHaciaSheets}
+                  disabled={sincronizando}
+                  className="px-3.5 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold border border-amber-200 transition cursor-pointer"
                 >
-                  Copiar nombre de hoja: "Tour Azul Postulaciones"
+                  {sincronizando ? "Sincronizando..." : "📤 Sincronizar candidatos pendientes"}
                 </button>
               </div>
 
-              <button
-                type="button"
-                onClick={handleRestablecerUrl}
-                className="text-xs text-slate-400 hover:text-slate-600 underline cursor-pointer"
-              >
-                Restablecer URL por defecto
-              </button>
+              <span className="text-[11px] text-slate-400">
+                Clave de administrador configurada: <strong>010203</strong>
+              </span>
             </div>
           </div>
         )}
 
-        {/* Alerta de Postulaciones Locales Pendientes de Sincronización */}
-        {countLocales > 0 && (
+        {/* Alerta de Postulaciones Pendientes de Sincronización a Sheets */}
+        {countPendientes > 0 && (
           <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r-2xl shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
             <div className="space-y-0.5">
               <div className="flex items-center gap-2 text-amber-900 font-bold text-sm">
                 <span>⚠️</span>
-                <span>{countLocales} formulario(s) guardados en este navegador</span>
+                <span>{countPendientes} postulación(es) resguardadas en el servidor pendientes de escribir en Google Sheets</span>
               </div>
               <p className="text-amber-800 text-xs leading-relaxed">
-                Estas postulaciones fueron llenadas desde la web y están resguardadas localmente. Puedes enviarlas a la hoja de Google Sheets con un solo clic.
+                Estas postulaciones están seguras y visibles para todos los dispositivos. Una vez conectado tu Webhook de <strong>{spreadsheetName}</strong>, puedes enviarlas todas a la hoja <strong>"{sheetName}"</strong> con un solo clic.
               </p>
             </div>
             <button
               type="button"
-              onClick={handleSincronizarPendientes}
-              disabled={sincronizandoLocales}
-              className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white font-bold text-xs transition cursor-pointer shadow-xs active:scale-95 whitespace-nowrap"
+              onClick={handleSincronizarHaciaSheets}
+              disabled={sincronizando}
+              className="px-4 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white font-bold text-xs transition cursor-pointer shadow-xs active:scale-95 whitespace-nowrap"
             >
-              {sincronizandoLocales ? "Sincronizando..." : "📤 Sincronizar con Google Sheets ahora"}
+              {sincronizando ? "Sincronizando..." : "📤 Sincronizar con Google Sheets ahora"}
             </button>
           </div>
         )}
 
         {/* Cabecera del Panel */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-6 rounded-2xl shadow-xs border border-slate-200/80 gap-4">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-6 rounded-3xl shadow-xs border border-slate-200/80 gap-4">
           <div className="space-y-1">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100 text-blue-800 text-xs font-bold uppercase tracking-wider">
-              <span>🛡️ Módulo de Selección de Personal</span>
+              <span>🛡️ Módulo de Selección de Personal · Clave Admin Activa</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">Panel de Postulaciones</h1>
-            <p className="text-sm text-slate-500">Candidatos recibidos y conectados con la hoja <span className="font-semibold text-blue-700">Tour Azul Postulaciones</span></p>
+            <p className="text-sm text-slate-500">
+              Registros multi-dispositivo conectados con la hoja <span className="font-bold text-blue-700">{sheetName}</span> del archivo <span className="font-semibold text-slate-700">{spreadsheetName}</span>
+            </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto">
+            <div className="text-xs text-right pr-2 hidden sm:block">
+              <div className="text-slate-500">Total aspirantes: <strong className="text-slate-900">{candidatos.length}</strong></div>
+              <div className="text-[11px] text-slate-400">En Sheets: <strong className="text-emerald-700">{countSheets}</strong> · Pendientes: <strong className="text-amber-700">{countPendientes}</strong></div>
+            </div>
+
             <button 
               type="button" 
               onClick={cargarCandidatos}
@@ -543,7 +585,7 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack }) => {
               className="bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-bold px-4 py-2.5 rounded-xl transition-all flex items-center justify-center gap-2 text-xs sm:text-sm shadow-md hover:shadow-lg active:scale-95 cursor-pointer w-full sm:w-auto"
             >
               <span className={cargando ? "animate-spin" : ""}>🔄</span>
-              <span>{cargando ? "Sincronizando..." : "Actualizar Lista"}</span>
+              <span>{cargando ? "Actualizando..." : "Actualizar Lista"}</span>
             </button>
           </div>
         </div>
@@ -582,10 +624,10 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack }) => {
 
         {/* Estados de Carga y Error */}
         {cargando && (
-          <div className="text-center py-16 bg-white rounded-2xl shadow-xs border border-slate-200/80 space-y-3">
+          <div className="text-center py-16 bg-white rounded-3xl shadow-xs border border-slate-200/80 space-y-3">
             <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
-            <p className="text-slate-700 font-bold text-base">Consultando Google Sheets en tiempo real...</p>
-            <p className="text-xs text-slate-400">Leyendo registros de la hoja "Tour Azul Postulaciones"</p>
+            <p className="text-slate-700 font-bold text-base">Sincronizando postulaciones en tiempo real...</p>
+            <p className="text-xs text-slate-400">Consultando registros del servidor compartido y Google Sheets ("{sheetName}")</p>
           </div>
         )}
 
@@ -593,7 +635,7 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack }) => {
           <div className="bg-red-50 border-l-4 border-red-500 p-5 rounded-r-2xl shadow-xs space-y-2">
             <div className="flex items-center gap-2 text-red-700 font-bold text-sm">
               <span>⚠️</span>
-              <span>Atención al conectar con Google Sheets</span>
+              <span>Atención al cargar postulaciones</span>
             </div>
             <p className="text-red-600 text-xs leading-relaxed">{error}</p>
             <div className="flex flex-wrap items-center gap-2 pt-2">
@@ -602,14 +644,14 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack }) => {
                 onClick={cargarCandidatos}
                 className="px-3.5 py-1.5 rounded-xl bg-red-100 hover:bg-red-200 text-red-800 text-xs font-bold transition cursor-pointer"
               >
-                Reintentar conexión
+                Reintentar
               </button>
               <button
                 type="button"
                 onClick={() => setMostrarConfigUrl(true)}
                 className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold border border-slate-300 transition cursor-pointer"
               >
-                Revisar URL del Webhook
+                Configurar Webhook de Google Sheets
               </button>
             </div>
           </div>
@@ -617,7 +659,7 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack }) => {
 
         {/* Tabla de Candidatos */}
         {!cargando && (
-          <div className="bg-white rounded-2xl shadow-xs border border-slate-200/80 overflow-hidden">
+          <div className="bg-white rounded-3xl shadow-xs border border-slate-200/80 overflow-hidden">
             {candidatos.length === 0 ? (
               <div className="text-center py-16 px-4 space-y-4">
                 <div className="w-16 h-16 rounded-3xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto text-2xl shadow-inner border border-blue-100">
@@ -626,7 +668,7 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack }) => {
                 <div className="max-w-md mx-auto space-y-1.5">
                   <h3 className="text-base font-bold text-slate-800">No hay postulaciones registradas todavía</h3>
                   <p className="text-xs text-slate-500 leading-relaxed">
-                    Tan pronto como los aspirantes envíen sus datos a través de la sección «Únete al equipo» o se registren filas en la hoja <strong>Tour Azul Postulaciones</strong>, aparecerán aquí en vivo.
+                    Tan pronto como cualquier aspirante complete el formulario desde cualquier teléfono o computadora, aparecerá automáticamente aquí en tiempo real y se enviará a la hoja <strong>{sheetName}</strong> de tu archivo <strong>{spreadsheetName}</strong>.
                   </p>
                 </div>
 
@@ -668,7 +710,7 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack }) => {
                       <th className="px-5 py-3.5">Edad / Zona</th>
                       <th className="px-5 py-3.5">Teléfono</th>
                       <th className="px-5 py-3.5">Disponibilidad</th>
-                      <th className="px-5 py-3.5">Estado / Origen</th>
+                      <th className="px-5 py-3.5">Estado en Sheets</th>
                       <th className="px-5 py-3.5 text-center">Acciones</th>
                     </tr>
                   </thead>
@@ -682,7 +724,7 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack }) => {
                       const telefono = getTelefono(candidato);
                       const disp = getDisponibilidad(candidato);
                       const estado = getEstado(candidato);
-                      const isLocalOnly = candidato._isLocalOnly;
+                      const isSynced = candidato.syncedToSheets;
                       const waLink = getWhatsAppLink(telefono, nombre);
 
                       return (
@@ -735,13 +777,13 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack }) => {
                               <span className="px-2 py-0.5 text-[10px] font-bold rounded-md bg-slate-100 text-slate-700 uppercase">
                                 {estado}
                               </span>
-                              {isLocalOnly ? (
-                                <span className="text-[10px] font-semibold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
-                                  🟡 Pendiente sync
+                              {isSynced ? (
+                                <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 flex items-center gap-1">
+                                  <span>🟢 En Google Sheets</span>
                                 </span>
                               ) : (
-                                <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
-                                  🟢 En Google Sheets
+                                <span className="text-[10px] font-semibold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 flex items-center gap-1">
+                                  <span>🟡 Pendiente en Sheets</span>
                                 </span>
                               )}
                             </div>
@@ -776,7 +818,7 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack }) => {
           </div>
         )}
 
-        {/* Modal de Detalle Completo */}
+        {/* Modal de Detalle Completo de Postulación */}
         {candidatoSeleccionado && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fadeIn">
             <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-7 shadow-2xl relative max-h-[92vh] overflow-y-auto border border-slate-200">
@@ -805,13 +847,13 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack }) => {
                   <h3 className="text-xl font-bold text-slate-900 leading-tight">{getNombre(candidatoSeleccionado)}</h3>
                   <p className="text-xs text-slate-500 mt-0.5 font-mono">Código: {getCodigo(candidatoSeleccionado)}</p>
                   <div className="mt-1">
-                    {candidatoSeleccionado._isLocalOnly ? (
-                      <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
-                        Pendiente de sincronizar a Google Sheets
+                    {candidatoSeleccionado.syncedToSheets ? (
+                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                        Guardado en Google Sheets ({sheetName})
                       </span>
                     ) : (
-                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                        Guardado en Google Sheets (Hoja: Tour Azul Postulaciones)
+                      <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                        Guardado en Servidor · Pendiente de sincronizar a Google Sheets
                       </span>
                     )}
                   </div>
