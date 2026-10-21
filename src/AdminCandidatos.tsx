@@ -146,7 +146,6 @@ const handleAuthSubmit = (e: React.FormEvent) => {
       setAuthError("Contraseña inválida. Por favor, verifica la clave e inténtalo de nuevo");
     }
   };
-  };
     return (
       <div className="min-h-screen bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
         <div className="relative w-full max-w-sm bg-white rounded-3xl p-6 sm:p-7 shadow-2xl border border-sky-100 text-center animate-float">
