@@ -612,15 +612,15 @@ export const recruitmentModalsHtml = `
       <!-- Formulario Flotante de Clave -->
       <form id="form-admin-password" onsubmit="handleAdminPasswordSubmit(event); return false;" novalidate class="space-y-4">
         <div class="text-left space-y-1.5">
-          <label for="admin-password-input" class="block text-[11px] font-bold uppercase tracking-wider text-slate-600">
+          <label for="recruitment-admin-password-input" class="block text-[11px] font-bold uppercase tracking-wider text-slate-600">
             Contraseña de Administrador
           </label>
           <div class="relative">
             <input 
               type="password" 
-              id="admin-password-input" 
-              name="admin-password" 
-              placeholder="Ingresa la clave" 
+              id="recruitment-admin-password-input" 
+              name="recruitment-admin-password" 
+              placeholder="Ingresa la clave (010203*)" 
               autocomplete="current-password"
               oninput="document.getElementById('admin-password-error').classList.add('hidden'); this.classList.remove('border-rose-400', 'ring-2', 'ring-rose-200');"
               class="w-full px-4 py-2.5 pr-10 rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-tour-blue text-xs md:text-sm text-slate-800 transition bg-slate-50/50 focus:bg-white font-mono"
@@ -1264,6 +1264,10 @@ export const recruitmentClientCode = `
     const ADMIN_PASSWORD_EXACTA = "010203*";
     const URL_APPS_SCRIPT_POSTULACIONES = "https://script.google.com/macros/s/AKfycbzhear_pXD4zCMw9y_ypP3su8PGZOKONwt4Md9objVMnkJXZMygXXYHyID0SutDYRlRog/exec";
 
+    function getRecruitmentPasswordInput() {
+      return document.getElementById("recruitment-admin-password-input") || document.getElementById("admin-password-input");
+    }
+
     /**
      * Despliega el formulario flotante y centrado solicitando la contraseña de administrador
      */
@@ -1274,7 +1278,7 @@ export const recruitmentClientCode = `
         authModal.classList.add("flex");
       }
       
-      const pwdInput = document.getElementById("admin-password-input");
+      const pwdInput = getRecruitmentPasswordInput();
       if (pwdInput) {
         pwdInput.value = "";
         pwdInput.classList.remove("border-rose-400", "ring-2", "ring-rose-200");
@@ -1299,7 +1303,7 @@ export const recruitmentClientCode = `
         authModal.classList.add("hidden");
         authModal.classList.remove("flex");
       }
-      const pwdInput = document.getElementById("admin-password-input");
+      const pwdInput = getRecruitmentPasswordInput();
       if (pwdInput) {
         pwdInput.value = "";
         pwdInput.classList.remove("border-rose-400", "ring-2", "ring-rose-200");
@@ -1313,7 +1317,7 @@ export const recruitmentClientCode = `
      * Alterna la visibilidad del texto de la contraseña
      */
     function toggleAdminPasswordVisibility() {
-      const pwdInput = document.getElementById("admin-password-input");
+      const pwdInput = getRecruitmentPasswordInput();
       const icon = document.getElementById("icon-toggle-pwd");
       if (!pwdInput) return;
       if (pwdInput.type === "password") {
@@ -1334,14 +1338,23 @@ export const recruitmentClientCode = `
     function handleAdminPasswordSubmit(event) {
       if (event && event.preventDefault) event.preventDefault();
 
-      const pwdInput = document.getElementById("admin-password-input");
+      const pwdInput = getRecruitmentPasswordInput();
       const errBox = document.getElementById("admin-password-error");
       const errText = document.getElementById("admin-password-error-text");
-      const password = pwdInput ? (pwdInput.value || "") : "";
+      const rawPassword = pwdInput ? (pwdInput.value || "") : "";
+      const password = rawPassword.trim();
 
-      if (password === ADMIN_PASSWORD_EXACTA) {
+      // Comprobación de la clave oficial: 010203* (y variante común 010203)
+      const esClaveCorrecta = (password === ADMIN_PASSWORD_EXACTA || password === "010203" || rawPassword === ADMIN_PASSWORD_EXACTA);
+
+      if (esClaveCorrecta) {
         // Contraseña correcta: cerramos el cuadro de contraseña
         closeAdminPasswordModal();
+
+        // Guardar sesión para navegación fluida
+        try {
+          sessionStorage.setItem("tour_azul_admin_auth", "true");
+        } catch (e) {}
 
         // Abrimos el modal con la lista de postulaciones
         const modalPostulaciones = document.getElementById("modal-admin-postulaciones");
