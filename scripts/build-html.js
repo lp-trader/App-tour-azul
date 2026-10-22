@@ -815,7 +815,7 @@ const html = `<!DOCTYPE html>
     // ==========================================
     // CONFIGURACIÓN: PEGA TU URL DE WEBHOOK AQUÍ
     // ==========================================
-    const WEBHOOK_URL = "";
+    const WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbyHrjILLmIl0oiQ14LoqUzUv-I6PRIhk8jtffbxWYkW-Q3wyRsgumCEQim7T1QaxpCPVA/exec";
     const WHATSAPP_NUMERO = "584120000000"; // formato internacional sin +
     const MINUTOS_BLOQUEO_ASIENTO = 10;
     const ABONO_MINIMO = 5; // euros por persona, igual para todos los viajes

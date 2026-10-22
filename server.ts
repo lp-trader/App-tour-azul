@@ -258,86 +258,93 @@ async function startServer() {
 
   // 6. Registrar Candidato (Desde cualquier dispositivo)
   app.post('/api/candidatos', async (req, res) => {
-    const data = req.body;
-    if (!data || (!data.nombre && !data.Nombre)) {
-      return res.status(400).json({ ok: false, error: 'Datos de postulación incompletos' });
-    }
+    try {
+      const data = req.body;
+      if (!data || (!data.nombre && !data.Nombre)) {
+        return res.status(400).json({ ok: false, error: 'Datos de postulación incompletos' });
+      }
 
-    const now = new Date();
-    const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
-    const randomTag = Math.floor(1000 + Math.random() * 9000);
-    const rawPhoto = data.foto || data.fotoBase64 || data.Foto;
-    let fotoUrl = data.fotoUrl || null;
+      const now = new Date();
+      const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
+      const randomTag = Math.floor(1000 + Math.random() * 9000);
+      const id = String(data.id || data.codigo || data.Código || `POST-${dateStr}-${randomTag}`).trim();
 
-    if (rawPhoto && typeof rawPhoto === 'string' && rawPhoto.startsWith('data:image')) {
-      try {
-        const uploadsDir = path.resolve('public/uploads');
-        if (!fs.existsSync(uploadsDir)) {
-          fs.mkdirSync(uploadsDir, { recursive: true });
+      const rawPhoto = data.foto || data.fotoBase64 || data.Foto;
+      let fotoUrl = data.fotoUrl || null;
+
+      if (rawPhoto && typeof rawPhoto === 'string' && rawPhoto.startsWith('data:image')) {
+        try {
+          const uploadsDir = path.resolve('public/uploads');
+          if (!fs.existsSync(uploadsDir)) {
+            fs.mkdirSync(uploadsDir, { recursive: true });
+          }
+          const matches = rawPhoto.match(/^data:image\/([a-zA-Z0-9]+);base64,(.+)$/);
+          if (matches) {
+            const ext = matches[1] === 'jpeg' ? 'jpg' : matches[1];
+            const fileName = `foto_${id}.${ext}`;
+            const filePath = path.join(uploadsDir, fileName);
+            fs.writeFileSync(filePath, Buffer.from(matches[2], 'base64'));
+            fotoUrl = `/uploads/${fileName}`;
+          }
+        } catch (errFoto) {
+          console.warn('Aviso guardando imagen en disco:', errFoto);
+          fotoUrl = rawPhoto;
         }
-        const matches = rawPhoto.match(/^data:image\/([a-zA-Z0-9]+);base64,(.+)$/);
-        if (matches) {
-          const ext = matches[1] === 'jpeg' ? 'jpg' : matches[1];
-          const fileName = `foto_${id}.${ext}`;
-          const filePath = path.join(uploadsDir, fileName);
-          fs.writeFileSync(filePath, Buffer.from(matches[2], 'base64'));
-          fotoUrl = `/uploads/${fileName}`;
-        }
-      } catch (errFoto) {
-        console.warn('Aviso guardando imagen en disco:', errFoto);
+      } else if (rawPhoto && typeof rawPhoto === 'string' && (rawPhoto.startsWith('http') || rawPhoto.startsWith('/uploads'))) {
         fotoUrl = rawPhoto;
       }
-    } else if (rawPhoto && typeof rawPhoto === 'string' && (rawPhoto.startsWith('http') || rawPhoto.startsWith('/uploads'))) {
-      fotoUrl = rawPhoto;
-    }
 
-    const candidato = {
-      ...data,
-      id,
-      codigo: id,
-      foto: fotoUrl || (data.tieneFoto ? (data.fotoNombre || 'Sí adjunta') : 'No adjunta'),
-      fotoUrl: fotoUrl,
-      tieneFoto: Boolean(fotoUrl || data.tieneFoto),
-      createdAt: data.createdAt || now.toISOString(),
-      fecha: data.fecha || now.toLocaleString('es-VE'),
-      syncedToSheets: false,
-      _origen: 'server'
-    };
+      const candidato = {
+        ...data,
+        id,
+        codigo: id,
+        foto: fotoUrl || (data.tieneFoto ? (data.fotoNombre || 'Sí adjunta') : 'No adjunta'),
+        fotoUrl: fotoUrl,
+        tieneFoto: Boolean(fotoUrl || data.tieneFoto),
+        createdAt: data.createdAt || now.toISOString(),
+        fecha: data.fecha || now.toLocaleString('es-VE'),
+        syncedToSheets: false,
+        _origen: 'server'
+      };
 
-    // Guardar en la base de datos persistente del servidor
-    const list = getCandidatosList();
-    // Evitar duplicados por id
-    const existingIdx = list.findIndex(c => String(c.id) === String(id));
-    if (existingIdx !== -1) {
-      list[existingIdx] = { ...list[existingIdx], ...candidato };
-    } else {
-      list.unshift(candidato);
-    }
-    saveCandidatosList(list);
+      // Guardar en la base de datos persistente del servidor
+      const list = getCandidatosList();
+      // Evitar duplicados por id
+      const existingIdx = list.findIndex(c => String(c.id) === String(id));
+      if (existingIdx !== -1) {
+        list[existingIdx] = { ...list[existingIdx], ...candidato };
+      } else {
+        list.unshift(candidato);
+      }
+      saveCandidatosList(list);
 
-    // Intentar reenvío inmediato a Google Sheets
-    const cfg = getConfig();
-    let forwardResult = { ok: false, statusText: 'No intentado' };
-    if (cfg.webhookUrl && cfg.webhookUrl.startsWith('http')) {
-      forwardResult = await forwardToGoogleSheets(candidato, cfg.webhookUrl);
-      if (forwardResult.ok) {
-        candidato.syncedToSheets = true;
-        // Actualizar estado en list
-        const updatedIdx = list.findIndex(c => String(c.id) === String(id));
-        if (updatedIdx !== -1) {
-          list[updatedIdx].syncedToSheets = true;
-          saveCandidatosList(list);
+      // Intentar reenvío inmediato a Google Sheets
+      const cfg = getConfig();
+      let forwardResult = { ok: false, statusText: 'No intentado' };
+      if (cfg.webhookUrl && cfg.webhookUrl.startsWith('http')) {
+        forwardResult = await forwardToGoogleSheets(candidato, cfg.webhookUrl);
+        if (forwardResult.ok) {
+          candidato.syncedToSheets = true;
+          // Actualizar estado en list
+          const updatedIdx = list.findIndex(c => String(c.id) === String(id));
+          if (updatedIdx !== -1) {
+            list[updatedIdx].syncedToSheets = true;
+            saveCandidatosList(list);
+          }
         }
       }
-    }
 
-    res.json({
-      ok: true,
-      id,
-      candidato,
-      syncedToSheets: candidato.syncedToSheets,
-      sheetsResult: forwardResult
-    });
+      res.json({
+        ok: true,
+        id,
+        candidato,
+        syncedToSheets: candidato.syncedToSheets,
+        sheetsResult: forwardResult
+      });
+    } catch (errPost: any) {
+      console.error('Error procesando POST /api/candidatos:', errPost);
+      res.status(500).json({ ok: false, error: errPost.message || String(errPost) });
+    }
   });
 
   // 7. Sincronizar todos los candidatos pendientes hacia Google Sheets
@@ -372,6 +379,12 @@ async function startServer() {
       fallidas,
       message: `Se sincronizaron ${exitosas} postulaciones con la hoja "${cfg.sheetName}". Fallidas: ${fallidas}.`
     });
+  });
+
+  // Manejador global de errores para Express para evitar caídas de servidor
+  app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+    console.error('Error no capturado en servidor:', err);
+    res.status(500).json({ ok: false, error: err.message || 'Error interno del servidor' });
   });
 
   // Montar Vite Dev Server en desarrollo o servir dist en producción

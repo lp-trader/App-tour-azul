@@ -1,5 +1,23 @@
 [
   {
+    "nombre": "Luis Perera Conexión OK",
+    "telefono": "0412-6571155",
+    "zona": "Cabudare",
+    "experiencia": "Coordinador de grupos",
+    "disponibilidad": "Fines de semana",
+    "motivacion": "Verificación final de conexión con Google Sheets",
+    "talento": "Liderazgo",
+    "id": "POST-20261022-3304",
+    "codigo": "POST-20261022-3304",
+    "foto": "No adjunta",
+    "fotoUrl": null,
+    "tieneFoto": false,
+    "createdAt": "2026-10-22T13:56:19.741Z",
+    "fecha": "22/10/2026, 1:56:19 p. m.",
+    "syncedToSheets": true,
+    "_origen": "server"
+  },
+  {
     "nombre": "Luis Perera Prueba",
     "edad": 29,
     "telefono": "0412-1234567",

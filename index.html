@@ -3391,7 +3391,25 @@
 
   // Fotos retro de fachada: decorativas, no interactivas
 
-    const WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbzdxxU7xWb9Vjv_R8v5RncFEG8eHau7J7mI5isKOqNksG2OVk2ohDSqf84tZ-1j_WFpLA/exec";
+    const ACTIVE_APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyHrjILLmIl0oiQ14LoqUzUv-I6PRIhk8jtffbxWYkW-Q3wyRsgumCEQim7T1QaxpCPVA/exec";
+    let WEBHOOK_URL = (function() {
+      try {
+        const stored = localStorage.getItem("tour_azul_webhook_postulaciones_url");
+        if (stored && stored.startsWith("http")) return stored.trim();
+      } catch (_) {}
+      return ACTIVE_APPS_SCRIPT_URL;
+    })();
+
+    // Sincronizar dinámicamente con la configuración del servidor central
+    try {
+      fetch("/api/config").then(function(r) { return r.json(); }).then(function(data) {
+        if (data && data.config && data.config.webhookUrl && data.config.webhookUrl.startsWith("http")) {
+          WEBHOOK_URL = data.config.webhookUrl.trim();
+          try { localStorage.setItem("tour_azul_webhook_postulaciones_url", WEBHOOK_URL); } catch (_) {}
+        }
+      }).catch(function() {});
+    } catch (_) {}
+
     const WHATSAPP_NUMERO = "584126571155";
     const MINUTOS_BLOQUEO_ASIENTO = 10;
     const ABONO_MINIMO = 5;
@@ -3603,7 +3621,7 @@
 
     // Función principal para enviar reservas a Google Sheets (Google Apps Script WebHook)
     async function enviarReservaAGoogleSheets(datosReserva) {
-      const urlWebHook = "https://script.google.com/macros/s/AKfycbzdxxU7xWb9Vjv_R8v5RncFEG8eHau7J7mI5isKOqNksG2OVk2ohDSqf84tZ-1j_WFpLA/exec";
+      const urlWebHook = (typeof WEBHOOK_URL !== "undefined" && WEBHOOK_URL) ? WEBHOOK_URL : "https://script.google.com/macros/s/AKfycbyHrjILLmIl0oiQ14LoqUzUv-I6PRIhk8jtffbxWYkW-Q3wyRsgumCEQim7T1QaxpCPVA/exec";
 
       // Formato exacto del destino para la hoja de Google Sheets (Ej: "Cayo_Muerto_18-10")
       const destinoHoja = formatDestinoSheetName(datosReserva.destino, datosReserva.fechaViaje);
