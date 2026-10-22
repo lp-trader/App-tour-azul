@@ -13,7 +13,7 @@ function ensureDataFiles() {
   }
   if (!fs.existsSync(CONFIG_FILE)) {
     fs.writeFileSync(CONFIG_FILE, JSON.stringify({
-      webhookUrl: "https://script.google.com/macros/s/AKfycbylCyLwuyD_HJ90eYYw8Fle1kAOi-b9mQGmTjrORJKv6-WJv0o1wg1N1sKhkXDpbMHEVw/exec",
+      webhookUrl: "https://script.google.com/macros/s/AKfycbyHrjILLmIl0oiQ14LoqUzUv-I6PRIhk8jtffbxWYkW-Q3wyRsgumCEQim7T1QaxpCPVA/exec",
       sheetName: "Tour Azul Postulaciones",
       spreadsheetName: "Registro Tour Azul"
     }, null, 2));
@@ -30,7 +30,7 @@ function getConfig() {
     return JSON.parse(raw);
   } catch (err) {
     return {
-      webhookUrl: "https://script.google.com/macros/s/AKfycbylCyLwuyD_HJ90eYYw8Fle1kAOi-b9mQGmTjrORJKv6-WJv0o1wg1N1sKhkXDpbMHEVw/exec",
+      webhookUrl: "https://script.google.com/macros/s/AKfycbyHrjILLmIl0oiQ14LoqUzUv-I6PRIhk8jtffbxWYkW-Q3wyRsgumCEQim7T1QaxpCPVA/exec",
       sheetName: "Tour Azul Postulaciones",
       spreadsheetName: "Registro Tour Azul"
     };

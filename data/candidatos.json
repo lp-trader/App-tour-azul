@@ -15,5 +15,53 @@
     "fecha": "21/10/2026, 11:27:39 p. m.",
     "syncedToSheets": true,
     "_origen": "server"
+  },
+  {
+    "Fecha": "2026-10-22T13:09:05.498Z",
+    "Código": "POST-6240",
+    "Nombre": "Verificación Tour Azul",
+    "Edad": 30,
+    "Teléfono": "0412-0000000",
+    "Zona": "Barquisimeto",
+    "Experiencia": "Sí, tengo experiencia.",
+    "Disponibilidad": "Sí, tengo disponibilidad.",
+    "Punto de partida": "",
+    "Motivación": "Verificación de conexión exitosa en la hoja Tour Azul Postulaciones",
+    "Talento": "Prueba inicial",
+    "Foto": "",
+    "_origen": "sheets",
+    "syncedToSheets": true
+  },
+  {
+    "Fecha": "2026-10-22T13:09:15.362Z",
+    "Código": "POST-2692",
+    "Nombre": "Prueba desde Node",
+    "Edad": 28,
+    "Teléfono": "0412-5555555",
+    "Zona": "Cabudare",
+    "Experiencia": "Sí, tengo experiencia.",
+    "Disponibilidad": "Sí, tengo disponibilidad.",
+    "Punto de partida": "",
+    "Motivación": "Probando envio directo a Registro Tour Azul",
+    "Talento": "Prueba técnica",
+    "Foto": "",
+    "_origen": "sheets",
+    "syncedToSheets": true
+  },
+  {
+    "Fecha": "2026-10-22T13:09:59.849Z",
+    "Código": "POST-1723",
+    "Nombre": "Luis Perera",
+    "Edad": 29,
+    "Teléfono": "0412-1234567",
+    "Zona": "Cabudare",
+    "Experiencia": "Sí, tengo experiencia.",
+    "Disponibilidad": "Sí, tengo disponibilidad.",
+    "Punto de partida": "",
+    "Motivación": "Postulación de prueba multi-dispositivo para Tour Azul.",
+    "Talento": "Organización turística",
+    "Foto": "",
+    "_origen": "sheets",
+    "syncedToSheets": true
   }
 ]
