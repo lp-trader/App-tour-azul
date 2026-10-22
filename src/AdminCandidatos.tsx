@@ -67,11 +67,20 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack, onLogo
   const [resultadoTest, setResultadoTest] = useState<{ ok: boolean; msg: string } | null>(null);
   const [sincronizando, setSincronizando] = useState<boolean>(false);
   const [copiadoCodeGs, setCopiadoCodeGs] = useState<boolean>(false);
+  const [fotoAmpliada, setFotoAmpliada] = useState<{ url: string; nombre: string; codigo: string } | null>(null);
+
+  // Helper para validar si hay una URL o dataURL de foto real
+  const isFotoValida = (foto?: string) => {
+    if (!foto) return false;
+    const f = String(foto).trim();
+    if (!f || f === 'No adjunta' || f === 'No' || f === '-' || f === 'Sin foto' || f === 'No especificado') return false;
+    return f.startsWith('http') || f.startsWith('data:image') || f.startsWith('/uploads') || f.startsWith('/') || f.includes('.jpg') || f.includes('.png') || f.includes('.webp');
+  };
 
   // Normalizadores de campos
   const getNombre = (c: Candidato) => c.Nombre || c.nombre || "Sin nombre";
   const getCodigo = (c: Candidato) => c.Código || c.codigo || c.id || "S/C";
-  const getFoto = (c: Candidato) => c.Foto || c.foto || "";
+  const getFoto = (c: Candidato) => c.Foto || c.foto || c.fotoUrl || "";
   const getEdad = (c: Candidato) => c.Edad !== undefined ? c.Edad : (c.edad !== undefined ? c.edad : "--");
   const getZona = (c: Candidato) => c.Zona || c.zona || "No especificada";
   const getTelefono = (c: Candidato) => c.Teléfono || c.telefono || "--";
@@ -730,18 +739,28 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack, onLogo
                       return (
                         <tr key={index} className="hover:bg-blue-50/40 transition-colors">
                           <td className="px-5 py-3.5 whitespace-nowrap">
-                            {foto && (foto.startsWith('http') || foto.startsWith('data:image')) ? (
-                              <img 
-                                src={foto} 
-                                alt={nombre} 
-                                className="h-11 w-11 rounded-full object-cover shadow-xs border border-slate-200" 
-                                onError={(e) => {
-                                  (e.target as HTMLElement).style.display = 'none';
-                                }}
-                              />
+                            {isFotoValida(foto) ? (
+                              <div 
+                                className="relative group cursor-pointer inline-block"
+                                onClick={() => setFotoAmpliada({ url: foto, nombre, codigo })}
+                                title="Clic para ver fotografía ampliada"
+                              >
+                                <img 
+                                  src={foto} 
+                                  alt={nombre} 
+                                  className="h-12 w-12 rounded-2xl object-cover shadow-sm border-2 border-white group-hover:border-blue-500 group-hover:scale-105 transition-all" 
+                                  onError={(e) => {
+                                    (e.target as HTMLElement).style.display = 'none';
+                                  }}
+                                />
+                                <div className="absolute inset-0 bg-black/30 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-bold pointer-events-none">
+                                  <span>🔍</span>
+                                </div>
+                              </div>
                             ) : (
-                              <div className="h-11 w-11 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-black text-sm border border-blue-200">
-                                {nombre ? nombre.charAt(0).toUpperCase() : "?"}
+                              <div className="h-12 w-12 rounded-2xl bg-slate-100 text-slate-500 flex flex-col items-center justify-center border border-slate-200">
+                                <span className="font-bold text-xs">{nombre ? nombre.charAt(0).toUpperCase() : "?"}</span>
+                                <span className="text-[9px] text-slate-400 font-medium">Sin foto</span>
                               </div>
                             )}
                           </td>
@@ -832,12 +851,25 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack, onLogo
               </button>
 
               <div className="flex items-center gap-4 mb-6 pb-4 border-b border-slate-100">
-                {getFoto(candidatoSeleccionado) && (getFoto(candidatoSeleccionado).startsWith('http') || getFoto(candidatoSeleccionado).startsWith('data:image')) ? (
-                  <img 
-                    src={getFoto(candidatoSeleccionado)} 
-                    alt={getNombre(candidatoSeleccionado)} 
-                    className="h-16 w-16 rounded-2xl object-cover shadow border border-slate-200 shrink-0" 
-                  />
+                {isFotoValida(getFoto(candidatoSeleccionado)) ? (
+                  <div 
+                    className="relative group cursor-pointer inline-block shrink-0"
+                    onClick={() => setFotoAmpliada({ 
+                      url: getFoto(candidatoSeleccionado), 
+                      nombre: getNombre(candidatoSeleccionado), 
+                      codigo: getCodigo(candidatoSeleccionado) 
+                    })}
+                    title="Clic para ver fotografía ampliada"
+                  >
+                    <img 
+                      src={getFoto(candidatoSeleccionado)} 
+                      alt={getNombre(candidatoSeleccionado)} 
+                      className="h-16 w-16 rounded-2xl object-cover shadow border border-slate-200 group-hover:border-blue-500 transition-all" 
+                    />
+                    <div className="absolute inset-0 bg-black/30 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-bold pointer-events-none">
+                      <span>🔍</span>
+                    </div>
+                  </div>
                 ) : (
                   <div className="h-16 w-16 rounded-2xl bg-blue-100 text-blue-800 flex items-center justify-center font-black text-2xl border border-blue-200 shrink-0">
                     {getNombre(candidatoSeleccionado)?.charAt(0).toUpperCase()}
@@ -861,6 +893,60 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack, onLogo
               </div>
 
               <div className="space-y-3.5 text-xs sm:text-sm text-slate-700">
+                {/* Visualizador de Foto del Candidato */}
+                {isFotoValida(getFoto(candidatoSeleccionado)) ? (
+                  <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 text-center space-y-2">
+                    <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wide block text-left">
+                      📷 Fotografía del aspirante
+                    </span>
+                    <div 
+                      className="relative group cursor-pointer inline-block overflow-hidden rounded-2xl border-2 border-white shadow-md max-w-xs mx-auto"
+                      onClick={() => setFotoAmpliada({ 
+                        url: getFoto(candidatoSeleccionado), 
+                        nombre: getNombre(candidatoSeleccionado), 
+                        codigo: getCodigo(candidatoSeleccionado) 
+                      })}
+                      title="Haz clic para ver en pantalla completa"
+                    >
+                      <img 
+                        src={getFoto(candidatoSeleccionado)} 
+                        alt={getNombre(candidatoSeleccionado)} 
+                        className="max-h-60 w-auto object-contain mx-auto rounded-xl group-hover:scale-105 transition-all duration-200"
+                      />
+                      <div className="absolute inset-0 bg-black/35 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-bold gap-1.5">
+                        <span>🔍 Ampliar fotografía</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-center gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => setFotoAmpliada({ 
+                          url: getFoto(candidatoSeleccionado), 
+                          nombre: getNombre(candidatoSeleccionado), 
+                          codigo: getCodigo(candidatoSeleccionado) 
+                        })}
+                        className="px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs transition cursor-pointer flex items-center gap-1"
+                      >
+                        🔍 Ver en pantalla completa
+                      </button>
+                      <a
+                        href={getFoto(candidatoSeleccionado)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        download={`foto_${getCodigo(candidatoSeleccionado)}.jpg`}
+                        className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition cursor-pointer flex items-center gap-1"
+                      >
+                        ⬇️ Abrir / Descargar
+                      </a>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 text-xs text-slate-400 flex items-center gap-2">
+                    <span className="text-base">📷</span>
+                    <span>El aspirante no adjuntó fotografía en su formulario (campo opcional).</span>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-2 gap-2 p-3 bg-slate-50 rounded-2xl border border-slate-100">
                   <div>
                     <span className="text-[11px] font-bold text-slate-400 uppercase block">Edad</span>
@@ -940,6 +1026,57 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack, onLogo
                   Cerrar
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal de Fotografía en Pantalla Completa (Lightbox) */}
+        {fotoAmpliada && (
+          <div 
+            className="fixed inset-0 bg-black/90 backdrop-blur-md flex flex-col items-center justify-center p-4 z-[70] animate-fadeIn"
+            onClick={() => setFotoAmpliada(null)}
+          >
+            <div 
+              className="relative max-w-4xl w-full max-h-[95vh] flex flex-col items-center justify-center"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="w-full flex items-center justify-between text-white pb-3 px-2">
+                <div>
+                  <h4 className="font-bold text-base text-white">{fotoAmpliada.nombre}</h4>
+                  <p className="text-xs text-white/70 font-mono">Código: {fotoAmpliada.codigo}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <a
+                    href={fotoAmpliada.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    download={`foto_${fotoAmpliada.codigo}.jpg`}
+                    className="px-3 py-1.5 rounded-xl bg-white/20 hover:bg-white/30 text-white font-bold text-xs transition cursor-pointer flex items-center gap-1 backdrop-blur-xs"
+                  >
+                    ⬇️ Descargar
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => setFotoAmpliada(null)}
+                    className="w-9 h-9 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center font-bold text-base transition cursor-pointer backdrop-blur-xs"
+                    title="Cerrar fotografía"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+
+              <div className="relative max-h-[80vh] flex items-center justify-center p-2">
+                <img 
+                  src={fotoAmpliada.url} 
+                  alt={fotoAmpliada.nombre} 
+                  className="max-h-[78vh] max-w-full object-contain rounded-2xl shadow-2xl border border-white/20"
+                />
+              </div>
+
+              <p className="text-xs text-white/60 pt-2 text-center">
+                Haz clic en la '✕' o fuera de la imagen para cerrar
+              </p>
             </div>
           </div>
         )}

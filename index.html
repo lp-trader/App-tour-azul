@@ -150,18 +150,6 @@
       <!-- Acciones de Cabecera (Alineadas a la derecha, fijas sin moverse) -->
       <div class="flex items-center gap-2 shrink-0">
 
-  <!-- Acceso destacado: Únete al equipo (Cabecera) -->
-  <button 
-    type="button" 
-    id="btn-nav-equipo" 
-    onclick="showRecruitmentView()" 
-    class="inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-1.5 rounded-full bg-gradient-to-r from-tour-blue to-tour-caribe text-white text-xs font-bold shadow-md hover:shadow-lg transition-all cursor-pointer shrink-0 whitespace-nowrap select-none active:scale-95"
-    title="Convocatoria de futuros trabajadores"
-  >
-    <i data-lucide="sparkles" class="w-3.5 h-3.5 text-tour-yellow shrink-0"></i>
-    <span>Únete al equipo</span>
-  </button>
-
         <!-- Botón de Acceso Directo al Panel de Candidatos (Admin) -->
         <button 
           type="button" 
@@ -277,47 +265,65 @@
 
   <!-- AVISO ATRACTIVO DE PREAPERTURA Y ACCESO DESTACADO -->
   <div id="prelaunch-hero-card" class="relative z-10 max-w-2xl mx-auto mt-6 px-4">
-    <div class="bg-white/15 backdrop-blur-md border border-white/30 rounded-3xl p-6 md:p-8 shadow-2xl space-y-4 text-center animate-float">
-      <!-- Badge de Preapertura -->
-      <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-tour-yellow text-tour-navy text-xs font-title font-black tracking-wider uppercase shadow-md">
-        <i data-lucide="compass" class="w-4 h-4 text-tour-blue"></i>
-        <span>Próxima temporada de excursiones</span>
+    <!-- Aura y resplandor exterior suave con colores del logo -->
+    <div id="hero-card-glow" class="absolute -inset-1 bg-gradient-to-r from-tour-caribe/30 via-tour-blue/35 to-tour-yellow/20 rounded-[34px] blur-xl opacity-75 pointer-events-none transition-all duration-500"></div>
+
+    <div id="prelaunch-card-inner" class="relative overflow-hidden bg-gradient-to-b from-[#0B2A6B]/90 via-[#0D2D72]/85 to-[#071F52]/95 backdrop-blur-xl border border-tour-caribe/45 rounded-[30px] p-6 sm:p-8 md:p-9 shadow-[0_20px_50px_rgba(7,24,64,0.65),0_0_35px_rgba(34,195,214,0.25)] text-center transition-all duration-500">
+      
+      <!-- Línea superior luminosa con degradado del logo -->
+      <div id="hero-card-top-line" class="absolute top-0 inset-x-8 h-[2px] bg-gradient-to-r from-transparent via-tour-caribe-light to-transparent transition-all duration-500"></div>
+
+      <!-- Destellos radiales interiores (Turquesa y Amarillo Solar) -->
+      <div class="absolute -top-16 -right-16 w-44 h-44 bg-tour-caribe/20 rounded-full blur-2xl pointer-events-none"></div>
+      <div class="absolute -bottom-16 -left-16 w-44 h-44 bg-tour-yellow/15 rounded-full blur-2xl pointer-events-none"></div>
+
+      <!-- BOTÓN DE ACCESO DESTACADO "ÚNETE AL EQUIPO" - FONDO BLANCO -->
+      <div class="pt-1 pb-2 flex flex-col items-center justify-center">
+        <button 
+          type="button" 
+          id="btn-recruitment-hero"
+          onclick="showRecruitmentView()" 
+          class="relative group px-8 sm:px-10 py-4 rounded-full font-title font-black uppercase text-sm sm:text-base tracking-wider transition-all duration-300 flex items-center justify-center gap-3 cursor-pointer border-2 border-white shadow-2xl hover:scale-105 active:scale-95 bg-white hover:bg-slate-50 text-tour-navy shadow-[0_12px_32px_rgba(0,0,0,0.25)]"
+          title="Convocatoria de futuros trabajadores"
+        >
+          <span class="w-7 h-7 rounded-full bg-tour-yellow text-tour-navy flex items-center justify-center font-bold shadow-md group-hover:scale-110 group-hover:rotate-12 transition-all">
+            <i data-lucide="sparkles" class="w-4 h-4 text-tour-navy"></i>
+          </span>
+          <span class="tracking-wider text-tour-navy font-black">Únete al equipo</span>
+          <span class="w-7 h-7 rounded-full bg-tour-navy text-white flex items-center justify-center group-hover:translate-x-1 transition-transform">
+            <i data-lucide="arrow-right" class="w-4 h-4"></i>
+          </span>
+        </button>
+      </div>
+
+      <!-- Badge de Preapertura con los colores del logo -->
+      <div class="pt-2 flex justify-center">
+        <div id="hero-card-badge" class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-tour-navy/80 backdrop-blur-md border border-tour-caribe/50 text-white text-xs font-title font-bold tracking-wider uppercase shadow-xs transition-colors">
+          <span class="relative flex h-2 w-2">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-tour-yellow opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-2 w-2 bg-tour-yellow"></span>
+          </span>
+          <i data-lucide="compass" class="w-3.5 h-3.5 text-tour-caribe-light"></i>
+          <span>Próxima temporada de excursiones</span>
+        </div>
       </div>
 
       <!-- Aviso Principal Solicitado -->
-      <h2 class="font-title font-black italic text-2xl md:text-3xl uppercase text-white drop-shadow-sm leading-snug">
-        ¡Próximamente nuevas aventuras!<br>
-        <span class="text-tour-caribe-light font-normal not-italic text-lg md:text-xl block mt-1">
-          Estamos preparando nuestros próximos viajes
-        </span>
-      </h2>
+      <div class="space-y-1.5 pt-2">
+        <h2 id="hero-card-title" class="font-title font-black italic text-2xl sm:text-3xl md:text-4xl uppercase text-tour-yellow drop-shadow-md leading-tight tracking-tight">
+          ¡Próximamente nueva aventura!
+        </h2>
+        <p id="hero-card-subtitle" class="text-tour-caribe-light font-bold text-base sm:text-lg md:text-xl tracking-wide flex items-center justify-center gap-2 transition-colors">
+          <span class="inline-block w-4 h-0.5 bg-tour-yellow/80 rounded-full"></span>
+          <span>Estamos preparando nuestros próximos viajes</span>
+          <span class="inline-block w-4 h-0.5 bg-tour-yellow/80 rounded-full"></span>
+        </p>
+      </div>
 
-      <p class="text-sky-100 text-xs md:text-sm font-medium max-w-lg mx-auto leading-relaxed">
+      <p class="text-sky-100/90 text-xs sm:text-sm font-normal max-w-lg mx-auto leading-relaxed pt-1">
         Muy pronto podrás reservar tus escapadas a los mejores cayos y playas de Venezuela. Mientras afinamos los detalles de nuestros destinos, abrimos la convocatoria para sumar nuevos talentos a nuestra tripulación.
       </p>
 
-      <!-- Botón de Acceso Destacado "Únete al equipo" -->
-      <div class="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
-        <button 
-          type="button" 
-          onclick="showRecruitmentView()" 
-          class="w-full sm:w-auto px-8 py-4 rounded-full bg-white hover:bg-sky-50 text-tour-navy font-title font-black uppercase text-sm tracking-wider shadow-xl hover:shadow-2xl hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-2.5 cursor-pointer group"
-        >
-          <i data-lucide="sparkles" class="w-4 h-4 text-tour-blue group-hover:rotate-12 transition-transform"></i>
-          <span>Únete al equipo</span>
-          <i data-lucide="arrow-right" class="w-4 h-4 text-tour-caribe"></i>
-        </button>
-
-        <a 
-          href="https://wa.me/584126571155?text=%C2%A1Hola%20Tour%20Azul!%20Quisiera%20m%C3%A1s%20informaci%C3%B3n%20sobre%20la%20preapertura%20y%20el%20equipo." 
-          target="_blank" 
-          rel="noopener noreferrer" 
-          class="hidden w-full sm:w-auto px-6 py-3.5 rounded-full bg-white/10 hover:bg-white/20 text-white font-bold text-xs tracking-wide border border-white/20 transition-all items-center justify-center gap-2 cursor-pointer"
-        >
-          <i data-lucide="message-circle" class="w-4 h-4 text-emerald-400"></i>
-          <span>Consultas por WhatsApp</span>
-        </a>
-      </div>
     </div>
   </div>
 
@@ -2380,6 +2386,11 @@
       lastValidatedFormData: null
     };
 
+    function setHeroNoticeTheme(themeId) {
+      // Función mantenida por compatibilidad (selector retirado)
+    }
+    window.setHeroNoticeTheme = setHeroNoticeTheme;
+
     /**
      * Aplica el modo de preapertura en la portada
      */
@@ -2773,6 +2784,8 @@
         talento: talento || "No especificado",
         tieneFoto: Boolean(recruitmentState.selectedPhotoFile),
         fotoNombre: recruitmentState.selectedPhotoFile ? recruitmentState.selectedPhotoFile.name : null,
+        foto: recruitmentState.selectedPhotoBase64 || null,
+        fotoBase64: recruitmentState.selectedPhotoBase64 || null,
         estado: "recibida",
         createdAt: new Date().toISOString()
       };
