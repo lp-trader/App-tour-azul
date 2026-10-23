@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 
 export interface Candidato {
   Foto?: string;
   foto?: string;
+  fotoUrl?: string;
   Nombre?: string;
   nombre?: string;
   Código?: string;
@@ -30,9 +31,9 @@ export interface Candidato {
   Fecha?: string;
   fecha?: string;
   createdAt?: string;
+  updatedAt?: string;
   syncedToSheets?: boolean;
   _origen?: 'server' | 'sheets' | 'local';
-  _isLocalOnly?: boolean;
   [key: string]: any;
 }
 
@@ -45,14 +46,27 @@ const STORAGE_KEY_WEBHOOK = "tour_azul_webhook_postulaciones_url";
 const STORAGE_KEY_POSTULACIONES = "tour_azul_postulaciones";
 const DEFAULT_URL = "https://script.google.com/macros/s/AKfycbyHrjILLmIl0oiQ14LoqUzUv-I6PRIhk8jtffbxWYkW-Q3wyRsgumCEQim7T1QaxpCPVA/exec";
 
+const ESTADOS_DISPONIBLES = [
+  { id: 'Recibida', label: 'Recibida', color: 'bg-sky-50 text-sky-700 border-sky-200' },
+  { id: 'Contactada', label: 'Contactada', color: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  { id: 'Entrevistada', label: 'Entrevistada', color: 'bg-amber-50 text-amber-700 border-amber-200' },
+  { id: 'Seleccionada', label: 'Seleccionada', color: 'bg-purple-50 text-purple-700 border-purple-200' },
+  { id: 'Descartada', label: 'Descartada', color: 'bg-rose-50 text-rose-700 border-rose-200' }
+];
+
 export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack, onLogout }) => {
   const [candidatos, setCandidatos] = useState<Candidato[]>([]);
   const [cargando, setCargando] = useState<boolean>(true);
+  const [actualizandoSilencioso, setActualizandoSilencioso] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [alertaInfo, setAlertaInfo] = useState<string | null>(null);
   const [candidatoSeleccionado, setCandidatoSeleccionado] = useState<Candidato | null>(null);
   const [busqueda, setBusqueda] = useState<string>('');
+  const [filtroEstado, setFiltroEstado] = useState<string>('todos');
   const [filtroDisponibilidad, setFiltroDisponibilidad] = useState<string>('todos');
+  const [autoActualizar, setAutoActualizar] = useState<boolean>(true);
+  const [ultimaActualizacion, setUltimaActualizacion] = useState<string>('');
+  const [guardandoEstadoId, setGuardandoEstadoId] = useState<string | null>(null);
 
   // Configuración de Webhook de Google Apps Script
   const [scriptUrl, setScriptUrl] = useState<string>(() => {
@@ -69,7 +83,7 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack, onLogo
   const [copiadoCodeGs, setCopiadoCodeGs] = useState<boolean>(false);
   const [fotoAmpliada, setFotoAmpliada] = useState<{ url: string; nombre: string; codigo: string } | null>(null);
 
-  // Helper para validar si hay una URL o dataURL de foto real
+  // Helper para validar si hay una foto real
   const isFotoValida = (foto?: string) => {
     if (!foto) return false;
     const f = String(foto).trim();
@@ -80,7 +94,7 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack, onLogo
   // Normalizadores de campos
   const getNombre = (c: Candidato) => c.Nombre || c.nombre || "Sin nombre";
   const getCodigo = (c: Candidato) => c.Código || c.codigo || c.id || "S/C";
-  const getFoto = (c: Candidato) => c.Foto || c.foto || c.fotoUrl || "";
+  const getFoto = (c: Candidato) => c.fotoUrl || c.Foto || c.foto || "";
   const getEdad = (c: Candidato) => c.Edad !== undefined ? c.Edad : (c.edad !== undefined ? c.edad : "--");
   const getZona = (c: Candidato) => c.Zona || c.zona || "No especificada";
   const getTelefono = (c: Candidato) => c.Teléfono || c.telefono || "--";
@@ -114,49 +128,36 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack, onLogo
   };
 
   // 2. Cargar candidatos desde el servidor central (reúne registros de TODOS los dispositivos)
-  const cargarCandidatos = async () => {
-    setCargando(true);
+  const cargarCandidatos = useCallback(async (silencioso: boolean = false) => {
+    if (!silencioso) {
+      setCargando(true);
+    } else {
+      setActualizandoSilencioso(true);
+    }
     setError(null);
-    setAlertaInfo(null);
 
     try {
-      // 2.1 Enviar al servidor cualquier postulación previa guardada en el localStorage de este navegador
-      try {
-        const rawLocal = localStorage.getItem(STORAGE_KEY_POSTULACIONES);
-        if (rawLocal) {
-          const listLocal = JSON.parse(rawLocal);
-          if (Array.isArray(listLocal) && listLocal.length > 0) {
-            for (const item of listLocal) {
-              await fetch('/api/candidatos', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(item)
-              });
-            }
-          }
-        }
-      } catch (errLocalSync) {
-        console.warn("Aviso al migrar locales al servidor:", errLocalSync);
-      }
-
-      // 2.2 Consultar lista unificada del servidor central con sincronización activa
+      // Consultar lista unificada del servidor central
       const resp = await fetch(`/api/candidatos?sync=true&_t=${Date.now()}`);
       if (!resp.ok) {
-        throw new Error(`Error en servidor: HTTP ${resp.status}`);
+        throw new Error(`Error en servidor central: HTTP ${resp.status}`);
       }
 
       const resJson = await resp.json();
       const listado: Candidato[] = Array.isArray(resJson.candidatos) ? resJson.candidatos : [];
 
       setCandidatos(listado);
+      setUltimaActualizacion(new Date().toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
 
       const sinSync = listado.filter(c => !c.syncedToSheets).length;
       if (sinSync > 0) {
-        setAlertaInfo(`Hay ${sinSync} postulación(es) guardadas en el sistema pendientes de escribir en la hoja "${sheetName}" de tu Google Sheet "${spreadsheetName}". Puedes sincronizarlas con el botón abajo.`);
+        setAlertaInfo(`Hay ${sinSync} postulación(es) guardadas en el sistema pendientes de escribir en la hoja "${sheetName}" de tu Google Sheet. Están seguras y visibles en todos tus dispositivos.`);
+      } else {
+        setAlertaInfo(null);
       }
     } catch (err: any) {
       console.warn("Error cargando desde /api/candidatos:", err);
-      // Fallback a localStorage si el servidor está temporalmente inaccesible
+      // Fallback a localStorage si el servidor estuviese temporalmente inaccesible
       try {
         const raw = localStorage.getItem(STORAGE_KEY_POSTULACIONES);
         if (raw) {
@@ -170,14 +171,79 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack, onLogo
         setError(`No se pudieron cargar candidatos: ${err.message || err}`);
       }
     } finally {
-      setCargando(false);
+      if (!silencioso) setCargando(false);
+      setActualizandoSilencioso(false);
+    }
+  }, [sheetName]);
+
+  // Carga inicial y configuración
+  useEffect(() => {
+    cargarConfiguracionServidor();
+    cargarCandidatos(false);
+  }, [cargarCandidatos]);
+
+  // Auto-actualización periódica (cada 20s) para ver postulaciones que lleguen desde teléfonos móviles
+  useEffect(() => {
+    if (!autoActualizar) return;
+    const interval = setInterval(() => {
+      cargarCandidatos(true);
+    }, 20000);
+    return () => clearInterval(interval);
+  }, [autoActualizar, cargarCandidatos]);
+
+  // 3. Cambiar estado de un candidato (Guarda inmediatamente en el servidor para todos los dispositivos)
+  const handleCambiarEstado = async (id: string, nuevoEstado: string) => {
+    setGuardandoEstadoId(id);
+    // Actualización optimista inmediata
+    setCandidatos(prev => prev.map(c => {
+      if (String(c.id || c.codigo) === String(id)) {
+        return { ...c, estado: nuevoEstado, Estado: nuevoEstado };
+      }
+      return c;
+    }));
+
+    if (candidatoSeleccionado && String(candidatoSeleccionado.id || candidatoSeleccionado.codigo) === String(id)) {
+      setCandidatoSeleccionado(prev => prev ? { ...prev, estado: nuevoEstado, Estado: nuevoEstado } : null);
+    }
+
+    try {
+      const res = await fetch(`/api/candidatos/${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ estado: nuevoEstado })
+      });
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+    } catch (err) {
+      console.error("Error al actualizar estado en servidor:", err);
+      alert("Aviso: No se pudo guardar el cambio en el servidor central. Se sincronizará en la próxima actualización.");
+    } finally {
+      setGuardandoEstadoId(null);
     }
   };
 
-  useEffect(() => {
-    cargarConfiguracionServidor();
-    cargarCandidatos();
-  }, []);
+  // 4. Eliminar candidato (para pruebas)
+  const handleEliminarCandidato = async (id: string, nombre: string) => {
+    const confirmar = confirm(`¿Estás seguro de que deseas eliminar la postulación de "${nombre}" (${id})? Esta acción se reflejará en todos los dispositivos.`);
+    if (!confirmar) return;
+
+    try {
+      const res = await fetch(`/api/candidatos/${encodeURIComponent(id)}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) {
+        setCandidatos(prev => prev.filter(c => String(c.id || c.codigo) !== String(id)));
+        if (candidatoSeleccionado && String(candidatoSeleccionado.id || candidatoSeleccionado.codigo) === String(id)) {
+          setCandidatoSeleccionado(null);
+        }
+      } else {
+        alert("No se pudo eliminar el candidato del servidor.");
+      }
+    } catch (e: any) {
+      alert(`Error al eliminar: ${e.message || e}`);
+    }
+  };
 
   // Probar conexión en vivo con Google Apps Script
   const handleProbarConexion = async () => {
@@ -238,7 +304,7 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack, onLogo
         localStorage.setItem(STORAGE_KEY_WEBHOOK, limpia);
         alert(`¡URL guardada exitosamente en el servidor! Ahora todos los dispositivos enviarán las postulaciones a tu hoja "Tour Azul Postulaciones" en Google Sheets.`);
         setMostrarConfigUrl(false);
-        await cargarCandidatos();
+        await cargarCandidatos(false);
       } else {
         alert("No se pudo guardar la configuración en el servidor.");
       }
@@ -255,7 +321,7 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack, onLogo
       const data = await res.json();
       if (data.ok) {
         alert(data.message || `Sincronización completada.`);
-        await cargarCandidatos();
+        await cargarCandidatos(true);
       } else {
         alert(`Aviso: ${data.message || "Error al sincronizar con Google Sheets"}`);
       }
@@ -268,7 +334,7 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack, onLogo
 
   // Enviar postulación de prueba para verificar que la hoja en Google Drive se llene
   const handleEnviarPostulacionPrueba = async () => {
-    const confirmar = confirm(`¿Deseas enviar un aspirante de prueba para comprobar que se añade la fila en la hoja "${sheetName}" de tu archivo "${spreadsheetName}" en Google Drive?`);
+    const confirmar = confirm(`¿Deseas enviar un aspirante de prueba para comprobar que se añade la fila en la hoja "${sheetName}" y que aparece en todos los dispositivos?`);
     if (!confirmar) return;
 
     setCargando(true);
@@ -277,15 +343,15 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack, onLogo
       const payload = {
         id: testId,
         codigo: testId,
-        nombre: "Aspirante de Verificación Tour Azul",
+        nombre: "Aspirante de Verificación Multi-dispositivo",
         edad: 26,
         telefono: "0412-0000000",
         zona: "Barquisimeto",
         experiencia: "Tengo experiencia en turismo y recreación.",
         disponibilidad: "Sí, tengo disponibilidad.",
         punto_partida: "Sí, sin inconvenientes.",
-        motivacion: "Verificación en vivo: Si ves este registro, significa que la hoja Tour Azul Postulaciones está recibiendo datos con total éxito.",
-        talento: "Prueba técnica completada",
+        motivacion: "Verificación en vivo: Este registro confirma que los formularios se sincronizan inmediatamente en cualquier teléfono o computadora del administrador.",
+        talento: "Coordinación y entusiasmo",
         foto: "No adjunta",
         tieneFoto: false,
         estado: "Recibida"
@@ -299,12 +365,8 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack, onLogo
       const data = await res.json();
 
       if (data.ok) {
-        if (data.syncedToSheets) {
-          alert(`¡Éxito total! 🎉 La postulación de prueba ${testId} fue registrada en el servidor y escrita inmediatamente en tu hoja "${sheetName}" de "${spreadsheetName}" en Google Drive.`);
-        } else {
-          alert(`La postulación de prueba se guardó en el servidor compartido, pero el Webhook de Google Sheets respondió: "${data.sheetsResult?.statusText || 'Pendiente'}". Revisa la configuración del Webhook.`);
-        }
-        await cargarCandidatos();
+        alert(`¡Registro creado! 🎉 Se guardó en el servidor central y se sincronizó con Google Sheets. Ya está visible en cualquier dispositivo que abra el admin.`);
+        await cargarCandidatos(false);
       }
     } catch (e: any) {
       alert(`Error al enviar prueba: ${e.message || e}`);
@@ -327,6 +389,27 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack, onLogo
     }
   };
 
+  // Conteo por estados
+  const conteos = useMemo(() => {
+    const counts: Record<string, number> = {
+      todos: candidatos.length,
+      Recibida: 0,
+      Contactada: 0,
+      Entrevistada: 0,
+      Seleccionada: 0,
+      Descartada: 0
+    };
+    candidatos.forEach(c => {
+      const est = getEstado(c);
+      if (counts[est] !== undefined) {
+        counts[est]++;
+      } else {
+        counts.Recibida++;
+      }
+    });
+    return counts;
+  }, [candidatos]);
+
   // Filtrado en tiempo real
   const candidatosFiltrados = useMemo(() => {
     return candidatos.filter((c) => {
@@ -334,10 +417,15 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack, onLogo
       const zon = getZona(c).toLowerCase();
       const cod = getCodigo(c).toLowerCase();
       const tel = getTelefono(c).toLowerCase();
+      const est = getEstado(c);
       const q = busqueda.toLowerCase().trim();
 
       const coincideTexto = !q || nom.includes(q) || zon.includes(q) || cod.includes(q) || tel.includes(q);
       if (!coincideTexto) return false;
+
+      if (filtroEstado !== 'todos' && est !== filtroEstado) {
+        return false;
+      }
 
       if (filtroDisponibilidad !== 'todos') {
         const disp = getDisponibilidad(c).toLowerCase();
@@ -348,7 +436,7 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack, onLogo
 
       return true;
     });
-  }, [candidatos, busqueda, filtroDisponibilidad]);
+  }, [candidatos, busqueda, filtroEstado, filtroDisponibilidad]);
 
   // Generador de enlace WhatsApp
   const getWhatsAppLink = (telefonoRaw: string, nombre: string) => {
@@ -363,12 +451,12 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack, onLogo
   const countPendientes = candidatos.filter(c => !c.syncedToSheets).length;
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-800 p-4 sm:p-6 md:p-8 font-sans antialiased">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className="min-h-screen bg-slate-100 text-slate-800 p-3 sm:p-5 md:p-8 font-sans antialiased">
+      <div className="max-w-7xl mx-auto space-y-5">
         
         {/* Barra superior de navegación rápida */}
-        <div className="flex flex-wrap items-center justify-between bg-white px-5 py-3.5 rounded-2xl shadow-xs border border-slate-200/80 gap-3">
-          <div className="flex items-center gap-2.5">
+        <div className="flex flex-wrap items-center justify-between bg-white px-4 py-3 sm:px-5 sm:py-3.5 rounded-2xl shadow-xs border border-slate-200/80 gap-3">
+          <div className="flex items-center gap-2">
             <button 
               type="button"
               onClick={onBack ? onBack : () => { window.location.hash = ''; }}
@@ -385,28 +473,56 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack, onLogo
                 className="inline-flex items-center gap-1 px-3 py-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-700 font-bold text-xs border border-red-200 transition cursor-pointer active:scale-95"
                 title="Cerrar sesión de administrador"
               >
-                <span>🔒 Cerrar sesión</span>
+                <span>🔒 Salir</span>
               </button>
             )}
 
-            <span className="hidden md:inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+            <span className="hidden lg:inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
               <span>Archivo: <strong>{spreadsheetName}</strong> &gt; Hoja: <strong>{sheetName}</strong></span>
             </span>
           </div>
 
           <div className="flex items-center gap-2 text-xs">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold text-[11px]">
+            {/* Indicador de servidor multi-dispositivo */}
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold text-[11px]" title="Los datos se guardan en el servidor central y se sincronizan en cualquier teléfono, tablet o PC">
               <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-              <span>Multi-dispositivo activo</span>
+              <span>Multi-dispositivo en vivo</span>
             </span>
+
             <button
               type="button"
               onClick={() => setMostrarConfigUrl(!mostrarConfigUrl)}
               className="px-3 py-1.5 rounded-xl border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-800 font-bold text-xs transition cursor-pointer flex items-center gap-1.5"
             >
-              <span>⚙️ Conexión Google Sheets</span>
+              <span>⚙️ Conexión Sheets</span>
             </button>
+          </div>
+        </div>
+
+        {/* Tarjeta explicativa: Multi-dispositivo para el administrador */}
+        <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-sky-900 text-white p-4 sm:p-5 rounded-3xl shadow-lg border border-sky-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="text-xl">🌐</span>
+              <h2 className="font-title font-black text-sm sm:text-base uppercase tracking-tight text-tour-yellow">
+                Panel Centralizado Multi-Dispositivo
+              </h2>
+            </div>
+            <p className="text-xs text-sky-100/90 max-w-3xl leading-relaxed">
+              Cualquier formulario que llenen los aspirantes desde sus teléfonos celulares o computadoras se almacena de inmediato en el servidor central de Tour Azul y se envía a Google Sheets. Como administrador, puedes ingresar a este panel desde <strong>cualquier dispositivo</strong> (tu teléfono, laptop u oficina) con la clave <strong>010203</strong> y verás siempre la lista completa actualizada.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+            <a
+              href="/api/candidatos/export.csv"
+              download="candidatos_tour_azul.csv"
+              className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs border border-white/20 transition active:scale-95 flex items-center gap-1.5"
+              title="Descargar lista completa en Excel (CSV)"
+            >
+              <span>📊 Descargar Excel</span>
+            </a>
           </div>
         </div>
 
@@ -540,23 +656,21 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack, onLogo
               </div>
 
               <span className="text-[11px] text-slate-400">
-                Clave de administrador configurada: <strong>010203</strong>
+                Clave de administrador: <strong>010203</strong>
               </span>
             </div>
           </div>
         )}
 
-        {/* Alerta de Postulaciones Pendientes de Sincronización a Sheets */}
-        {countPendientes > 0 && (
+        {/* Alerta informativa de sincronización */}
+        {alertaInfo && (
           <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r-2xl shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
             <div className="space-y-0.5">
               <div className="flex items-center gap-2 text-amber-900 font-bold text-sm">
                 <span>⚠️</span>
-                <span>{countPendientes} postulación(es) resguardadas en el servidor pendientes de escribir en Google Sheets</span>
+                <span>{countPendientes} postulación(es) resguardadas en el servidor</span>
               </div>
-              <p className="text-amber-800 text-xs leading-relaxed">
-                Estas postulaciones están seguras y visibles para todos los dispositivos. Una vez conectado tu Webhook de <strong>{spreadsheetName}</strong>, puedes enviarlas todas a la hoja <strong>"{sheetName}"</strong> con un solo clic.
-              </p>
+              <p className="text-amber-800 text-xs leading-relaxed">{alertaInfo}</p>
             </div>
             <button
               type="button"
@@ -564,82 +678,142 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack, onLogo
               disabled={sincronizando}
               className="px-4 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white font-bold text-xs transition cursor-pointer shadow-xs active:scale-95 whitespace-nowrap"
             >
-              {sincronizando ? "Sincronizando..." : "📤 Sincronizar con Google Sheets ahora"}
+              {sincronizando ? "Sincronizando..." : "📤 Sincronizar con Sheets ahora"}
             </button>
           </div>
         )}
 
-        {/* Cabecera del Panel */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-6 rounded-3xl shadow-xs border border-slate-200/80 gap-4">
+        {/* Cabecera del Panel de Control */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-5 sm:p-6 rounded-3xl shadow-xs border border-slate-200/80 gap-4">
           <div className="space-y-1">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100 text-blue-800 text-xs font-bold uppercase tracking-wider">
-              <span>🛡️ Módulo de Selección de Personal · Clave Admin Activa</span>
+            <div className="flex items-center gap-2">
+              <span className="px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 text-[11px] font-bold uppercase tracking-wider">
+                🛡️ Control de Candidatos · Tour Azul
+              </span>
+              {ultimaActualizacion && (
+                <span className="text-[11px] text-slate-400 font-mono">
+                  Sincronizado: {ultimaActualizacion}
+                </span>
+              )}
             </div>
-            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">Panel de Postulaciones</h1>
-            <p className="text-sm text-slate-500">
-              Registros multi-dispositivo conectados con la hoja <span className="font-bold text-blue-700">{sheetName}</span> del archivo <span className="font-semibold text-slate-700">{spreadsheetName}</span>
+            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">Panel de Aspirantes</h1>
+            <p className="text-xs sm:text-sm text-slate-500">
+              Registros consolidados de todos los formularios enviados desde cualquier dispositivo
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto">
-            <div className="text-xs text-right pr-2 hidden sm:block">
-              <div className="text-slate-500">Total aspirantes: <strong className="text-slate-900">{candidatos.length}</strong></div>
-              <div className="text-[11px] text-slate-400">En Sheets: <strong className="text-emerald-700">{countSheets}</strong> · Pendientes: <strong className="text-amber-700">{countPendientes}</strong></div>
-            </div>
+          <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto justify-end">
+            {/* Toggle de Auto-actualización */}
+            <button
+              type="button"
+              onClick={() => setAutoActualizar(!autoActualizar)}
+              className={`px-3 py-2 rounded-xl text-xs font-bold border transition flex items-center gap-1.5 cursor-pointer ${
+                autoActualizar 
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100' 
+                  : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
+              }`}
+              title="Actualiza la lista automáticamente cada 20 segundos"
+            >
+              <span className={`w-2 h-2 rounded-full ${autoActualizar ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`}></span>
+              <span>{autoActualizar ? 'Auto-refresco: Activo' : 'Auto-refresco: Pausado'}</span>
+            </button>
 
+            {/* Botón manual de refresco */}
             <button 
               type="button" 
-              onClick={cargarCandidatos}
+              onClick={() => cargarCandidatos(false)}
               disabled={cargando}
-              className="bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-bold px-4 py-2.5 rounded-xl transition-all flex items-center justify-center gap-2 text-xs sm:text-sm shadow-md hover:shadow-lg active:scale-95 cursor-pointer w-full sm:w-auto"
+              className="bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-bold px-4 py-2.5 rounded-xl transition-all flex items-center justify-center gap-2 text-xs sm:text-sm shadow-md hover:shadow-lg active:scale-95 cursor-pointer"
             >
-              <span className={cargando ? "animate-spin" : ""}>🔄</span>
-              <span>{cargando ? "Actualizando..." : "Actualizar Lista"}</span>
+              <span className={cargando || actualizandoSilencioso ? "animate-spin" : ""}>🔄</span>
+              <span>{cargando ? "Actualizando..." : "Actualizar ahora"}</span>
             </button>
           </div>
         </div>
 
-        {/* Barra de Filtros y Búsqueda */}
-        {!cargando && candidatos.length > 0 && (
-          <div className="bg-white p-4 rounded-2xl shadow-xs border border-slate-200/80 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
-            <div className="relative w-full sm:w-72 md:w-80">
-              <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
-                🔍
+        {/* Pestañas de Filtro por Estado */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar text-xs">
+          <button
+            type="button"
+            onClick={() => setFiltroEstado('todos')}
+            className={`px-4 py-2 rounded-2xl font-bold whitespace-nowrap transition cursor-pointer ${
+              filtroEstado === 'todos'
+                ? 'bg-blue-600 text-white shadow-sm'
+                : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
+            }`}
+          >
+            Todos ({conteos.todos})
+          </button>
+          {ESTADOS_DISPONIBLES.map(est => (
+            <button
+              key={est.id}
+              type="button"
+              onClick={() => setFiltroEstado(est.id)}
+              className={`px-3.5 py-2 rounded-2xl font-bold whitespace-nowrap transition cursor-pointer flex items-center gap-1.5 ${
+                filtroEstado === est.id
+                  ? 'bg-slate-900 text-white shadow-sm'
+                  : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-200'
+              }`}
+            >
+              <span>{est.label}</span>
+              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-slate-100 text-slate-600 font-mono">
+                {conteos[est.id] || 0}
               </span>
-              <input 
-                type="text" 
-                value={busqueda} 
-                onChange={(e) => setBusqueda(e.target.value)}
-                placeholder="Buscar por nombre, zona, teléfono o código..."
-                className="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600 text-xs bg-slate-50 focus:bg-white transition"
-              />
-            </div>
+            </button>
+          ))}
+        </div>
 
-            <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-              <span className="text-slate-500 text-xs font-medium">Disponibilidad:</span>
+        {/* Barra de Búsqueda y Disponibilidad */}
+        <div className="bg-white p-4 rounded-2xl shadow-xs border border-slate-200/80 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+          <div className="relative w-full sm:w-80">
+            <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
+              🔍
+            </span>
+            <input 
+              type="text" 
+              value={busqueda} 
+              onChange={(e) => setBusqueda(e.target.value)}
+              placeholder="Buscar por nombre, zona, teléfono o código..."
+              className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600 text-xs bg-slate-50 focus:bg-white transition"
+            />
+          </div>
+
+          <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+            <div className="flex items-center gap-1.5">
+              <span className="text-slate-500 font-medium">Disponibilidad:</span>
               <select
                 value={filtroDisponibilidad}
                 onChange={(e) => setFiltroDisponibilidad(e.target.value)}
                 className="px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 font-medium text-xs focus:outline-none focus:ring-2 focus:ring-blue-600 cursor-pointer"
               >
                 <option value="todos">Todas</option>
-                <option value="completa">Disponibilidad completa / Sí</option>
+                <option value="completa">Completa / Sí</option>
                 <option value="parcial">Parcial</option>
                 <option value="Sí">Sí</option>
               </select>
             </div>
-          </div>
-        )}
 
-        {/* Estados de Carga y Error */}
+            <a
+              href="/api/candidatos/export.csv"
+              download="candidatos_tour_azul.csv"
+              className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold transition flex items-center gap-1"
+              title="Descargar tabla en formato CSV compatible con Excel"
+            >
+              <span>📥 Exportar CSV</span>
+            </a>
+          </div>
+        </div>
+
+        {/* Estados de Carga Inicial */}
         {cargando && (
           <div className="text-center py-16 bg-white rounded-3xl shadow-xs border border-slate-200/80 space-y-3">
             <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
-            <p className="text-slate-700 font-bold text-base">Sincronizando postulaciones en tiempo real...</p>
-            <p className="text-xs text-slate-400">Consultando registros del servidor compartido y Google Sheets ("{sheetName}")</p>
+            <p className="text-slate-700 font-bold text-base">Sincronizando postulaciones de todos los dispositivos...</p>
+            <p className="text-xs text-slate-400">Reuniendo registros del servidor central y Google Sheets</p>
           </div>
         )}
 
+        {/* Error */}
         {error && !cargando && (
           <div className="bg-red-50 border-l-4 border-red-500 p-5 rounded-r-2xl shadow-xs space-y-2">
             <div className="flex items-center gap-2 text-red-700 font-bold text-sm">
@@ -650,23 +824,16 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack, onLogo
             <div className="flex flex-wrap items-center gap-2 pt-2">
               <button 
                 type="button"
-                onClick={cargarCandidatos}
+                onClick={() => cargarCandidatos(false)}
                 className="px-3.5 py-1.5 rounded-xl bg-red-100 hover:bg-red-200 text-red-800 text-xs font-bold transition cursor-pointer"
               >
                 Reintentar
-              </button>
-              <button
-                type="button"
-                onClick={() => setMostrarConfigUrl(true)}
-                className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold border border-slate-300 transition cursor-pointer"
-              >
-                Configurar Webhook de Google Sheets
               </button>
             </div>
           </div>
         )}
 
-        {/* Tabla de Candidatos */}
+        {/* Lista / Tabla de Candidatos */}
         {!cargando && (
           <div className="bg-white rounded-3xl shadow-xs border border-slate-200/80 overflow-hidden">
             {candidatos.length === 0 ? (
@@ -677,14 +844,14 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack, onLogo
                 <div className="max-w-md mx-auto space-y-1.5">
                   <h3 className="text-base font-bold text-slate-800">No hay postulaciones registradas todavía</h3>
                   <p className="text-xs text-slate-500 leading-relaxed">
-                    Tan pronto como cualquier aspirante complete el formulario desde cualquier teléfono o computadora, aparecerá automáticamente aquí en tiempo real y se enviará a la hoja <strong>{sheetName}</strong> de tu archivo <strong>{spreadsheetName}</strong>.
+                    Tan pronto como cualquier aspirante complete el formulario desde su teléfono o computadora, aparecerá automáticamente aquí en tiempo real y se enviará a la hoja <strong>{sheetName}</strong> de tu archivo <strong>{spreadsheetName}</strong>.
                   </p>
                 </div>
 
                 <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
                   <button 
                     type="button"
-                    onClick={cargarCandidatos}
+                    onClick={() => cargarCandidatos(false)}
                     className="px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold rounded-xl text-xs transition cursor-pointer"
                   >
                     🔄 Comprobar de nuevo
@@ -694,17 +861,17 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack, onLogo
                     onClick={handleEnviarPostulacionPrueba}
                     className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs transition cursor-pointer shadow-xs"
                   >
-                    ✉️ Enviar postulación de prueba para comprobar
+                    ✉️ Enviar postulación de prueba
                   </button>
                 </div>
               </div>
             ) : candidatosFiltrados.length === 0 ? (
               <div className="text-center py-12 px-4 space-y-2">
-                <p className="text-sm font-semibold text-slate-700">No se encontraron candidatos con el filtro actual.</p>
+                <p className="text-sm font-semibold text-slate-700">No se encontraron candidatos con los filtros actuales.</p>
                 <button 
                   type="button"
-                  onClick={() => { setBusqueda(''); setFiltroDisponibilidad('todos'); }}
-                  className="text-xs text-blue-600 font-bold hover:underline"
+                  onClick={() => { setBusqueda(''); setFiltroEstado('todos'); setFiltroDisponibilidad('todos'); }}
+                  className="text-xs text-blue-600 font-bold hover:underline cursor-pointer"
                 >
                   Restablecer filtros
                 </button>
@@ -717,14 +884,15 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack, onLogo
                       <th className="px-5 py-3.5">Foto</th>
                       <th className="px-5 py-3.5">Nombre & Código</th>
                       <th className="px-5 py-3.5">Edad / Zona</th>
-                      <th className="px-5 py-3.5">Teléfono</th>
+                      <th className="px-5 py-3.5">Teléfono / WhatsApp</th>
                       <th className="px-5 py-3.5">Disponibilidad</th>
-                      <th className="px-5 py-3.5">Estado en Sheets</th>
+                      <th className="px-5 py-3.5">Estado</th>
                       <th className="px-5 py-3.5 text-center">Acciones</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-slate-200/80">
                     {candidatosFiltrados.map((candidato, index) => {
+                      const idCandidato = String(candidato.id || candidato.codigo || `POST-${index}`);
                       const foto = getFoto(candidato);
                       const nombre = getNombre(candidato);
                       const codigo = getCodigo(candidato);
@@ -737,7 +905,7 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack, onLogo
                       const waLink = getWhatsAppLink(telefono, nombre);
 
                       return (
-                        <tr key={index} className="hover:bg-blue-50/40 transition-colors">
+                        <tr key={idCandidato} className="hover:bg-blue-50/40 transition-colors">
                           <td className="px-5 py-3.5 whitespace-nowrap">
                             {isFotoValida(foto) ? (
                               <div 
@@ -758,15 +926,16 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack, onLogo
                                 </div>
                               </div>
                             ) : (
-                              <div className="h-12 w-12 rounded-2xl bg-slate-100 text-slate-500 flex flex-col items-center justify-center border border-slate-200">
+                              <div className="h-12 w-12 rounded-2xl bg-blue-50 text-blue-700 flex flex-col items-center justify-center border border-blue-100">
                                 <span className="font-bold text-xs">{nombre ? nombre.charAt(0).toUpperCase() : "?"}</span>
-                                <span className="text-[9px] text-slate-400 font-medium">Sin foto</span>
+                                <span className="text-[9px] text-blue-400 font-medium">Sin foto</span>
                               </div>
                             )}
                           </td>
                           <td className="px-5 py-3.5 whitespace-nowrap">
                             <div className="text-sm font-bold text-slate-900">{nombre}</div>
                             <div className="text-[11px] font-mono text-slate-400">Código: {codigo}</div>
+                            <div className="text-[10px] text-slate-400">{getFecha(candidato)}</div>
                           </td>
                           <td className="px-5 py-3.5 whitespace-nowrap">
                             <div className="text-sm text-slate-900 font-medium">{edad} {edad !== '--' ? 'años' : ''}</div>
@@ -793,16 +962,32 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack, onLogo
                           </td>
                           <td className="px-5 py-3.5 whitespace-nowrap text-xs">
                             <div className="flex flex-col gap-1 items-start">
-                              <span className="px-2 py-0.5 text-[10px] font-bold rounded-md bg-slate-100 text-slate-700 uppercase">
-                                {estado}
-                              </span>
+                              {/* Selector desplegable de estado guardado en servidor */}
+                              <select
+                                value={estado}
+                                disabled={guardandoEstadoId === idCandidato}
+                                onChange={(e) => handleCambiarEstado(idCandidato, e.target.value)}
+                                className={`px-2 py-1 text-[11px] font-bold rounded-lg border focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer transition ${
+                                  estado === 'Recibida' ? 'bg-sky-50 text-sky-800 border-sky-300' :
+                                  estado === 'Contactada' ? 'bg-emerald-50 text-emerald-800 border-emerald-300' :
+                                  estado === 'Entrevistada' ? 'bg-amber-50 text-amber-800 border-amber-300' :
+                                  estado === 'Seleccionada' ? 'bg-purple-50 text-purple-800 border-purple-300' :
+                                  'bg-rose-50 text-rose-800 border-rose-300'
+                                }`}
+                                title="Cambiar estado del aspirante (se guarda inmediatamente para todos los dispositivos)"
+                              >
+                                {ESTADOS_DISPONIBLES.map(est => (
+                                  <option key={est.id} value={est.id}>{est.label}</option>
+                                ))}
+                              </select>
+
                               {isSynced ? (
                                 <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 flex items-center gap-1">
                                   <span>🟢 En Google Sheets</span>
                                 </span>
                               ) : (
                                 <span className="text-[10px] font-semibold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 flex items-center gap-1">
-                                  <span>🟡 Pendiente en Sheets</span>
+                                  <span>🟡 Resguardo local</span>
                                 </span>
                               )}
                             </div>
@@ -815,17 +1000,14 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack, onLogo
                             >
                               Ver detalles
                             </button>
-                            {waLink && (
-                              <a 
-                                href={waLink} 
-                                target="_blank" 
-                                rel="noopener noreferrer" 
-                                className="bg-emerald-50 hover:bg-emerald-600 hover:text-white text-emerald-700 font-bold px-2.5 py-1.5 rounded-xl text-xs transition-colors inline-block border border-emerald-200"
-                                title="Contactar por WhatsApp"
-                              >
-                                WhatsApp
-                              </a>
-                            )}
+                            <button
+                              type="button"
+                              onClick={() => handleEliminarCandidato(idCandidato, nombre)}
+                              className="text-slate-400 hover:text-rose-600 p-1.5 rounded-lg hover:bg-rose-50 transition cursor-pointer"
+                              title="Eliminar registro"
+                            >
+                              🗑️
+                            </button>
                           </td>
                         </tr>
                       );
@@ -878,16 +1060,19 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack, onLogo
                 <div className="pr-6">
                   <h3 className="text-xl font-bold text-slate-900 leading-tight">{getNombre(candidatoSeleccionado)}</h3>
                   <p className="text-xs text-slate-500 mt-0.5 font-mono">Código: {getCodigo(candidatoSeleccionado)}</p>
-                  <div className="mt-1">
-                    {candidatoSeleccionado.syncedToSheets ? (
-                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                        Guardado en Google Sheets ({sheetName})
-                      </span>
-                    ) : (
-                      <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
-                        Guardado en Servidor · Pendiente de sincronizar a Google Sheets
-                      </span>
-                    )}
+                  
+                  {/* Selector de estado en modal */}
+                  <div className="mt-2 flex items-center gap-2">
+                    <span className="text-xs text-slate-500 font-medium">Estado:</span>
+                    <select
+                      value={getEstado(candidatoSeleccionado)}
+                      onChange={(e) => handleCambiarEstado(String(candidatoSeleccionado.id || candidatoSeleccionado.codigo), e.target.value)}
+                      className="px-2.5 py-1 text-xs font-bold rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-600 cursor-pointer"
+                    >
+                      {ESTADOS_DISPONIBLES.map(est => (
+                        <option key={est.id} value={est.id}>{est.label}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
               </div>
@@ -1051,32 +1236,24 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack, onLogo
                     target="_blank"
                     rel="noopener noreferrer"
                     download={`foto_${fotoAmpliada.codigo}.jpg`}
-                    className="px-3 py-1.5 rounded-xl bg-white/20 hover:bg-white/30 text-white font-bold text-xs transition cursor-pointer flex items-center gap-1 backdrop-blur-xs"
+                    className="px-3 py-1.5 rounded-xl bg-white/20 hover:bg-white/30 text-white text-xs font-bold transition"
                   >
                     ⬇️ Descargar
                   </a>
                   <button
                     type="button"
                     onClick={() => setFotoAmpliada(null)}
-                    className="w-9 h-9 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center font-bold text-base transition cursor-pointer backdrop-blur-xs"
-                    title="Cerrar fotografía"
+                    className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center text-sm font-bold transition cursor-pointer"
                   >
                     ✕
                   </button>
                 </div>
               </div>
-
-              <div className="relative max-h-[80vh] flex items-center justify-center p-2">
-                <img 
-                  src={fotoAmpliada.url} 
-                  alt={fotoAmpliada.nombre} 
-                  className="max-h-[78vh] max-w-full object-contain rounded-2xl shadow-2xl border border-white/20"
-                />
-              </div>
-
-              <p className="text-xs text-white/60 pt-2 text-center">
-                Haz clic en la '✕' o fuera de la imagen para cerrar
-              </p>
+              <img 
+                src={fotoAmpliada.url} 
+                alt={fotoAmpliada.nombre} 
+                className="max-h-[80vh] max-w-full object-contain rounded-2xl shadow-2xl border border-white/20"
+              />
             </div>
           </div>
         )}

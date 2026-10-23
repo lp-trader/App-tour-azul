@@ -9,18 +9,24 @@ export default function App() {
     return hash.includes('admin') || hash.includes('candidatos');
   });
 
+  const checkIsAdminAuthenticated = () => {
+    return sessionStorage.getItem('tour_azul_admin_auth') === ADMIN_PASS ||
+           localStorage.getItem('tour_azul_admin_auth') === ADMIN_PASS;
+  };
+
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-    return sessionStorage.getItem('tour_azul_admin_auth') === ADMIN_PASS;
+    return checkIsAdminAuthenticated();
   });
 
   const [showPasswordModal, setShowPasswordModal] = useState<boolean>(false);
   const [passwordInput, setPasswordInput] = useState<string>('');
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [showPasswordText, setShowPasswordText] = useState<boolean>(false);
+  const [recordarSesion, setRecordarSesion] = useState<boolean>(true);
 
   // Abrir solicitud de acceso admin
   const requestAdminAccess = () => {
-    const isAuth = sessionStorage.getItem('tour_azul_admin_auth') === ADMIN_PASS;
+    const isAuth = checkIsAdminAuthenticated();
     if (isAuth) {
       setIsAuthenticated(true);
       setIsAdminView(true);
@@ -39,7 +45,7 @@ export default function App() {
       const hash = window.location.hash.toLowerCase();
       const shouldBeAdmin = hash.includes('admin') || hash.includes('candidatos');
       if (shouldBeAdmin) {
-        const isAuth = sessionStorage.getItem('tour_azul_admin_auth') === ADMIN_PASS;
+        const isAuth = checkIsAdminAuthenticated();
         if (isAuth) {
           setIsAuthenticated(true);
           setIsAdminView(true);
@@ -112,6 +118,7 @@ export default function App() {
 
   const handleLogout = () => {
     sessionStorage.removeItem('tour_azul_admin_auth');
+    localStorage.removeItem('tour_azul_admin_auth');
     setIsAuthenticated(false);
     setIsAdminView(false);
     setShowPasswordModal(false);
@@ -124,6 +131,9 @@ export default function App() {
     e.preventDefault();
     if (passwordInput.trim() === ADMIN_PASS) {
       sessionStorage.setItem('tour_azul_admin_auth', ADMIN_PASS);
+      if (recordarSesion) {
+        localStorage.setItem('tour_azul_admin_auth', ADMIN_PASS);
+      }
       setIsAuthenticated(true);
       setShowPasswordModal(false);
       setIsAdminView(true);
@@ -179,7 +189,7 @@ export default function App() {
               Acceso Administrador
             </h3>
             <p className="text-xs text-slate-500 mt-1 mb-5 leading-relaxed">
-              Este panel es de uso exclusivo para la coordinación de Tour Azul. Ingresa la clave de administrador para continuar.
+              Este panel es de uso exclusivo para la coordinación de Tour Azul. Ingresa la clave de administrador para revisar todos los postulantes desde cualquier dispositivo.
             </p>
 
             <form onSubmit={handlePasswordSubmit} className="space-y-4 text-left">
@@ -214,6 +224,20 @@ export default function App() {
                     <span>{passwordError}</span>
                   </div>
                 )}
+              </div>
+
+              {/* Opción para recordar en este dispositivo */}
+              <div className="flex items-center gap-2 pt-1">
+                <input
+                  type="checkbox"
+                  id="recordar-admin-dispositivo"
+                  checked={recordarSesion}
+                  onChange={(e) => setRecordarSesion(e.target.checked)}
+                  className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                />
+                <label htmlFor="recordar-admin-dispositivo" className="text-xs text-slate-600 cursor-pointer select-none">
+                  Recordar acceso en este dispositivo
+                </label>
               </div>
 
               <div className="flex items-center gap-2 pt-2">

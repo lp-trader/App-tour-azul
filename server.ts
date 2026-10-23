@@ -218,12 +218,20 @@ async function startServer() {
     const cfg = getConfig();
     const shouldSync = req.query.sync === 'true';
 
-    // Si se solicita sincronización o la lista local está vacía pero hay webhook configurado
+    // Si se solicita sincronización y hay webhook configurado
     if (shouldSync && cfg.webhookUrl && cfg.webhookUrl.startsWith('http')) {
       try {
         const sep = cfg.webhookUrl.includes('?') ? '&' : '?';
         const remoteUrl = `${cfg.webhookUrl}${sep}accion=candidatos&_t=${Date.now()}`;
-        const resp = await fetch(remoteUrl, { headers: { 'Accept': 'application/json' } });
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000); // Máximo 5s para no demorar la UI
+
+        const resp = await fetch(remoteUrl, { 
+          headers: { 'Accept': 'application/json' },
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+
         if (resp.ok) {
           const json = await resp.json();
           let remotos: any[] = [];
@@ -231,20 +239,41 @@ async function startServer() {
           else if (Array.isArray(json)) remotos = json;
           else if (json && Array.isArray(json.postulaciones)) remotos = json.postulaciones;
 
-          // Merge: agregar los remotos que no estén en localList
-          const idsLocales = new Set(localList.map((c: any) => String(c.id || c.codigo || '').toLowerCase().trim()));
-          const nuevosDeSheets = remotos.filter((r: any) => {
-            const rId = String(r.id || r.codigo || r.Código || '').toLowerCase().trim();
-            return rId && !idsLocales.has(rId);
-          }).map(r => ({ ...r, _origen: 'sheets', syncedToSheets: true }));
+          // Merge inteligente: actualizar estados y añadir faltantes
+          const localMap = new Map<string, number>();
+          localList.forEach((c: any, idx: number) => {
+            const key = String(c.id || c.codigo || c.Código || '').toLowerCase().trim();
+            if (key) localMap.set(key, idx);
+          });
 
-          if (nuevosDeSheets.length > 0) {
-            localList = [...localList, ...nuevosDeSheets];
+          let huboCambios = false;
+          for (const r of remotos) {
+            const rId = String(r.id || r.codigo || r.Código || '').toLowerCase().trim();
+            if (!rId) continue;
+
+            if (localMap.has(rId)) {
+              // Si el estado en Sheets fue actualizado por el admin, reflejarlo
+              const idx = localMap.get(rId)!;
+              const remoteEstado = r.estado || r.Estado;
+              if (remoteEstado && remoteEstado !== localList[idx].estado && remoteEstado !== localList[idx].Estado) {
+                localList[idx].estado = remoteEstado;
+                localList[idx].Estado = remoteEstado;
+                localList[idx].syncedToSheets = true;
+                huboCambios = true;
+              }
+            } else {
+              // Nuevo registro que vino desde Sheets
+              localList.push({ ...r, _origen: 'sheets', syncedToSheets: true });
+              huboCambios = true;
+            }
+          }
+
+          if (huboCambios) {
             saveCandidatosList(localList);
           }
         }
       } catch (err) {
-        console.warn('Aviso al consultar Google Sheets en GET /api/candidatos:', err);
+        console.warn('Aviso al consultar Google Sheets en GET /api/candidatos (continuando con lista local):', err);
       }
     }
 
@@ -252,11 +281,12 @@ async function startServer() {
       ok: true,
       candidatos: localList,
       total: localList.length,
-      webhookUrl: cfg.webhookUrl
+      webhookUrl: cfg.webhookUrl,
+      lastSync: new Date().toISOString()
     });
   });
 
-  // 6. Registrar Candidato (Desde cualquier dispositivo)
+  // 6. Registrar Candidato (Desde cualquier dispositivo: móvil, tablet, PC)
   app.post('/api/candidatos', async (req, res) => {
     try {
       const data = req.body;
@@ -294,7 +324,7 @@ async function startServer() {
         fotoUrl = rawPhoto;
       }
 
-      const candidato = {
+      const candidato: any = {
         ...data,
         id,
         codigo: id,
@@ -303,14 +333,17 @@ async function startServer() {
         tieneFoto: Boolean(fotoUrl || data.tieneFoto),
         createdAt: data.createdAt || now.toISOString(),
         fecha: data.fecha || now.toLocaleString('es-VE'),
+        estado: data.estado || data.Estado || 'Recibida',
         syncedToSheets: false,
         _origen: 'server'
       };
 
+      // Limpiar propiedades redundantes que sobrecarguen el archivo JSON
+      delete candidato.fotoBase64;
+
       // Guardar en la base de datos persistente del servidor
       const list = getCandidatosList();
-      // Evitar duplicados por id
-      const existingIdx = list.findIndex(c => String(c.id) === String(id));
+      const existingIdx = list.findIndex(c => String(c.id) === String(id) || String(c.codigo) === String(id));
       if (existingIdx !== -1) {
         list[existingIdx] = { ...list[existingIdx], ...candidato };
       } else {
@@ -318,14 +351,13 @@ async function startServer() {
       }
       saveCandidatosList(list);
 
-      // Intentar reenvío inmediato a Google Sheets
+      // Intentar reenvío inmediato a Google Sheets si hay webhook
       const cfg = getConfig();
       let forwardResult = { ok: false, statusText: 'No intentado' };
       if (cfg.webhookUrl && cfg.webhookUrl.startsWith('http')) {
         forwardResult = await forwardToGoogleSheets(candidato, cfg.webhookUrl);
         if (forwardResult.ok) {
           candidato.syncedToSheets = true;
-          // Actualizar estado en list
           const updatedIdx = list.findIndex(c => String(c.id) === String(id));
           if (updatedIdx !== -1) {
             list[updatedIdx].syncedToSheets = true;
@@ -333,6 +365,8 @@ async function startServer() {
           }
         }
       }
+
+      console.log(`[Postulación recibida] Aspirante: "${candidato.nombre || candidato.Nombre}" (${id}). Sincronizado a Sheets: ${candidato.syncedToSheets}`);
 
       res.json({
         ok: true,
@@ -347,7 +381,136 @@ async function startServer() {
     }
   });
 
-  // 7. Sincronizar todos los candidatos pendientes hacia Google Sheets
+  // 7. Actualizar Estado de un Candidato (Visible inmediatamente en todos los dispositivos)
+  app.patch('/api/candidatos/:id', async (req, res) => {
+    try {
+      const targetId = String(req.params.id).trim().toLowerCase();
+      const { estado, notas } = req.body;
+
+      if (!estado && notas === undefined) {
+        return res.status(400).json({ ok: false, error: 'Nada para actualizar' });
+      }
+
+      const list = getCandidatosList();
+      const idx = list.findIndex(c => 
+        String(c.id || c.codigo || c.Código || '').trim().toLowerCase() === targetId
+      );
+
+      if (idx === -1) {
+        return res.status(404).json({ ok: false, error: 'Candidato no encontrado' });
+      }
+
+      if (estado) {
+        list[idx].estado = estado;
+        list[idx].Estado = estado;
+      }
+      if (notas !== undefined) {
+        list[idx].notas = notas;
+      }
+      list[idx].updatedAt = new Date().toISOString();
+
+      saveCandidatosList(list);
+
+      // Notificar cambio de estado a Google Sheets si el webhook está configurado
+      const cfg = getConfig();
+      if (cfg.webhookUrl && cfg.webhookUrl.startsWith('http')) {
+        try {
+          fetch(cfg.webhookUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({
+              accion: 'actualizar_estado',
+              codigo: list[idx].id || list[idx].codigo,
+              id: list[idx].id || list[idx].codigo,
+              estado: list[idx].estado
+            })
+          }).catch(errW => console.warn('Aviso notificando cambio de estado a Google Sheets:', errW));
+        } catch (_) {}
+      }
+
+      res.json({ ok: true, candidato: list[idx], message: 'Estado actualizado en todos los dispositivos' });
+    } catch (err: any) {
+      res.status(500).json({ ok: false, error: err.message || String(err) });
+    }
+  });
+
+  // 8. Eliminar Candidato (Para descartar registros de prueba)
+  app.delete('/api/candidatos/:id', (req, res) => {
+    try {
+      const targetId = String(req.params.id).trim().toLowerCase();
+      let list = getCandidatosList();
+      const initialLen = list.length;
+      list = list.filter(c => 
+        String(c.id || c.codigo || c.Código || '').trim().toLowerCase() !== targetId
+      );
+
+      if (list.length === initialLen) {
+        return res.status(404).json({ ok: false, error: 'Candidato no encontrado' });
+      }
+
+      saveCandidatosList(list);
+      res.json({ ok: true, message: 'Candidato eliminado de la lista central' });
+    } catch (err: any) {
+      res.status(500).json({ ok: false, error: err.message || String(err) });
+    }
+  });
+
+  // 9. Exportar Candidatos a CSV (Compatible con Microsoft Excel con caracteres en español)
+  app.get('/api/candidatos/export.csv', (_req, res) => {
+    try {
+      const list = getCandidatosList();
+      const headers = [
+        'Código',
+        'Fecha',
+        'Nombre Completo',
+        'Edad',
+        'Teléfono',
+        'Zona',
+        'Experiencia',
+        'Disponibilidad',
+        'Punto de partida',
+        'Motivación',
+        'Talento Curioso',
+        'Foto',
+        'Estado',
+        'Sincronizado a Sheets'
+      ];
+
+      const escapeCsv = (val: any) => {
+        if (val === null || val === undefined) return '""';
+        const str = String(val).replace(/"/g, '""');
+        return `"${str}"`;
+      };
+
+      const rows = list.map(c => [
+        escapeCsv(c.id || c.codigo || c.Código || ''),
+        escapeCsv(c.fecha || c.createdAt || c.Fecha || ''),
+        escapeCsv(c.nombre || c.Nombre || ''),
+        escapeCsv(c.edad !== undefined ? c.edad : (c.Edad !== undefined ? c.Edad : '')),
+        escapeCsv(c.telefono || c.Teléfono || ''),
+        escapeCsv(c.zona || c.Zona || ''),
+        escapeCsv(c.experiencia || c.Experiencia || ''),
+        escapeCsv(c.disponibilidad || c.Disponibilidad || ''),
+        escapeCsv(c.punto_partida || c.puntoPartida || c['Punto de partida'] || ''),
+        escapeCsv(c.motivacion || c.Motivación || ''),
+        escapeCsv(c.talento || c.Talento || ''),
+        escapeCsv(c.foto || c.Foto || (c.tieneFoto ? 'Sí adjunta' : 'No adjunta')),
+        escapeCsv(c.estado || c.Estado || 'Recibida'),
+        escapeCsv(c.syncedToSheets ? 'Sí' : 'No')
+      ].join(','));
+
+      // BOM UTF-8 para apertura correcta en Excel
+      const csvContent = '\uFEFF' + [headers.map(escapeCsv).join(','), ...rows].join('\r\n');
+
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', 'attachment; filename="candidatos_tour_azul.csv"');
+      res.send(csvContent);
+    } catch (err: any) {
+      res.status(500).send(`Error generando CSV: ${err.message}`);
+    }
+  });
+
+  // 10. Sincronizar todos los candidatos pendientes hacia Google Sheets
   app.post('/api/sync-sheets', async (_req, res) => {
     const cfg = getConfig();
     if (!cfg.webhookUrl || !cfg.webhookUrl.startsWith('http')) {
