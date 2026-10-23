@@ -47,7 +47,27 @@ function getCandidatosList(): any[] {
     ensureDataFiles();
     const raw = fs.readFileSync(CANDIDATOS_FILE, 'utf-8');
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map((c: any, idx: number) => {
+      const nom = String(c.nombre || c.Nombre || '').trim();
+      const cod = String(c.id || c.codigo || c.Código || `POST-${idx}`).trim();
+      return {
+        ...c,
+        id: cod,
+        codigo: cod,
+        Código: cod,
+        nombre: nom,
+        Nombre: nom,
+        telefono: c.telefono || c.Teléfono || '',
+        Teléfono: c.Teléfono || c.telefono || '',
+        zona: c.zona || c.Zona || '',
+        Zona: c.Zona || c.zona || '',
+        estado: c.estado || c.Estado || 'Recibida',
+        Estado: c.Estado || c.estado || 'Recibida',
+        fecha: c.fecha || c.Fecha || c.createdAt || '',
+        Fecha: c.Fecha || c.fecha || c.createdAt || ''
+      };
+    });
   } catch (err) {
     return [];
   }
@@ -216,7 +236,7 @@ async function startServer() {
   app.get('/api/candidatos', async (req, res) => {
     let localList = getCandidatosList();
     const cfg = getConfig();
-    const shouldSync = req.query.sync === 'true';
+    const shouldSync = req.query.sync !== 'false'; // Sincronizar por defecto con Google Sheets
 
     // Si se solicita sincronización y hay webhook configurado
     if (shouldSync && cfg.webhookUrl && cfg.webhookUrl.startsWith('http')) {
@@ -224,20 +244,20 @@ async function startServer() {
         const sep = cfg.webhookUrl.includes('?') ? '&' : '?';
         const remoteUrl = `${cfg.webhookUrl}${sep}accion=candidatos&_t=${Date.now()}`;
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000); // Máximo 5s para no demorar la UI
+        const timeoutId = setTimeout(() => controller.abort(), 12000); // 12s timeout para permitir respuesta de Apps Script
 
         const resp = await fetch(remoteUrl, { 
-          headers: { 'Accept': 'application/json' },
           signal: controller.signal
         });
         clearTimeout(timeoutId);
 
         if (resp.ok) {
-          const json = await resp.json();
+          const json: any = await resp.json();
           let remotos: any[] = [];
           if (json && json.status === 'success' && Array.isArray(json.data)) remotos = json.data;
           else if (Array.isArray(json)) remotos = json;
           else if (json && Array.isArray(json.postulaciones)) remotos = json.postulaciones;
+          else if (json && Array.isArray(json.candidatos)) remotos = json.candidatos;
 
           // Merge inteligente: actualizar estados y añadir faltantes
           const localMap = new Map<string, number>();
@@ -248,12 +268,42 @@ async function startServer() {
 
           let huboCambios = false;
           for (const r of remotos) {
-            const rId = String(r.id || r.codigo || r.Código || '').toLowerCase().trim();
-            if (!rId) continue;
+            // Descartar filas vacías o fantasma sin nombre ni teléfono
+            const nom = String(r.nombre || r.Nombre || r.nombreCompleto || r['Nombre Completo'] || '').trim();
+            const tel = String(r.telefono || r.Teléfono || r.whatsapp || '').trim();
+            if (!nom && !tel) continue;
 
-            if (localMap.has(rId)) {
-              // Si el estado en Sheets fue actualizado por el admin, reflejarlo
-              const idx = localMap.get(rId)!;
+            const rId = String(r.id || r.codigo || r.Código || `POST-${Date.now()}`).trim();
+            const rIdKey = rId.toLowerCase();
+
+            const normalized: any = {
+              ...r,
+              id: rId,
+              codigo: r.codigo || r.Código || rId,
+              Código: r.Código || r.codigo || rId,
+              nombre: nom || 'Aspirante sin nombre',
+              Nombre: nom || 'Aspirante sin nombre',
+              edad: r.edad !== undefined && r.edad !== '' ? r.edad : (r.Edad !== undefined ? r.Edad : '--'),
+              telefono: tel || r.telefono || r.Teléfono || '--',
+              Teléfono: tel || r.Teléfono || r.telefono || '--',
+              zona: r.zona || r.Zona || 'No indicada',
+              Zona: r.Zona || r.zona || 'No indicada',
+              experiencia: r.experiencia || r.Experiencia || '',
+              disponibilidad: r.disponibilidad || r.Disponibilidad || '',
+              punto_partida: r.punto_partida || r.puntoPartida || r['Punto de partida'] || '',
+              motivacion: r.motivacion || r.Motivación || '',
+              talento: r.talento || r.Talento || '',
+              foto: r.foto || r.Foto || (r.tieneFoto ? 'Sí adjunta' : 'No adjunta'),
+              estado: r.estado || r.Estado || 'Recibida',
+              Estado: r.Estado || r.estado || 'Recibida',
+              fecha: r.fecha || r.Fecha || r.createdAt || new Date().toISOString(),
+              Fecha: r.Fecha || r.fecha || r.createdAt || new Date().toISOString(),
+              _origen: 'sheets',
+              syncedToSheets: true
+            };
+
+            if (localMap.has(rIdKey)) {
+              const idx = localMap.get(rIdKey)!;
               const remoteEstado = r.estado || r.Estado;
               if (remoteEstado && remoteEstado !== localList[idx].estado && remoteEstado !== localList[idx].Estado) {
                 localList[idx].estado = remoteEstado;
@@ -262,10 +312,21 @@ async function startServer() {
                 huboCambios = true;
               }
             } else {
-              // Nuevo registro que vino desde Sheets
-              localList.push({ ...r, _origen: 'sheets', syncedToSheets: true });
+              localList.unshift(normalized);
+              localMap.set(rIdKey, 0);
               huboCambios = true;
             }
+          }
+
+          // Limpiar de localList registros que no tengan ni nombre ni código válido
+          const prevLen = localList.length;
+          localList = localList.filter((c: any) => {
+            const n = String(c.nombre || c.Nombre || '').trim();
+            const cod = String(c.id || c.codigo || c.Código || '').trim();
+            return n.length > 0 || cod.length > 0;
+          });
+          if (localList.length !== prevLen) {
+            huboCambios = true;
           }
 
           if (huboCambios) {

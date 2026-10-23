@@ -1050,7 +1050,17 @@ function obtenerCandidatosPostulaciones(ss) {
   const rows = sheet.getDataRange().getValues();
   if (rows.length <= 1) return [];
 
-  const headers = rows[0].map(h => String(h || "").trim().toLowerCase());
+  // Buscar en las primeras 5 filas cuál es la fila de encabezados
+  let headerRowIdx = 0;
+  for (let r = 0; r < Math.min(5, rows.length); r++) {
+    const candidateHeaders = rows[r].map(h => String(h || "").trim().toLowerCase());
+    if (candidateHeaders.some(h => h.includes("nombre") || h.includes("código") || h.includes("codigo") || h.includes("aspirante"))) {
+      headerRowIdx = r;
+      break;
+    }
+  }
+
+  const headers = rows[headerRowIdx].map(h => String(h || "").trim().toLowerCase());
 
   // Mapeador flexible de índices de columnas
   const findIdx = (predicate, defaultIdx) => {
@@ -1074,10 +1084,11 @@ function obtenerCandidatosPostulaciones(ss) {
 
   const candidatos = [];
 
-  for (let i = 1; i < rows.length; i++) {
+  for (let i = headerRowIdx + 1; i < rows.length; i++) {
     const r = rows[i];
     const nom = String(r[idxNombre] || "").trim();
-    if (!nom) continue; // Ignorar filas vacías
+    const telVal = String(r[idxTelefono] || "").trim();
+    if (!nom && !telVal) continue; // Ignorar filas totalmente vacías
 
     const cod = String(r[idxCodigo] || ("POST-" + i)).trim();
     const fechaVal = r[idxFecha] ? (r[idxFecha] instanceof Date ? Utilities.formatDate(r[idxFecha], Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm:ss") : String(r[idxFecha])) : "";

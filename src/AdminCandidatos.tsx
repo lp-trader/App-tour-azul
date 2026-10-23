@@ -127,7 +127,7 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack, onLogo
     }
   };
 
-  // 2. Cargar candidatos desde el servidor central (reúne registros de TODOS los dispositivos)
+  // 2. Cargar candidatos desde el servidor central y Google Sheets
   const cargarCandidatos = useCallback(async (silencioso: boolean = false) => {
     if (!silencioso) {
       setCargando(true);
@@ -136,45 +136,101 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack, onLogo
     }
     setError(null);
 
+    let listado: Candidato[] = [];
+    let origenExitoso = '';
+
+    // Intento 1: Servidor central unificado (/api/candidatos?sync=true)
     try {
-      // Consultar lista unificada del servidor central
       const resp = await fetch(`/api/candidatos?sync=true&_t=${Date.now()}`);
-      if (!resp.ok) {
-        throw new Error(`Error en servidor central: HTTP ${resp.status}`);
+      if (resp.ok) {
+        const resJson = await resp.json();
+        if (Array.isArray(resJson.candidatos) && resJson.candidatos.length > 0) {
+          listado = resJson.candidatos;
+          origenExitoso = 'servidor';
+        }
       }
+    } catch (errServer: any) {
+      console.warn("Aviso al consultar /api/candidatos:", errServer);
+    }
 
-      const resJson = await resp.json();
-      const listado: Candidato[] = Array.isArray(resJson.candidatos) ? resJson.candidatos : [];
+    // Intento 2: Si el servidor no trajo registros o no está disponible, consultar directo a Google Apps Script
+    if (listado.length === 0 && scriptUrl && scriptUrl.startsWith('http')) {
+      try {
+        const sep = scriptUrl.includes('?') ? '&' : '?';
+        const directResp = await fetch(`${scriptUrl}${sep}accion=candidatos&_t=${Date.now()}`);
+        if (directResp.ok) {
+          const directJson = await directResp.json();
+          let remotos: any[] = [];
+          if (directJson && directJson.status === 'success' && Array.isArray(directJson.data)) remotos = directJson.data;
+          else if (Array.isArray(directJson)) remotos = directJson;
+          else if (directJson && Array.isArray(directJson.postulaciones)) remotos = directJson.postulaciones;
+          else if (directJson && Array.isArray(directJson.candidatos)) remotos = directJson.candidatos;
 
-      setCandidatos(listado);
+          if (remotos.length > 0) {
+            listado = remotos.map((r: any, idx: number) => ({
+              ...r,
+              id: r.id || r.codigo || r.Código || `POST-${idx}`,
+              nombre: r.nombre || r.Nombre || 'Aspirante sin nombre',
+              Nombre: r.Nombre || r.nombre || 'Aspirante sin nombre',
+              telefono: r.telefono || r.Teléfono || '--',
+              Teléfono: r.Teléfono || r.telefono || '--',
+              zona: r.zona || r.Zona || 'No indicada',
+              Zona: r.Zona || r.zona || 'No indicada',
+              edad: r.edad !== undefined && r.edad !== '' ? r.edad : (r.Edad !== undefined ? r.Edad : '--'),
+              estado: r.estado || r.Estado || 'Recibida',
+              Estado: r.Estado || r.estado || 'Recibida',
+              _origen: 'sheets',
+              syncedToSheets: true
+            }));
+            origenExitoso = 'sheets_directo';
+          }
+        }
+      } catch (errDirect) {
+        console.warn("Aviso en consulta directa a Google Apps Script:", errDirect);
+      }
+    }
+
+    // Filtrar candidatos para descartar filas vacías
+    const candidatosValidos = listado.filter((c: Candidato) => {
+      const nom = String(c.nombre || c.Nombre || '').trim();
+      const tel = String(c.telefono || c.Teléfono || '').trim();
+      return (nom.length > 0 && nom !== 'Sin nombre' && nom !== 'Aspirante sin nombre') || tel.length > 0;
+    });
+
+    if (candidatosValidos.length > 0) {
+      setCandidatos(candidatosValidos);
       setUltimaActualizacion(new Date().toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
 
-      const sinSync = listado.filter(c => !c.syncedToSheets).length;
+      const sinSync = candidatosValidos.filter(c => !c.syncedToSheets).length;
       if (sinSync > 0) {
         setAlertaInfo(`Hay ${sinSync} postulación(es) guardadas en el sistema pendientes de escribir en la hoja "${sheetName}" de tu Google Sheet. Están seguras y visibles en todos tus dispositivos.`);
       } else {
         setAlertaInfo(null);
       }
-    } catch (err: any) {
-      console.warn("Error cargando desde /api/candidatos:", err);
-      // Fallback a localStorage si el servidor estuviese temporalmente inaccesible
+    } else {
+      // Intento 3: Si ambos fallaron y no hay internet, verificar respaldo local de este dispositivo
       try {
         const raw = localStorage.getItem(STORAGE_KEY_POSTULACIONES);
         if (raw) {
           const locales = JSON.parse(raw);
-          setCandidatos(locales);
-          setAlertaInfo("Mostrando registros locales almacenados en este dispositivo.");
+          const validosLocales = Array.isArray(locales) ? locales.filter(c => (c.nombre || c.Nombre || '').trim().length > 0) : [];
+          if (validosLocales.length > 0) {
+            setCandidatos(validosLocales);
+            setAlertaInfo("⚠️ Sin conexión con Google Sheets: Mostrando únicamente postulaciones registradas localmente en este dispositivo.");
+          } else {
+            setCandidatos([]);
+          }
         } else {
-          setError(`No se pudieron cargar candidatos: ${err.message || err}`);
+          setCandidatos([]);
         }
       } catch (_) {
-        setError(`No se pudieron cargar candidatos: ${err.message || err}`);
+        setError(`No se pudieron sincronizar las postulaciones desde Google Sheets.`);
       }
-    } finally {
-      if (!silencioso) setCargando(false);
-      setActualizandoSilencioso(false);
     }
-  }, [sheetName]);
+
+    if (!silencioso) setCargando(false);
+    setActualizandoSilencioso(false);
+  }, [scriptUrl, sheetName]);
 
   // Carga inicial y configuración
   useEffect(() => {

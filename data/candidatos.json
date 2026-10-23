@@ -81,5 +81,38 @@
     "Foto": "",
     "_origen": "sheets",
     "syncedToSheets": true
+  },
+  {
+    "Fecha": "2026-10-23T14:32:56.342Z",
+    "Código": "POST-6454",
+    "Nombre": "Prueba Multi-Dispositivo",
+    "Edad": 25,
+    "Teléfono": "0412-9999999",
+    "Zona": "Barquisimeto Este",
+    "Experiencia": "Recreación",
+    "Disponibilidad": "Fines de semana",
+    "Punto de partida": "",
+    "Motivación": "Probar acceso multi-dispositivo para el admin",
+    "Talento": "Fotografía",
+    "Foto": "",
+    "_origen": "sheets",
+    "syncedToSheets": true
+  },
+
+  {
+    "Fecha": "2026-10-23T14:39:03.086Z",
+    "Código": "POST-1727",
+    "Nombre": "Astrid carolina",
+    "Edad": 50,
+    "Teléfono": 4245219141,
+    "Zona": "Nueva Segovia",
+    "Experiencia": "Sí, tengo experiencia.",
+    "Disponibilidad": "Tengo disponibilidad parcial.",
+    "Punto de partida": "",
+    "Motivación": "Hola es viernes",
+    "Talento": "Playa playa playa",
+    "Foto": "",
+    "_origen": "sheets",
+    "syncedToSheets": true
   }
 ]

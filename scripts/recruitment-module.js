@@ -1653,32 +1653,38 @@ export const recruitmentClientCode = `
       } catch (_) {}
 
       try {
-        const baseUrl = getPostulacionesWebhookUrl();
-        const separator = baseUrl.includes("?") ? "&" : "?";
-        const fetchUrl = baseUrl + separator + "accion=candidatos&_t=" + Date.now();
-
-        const respuesta = await fetch(fetchUrl, {
-          method: "GET",
-          headers: { "Accept": "application/json" }
-        });
-
-        if (!respuesta.ok) {
-          throw new Error("HTTP " + respuesta.status + ": " + respuesta.statusText);
-        }
-
-        const resultado = await respuesta.json();
-
         let rawItems = [];
-        if (Array.isArray(resultado)) {
-          rawItems = resultado;
-        } else if (resultado && Array.isArray(resultado.data)) {
-          rawItems = resultado.data;
-        } else if (resultado && Array.isArray(resultado.postulaciones)) {
-          rawItems = resultado.postulaciones;
-        } else if (resultado && Array.isArray(resultado.candidatos)) {
-          rawItems = resultado.candidatos;
-        } else if (resultado && resultado.status === "success" && !resultado.data) {
-          rawItems = [];
+        
+        // 1. Intentar primero a través del backend unificado
+        try {
+          const apiResp = await fetch("/api/candidatos?sync=true&_t=" + Date.now());
+          if (apiResp.ok) {
+            const apiJson = await apiResp.json();
+            if (apiJson && Array.isArray(apiJson.candidatos)) {
+              rawItems = apiJson.candidatos;
+            }
+          }
+        } catch (_) {}
+
+        // 2. Si no trajo candidatos del backend, consultar directamente el Webhook de Google Apps Script (sin headers para evitar CORS)
+        if (rawItems.length === 0) {
+          const baseUrl = getPostulacionesWebhookUrl();
+          const separator = baseUrl.includes("?") ? "&" : "?";
+          const fetchUrl = baseUrl + separator + "accion=candidatos&_t=" + Date.now();
+
+          const respuesta = await fetch(fetchUrl);
+          if (respuesta.ok) {
+            const resultado = await respuesta.json();
+            if (Array.isArray(resultado)) {
+              rawItems = resultado;
+            } else if (resultado && Array.isArray(resultado.data)) {
+              rawItems = resultado.data;
+            } else if (resultado && Array.isArray(resultado.postulaciones)) {
+              rawItems = resultado.postulaciones;
+            } else if (resultado && Array.isArray(resultado.candidatos)) {
+              rawItems = resultado.candidatos;
+            }
+          }
         }
 
         const remoteNormalized = rawItems.map((item, idx) => normalizarCandidatoPostulacion(item, idx)).filter(Boolean);
