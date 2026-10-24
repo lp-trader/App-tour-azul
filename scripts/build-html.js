@@ -1366,7 +1366,7 @@ const html = `<!DOCTYPE html>
         } catch (_) {}
 
         if (!data || (!data.asientos && !data.ocupados)) {
-          const url = `\${WEBHOOK_URL}?accion=asientos&destino=\${encodeURIComponent(state.selectedTrip.destino)}&fecha=\${state.selectedSalida.fecha}&bus=\${encodeURIComponent(state.selectedBus)}`;
+          const url = "\\${WEBHOOK_URL}?accion=asientos&destino=" + encodeURIComponent(state.selectedTrip.destino) + "&fecha=" + state.selectedSalida.fecha + "&bus=" + encodeURIComponent(state.selectedBus);
           const resGet = await fetch(url, { redirect: "follow" });
           if (resGet.ok) {
             data = await resGet.json();

@@ -1313,7 +1313,7 @@ export const recruitmentClientCode = `
           "✨ Motivación: " + motivacion,
           (talento ? "🤭 Talento curioso: " + talento : ""),
           (candidateData.tieneFoto ? "📷 Foto: Adjunta en mi postulación" : "📷 Foto: No adjunta")
-        ].filter(Boolean).join("\n");
+        ].filter(Boolean).join(String.fromCharCode(10));
 
         const waExitoBtn = document.getElementById("btn-modal-exito-wa");
         if (waExitoBtn) {

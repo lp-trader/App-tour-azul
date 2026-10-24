@@ -103,20 +103,20 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack, onLogo
     return f.startsWith('http') || f.startsWith('data:image') || f.startsWith('/uploads') || f.startsWith('/') || f.includes('.jpg') || f.includes('.png') || f.includes('.webp');
   };
 
-  // Normalizadores de campos
-  const getNombre = (c: Candidato) => c.Nombre || c.nombre || "Sin nombre";
-  const getCodigo = (c: Candidato) => c.Código || c.codigo || c.id || "S/C";
-  const getFoto = (c: Candidato) => c.fotoUrl || c.Foto || c.foto || "";
-  const getEdad = (c: Candidato) => c.Edad !== undefined ? c.Edad : (c.edad !== undefined ? c.edad : "--");
-  const getZona = (c: Candidato) => c.Zona || c.zona || "No especificada";
-  const getTelefono = (c: Candidato) => c.Teléfono || c.telefono || "--";
-  const getDisponibilidad = (c: Candidato) => c.Disponibilidad || c.disponibilidad || "No indicada";
-  const getPuntoPartida = (c: Candidato) => c["Punto de partida"] || c.punto_partida || c.puntoPartida || "No especificado";
-  const getExperiencia = (c: Candidato) => c.Experiencia || c.experiencia || "No especificada";
-  const getMotivacion = (c: Candidato) => c.Motivación || c.motivacion || "No especificada";
-  const getTalento = (c: Candidato) => c.Talento || c.talento || "";
-  const getEstado = (c: Candidato) => c.Estado || c.estado || "Recibida";
-  const getFecha = (c: Candidato) => c.Fecha || c.fecha || c.createdAt || "";
+  // Normalizadores de campos (siempre devuelven string seguro para evitar errores con .toLowerCase())
+  const getNombre = (c: Candidato): string => String(c.Nombre || c.nombre || "Sin nombre").trim();
+  const getCodigo = (c: Candidato): string => String(c.Código || c.codigo || c.id || "S/C").trim();
+  const getFoto = (c: Candidato): string => String(c.fotoUrl || c.Foto || c.foto || "").trim();
+  const getEdad = (c: Candidato): string | number => c.Edad !== undefined && c.Edad !== '' ? c.Edad : (c.edad !== undefined && c.edad !== '' ? c.edad : "--");
+  const getZona = (c: Candidato): string => String(c.Zona || c.zona || "No especificada").trim();
+  const getTelefono = (c: Candidato): string => String(c.Teléfono ?? c.telefono ?? "--").trim();
+  const getDisponibilidad = (c: Candidato): string => String(c.Disponibilidad || c.disponibilidad || "No indicada").trim();
+  const getPuntoPartida = (c: Candidato): string => String(c["Punto de partida"] || c.punto_partida || c.puntoPartida || "No especificado").trim();
+  const getExperiencia = (c: Candidato): string => String(c.Experiencia || c.experiencia || "No especificada").trim();
+  const getMotivacion = (c: Candidato): string => String(c.Motivación || c.motivacion || "No especificada").trim();
+  const getTalento = (c: Candidato): string => String(c.Talento || c.talento || "").trim();
+  const getEstado = (c: Candidato): string => String(c.Estado || c.estado || "Recibida").trim();
+  const getFecha = (c: Candidato): string => String(c.Fecha || c.fecha || c.createdAt || "").trim();
 
   // 1. Cargar configuración del servidor central
   const cargarConfiguracionServidor = async () => {
@@ -433,12 +433,12 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack, onLogo
   // Filtrado en tiempo real
   const candidatosFiltrados = useMemo(() => {
     return candidatos.filter((c) => {
-      const nom = getNombre(c).toLowerCase();
-      const zon = getZona(c).toLowerCase();
-      const cod = getCodigo(c).toLowerCase();
-      const tel = getTelefono(c).toLowerCase();
-      const est = getEstado(c);
-      const q = busqueda.toLowerCase().trim();
+      const nom = String(getNombre(c) || '').toLowerCase();
+      const zon = String(getZona(c) || '').toLowerCase();
+      const cod = String(getCodigo(c) || '').toLowerCase();
+      const tel = String(getTelefono(c) || '').toLowerCase();
+      const est = String(getEstado(c) || 'Recibida');
+      const q = String(busqueda || '').toLowerCase().trim();
 
       const coincideTexto = !q || nom.includes(q) || zon.includes(q) || cod.includes(q) || tel.includes(q);
       if (!coincideTexto) return false;
@@ -448,8 +448,8 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack, onLogo
       }
 
       if (filtroDisponibilidad !== 'todos') {
-        const disp = getDisponibilidad(c).toLowerCase();
-        if (!disp.includes(filtroDisponibilidad.toLowerCase())) {
+        const disp = String(getDisponibilidad(c) || '').toLowerCase();
+        if (!disp.includes(String(filtroDisponibilidad).toLowerCase())) {
           return false;
         }
       }

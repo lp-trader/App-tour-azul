@@ -104,6 +104,10 @@ function getCandidatosList(): any[] {
     return parsed.map((c: any, idx: number) => {
       const nom = String(c.nombre || c.Nombre || '').trim();
       const cod = String(c.id || c.codigo || c.Código || `POST-${idx}`).trim();
+      const tel = String(c.telefono ?? c.Teléfono ?? '').trim();
+      const zona = String(c.zona ?? c.Zona ?? '').trim();
+      const estado = String(c.estado ?? c.Estado ?? 'Recibida').trim();
+      const fecha = String(c.fecha ?? c.Fecha ?? c.createdAt ?? '').trim();
       return {
         ...c,
         id: cod,
@@ -111,14 +115,14 @@ function getCandidatosList(): any[] {
         Código: cod,
         nombre: nom,
         Nombre: nom,
-        telefono: c.telefono || c.Teléfono || '',
-        Teléfono: c.Teléfono || c.telefono || '',
-        zona: c.zona || c.Zona || '',
-        Zona: c.Zona || c.zona || '',
-        estado: c.estado || c.Estado || 'Recibida',
-        Estado: c.Estado || c.estado || 'Recibida',
-        fecha: c.fecha || c.Fecha || c.createdAt || '',
-        Fecha: c.Fecha || c.fecha || c.createdAt || ''
+        telefono: tel,
+        Teléfono: tel,
+        zona,
+        Zona: zona,
+        estado,
+        Estado: estado,
+        fecha,
+        Fecha: fecha
       };
     });
   } catch (err) {
