@@ -1090,24 +1090,9 @@ ${retroPhotosModalsHtml}
   <script>
 ${recruitmentClientCode}
 ${retroPhotosClientCode}
+    // Webhook dedicado para reservas e inventario de autobuses
     const ACTIVE_APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyHrjILLmIl0oiQ14LoqUzUv-I6PRIhk8jtffbxWYkW-Q3wyRsgumCEQim7T1QaxpCPVA/exec";
-    let WEBHOOK_URL = (function() {
-      try {
-        const stored = localStorage.getItem("tour_azul_webhook_postulaciones_url");
-        if (stored && stored.startsWith("http")) return stored.trim();
-      } catch (_) {}
-      return ACTIVE_APPS_SCRIPT_URL;
-    })();
-
-    // Sincronizar dinámicamente con la configuración del servidor central
-    try {
-      fetch("/api/config").then(function(r) { return r.json(); }).then(function(data) {
-        if (data && data.config && data.config.webhookUrl && data.config.webhookUrl.startsWith("http")) {
-          WEBHOOK_URL = data.config.webhookUrl.trim();
-          try { localStorage.setItem("tour_azul_webhook_postulaciones_url", WEBHOOK_URL); } catch (_) {}
-        }
-      }).catch(function() {});
-    } catch (_) {}
+    let WEBHOOK_URL = ACTIVE_APPS_SCRIPT_URL;
 
     const WHATSAPP_NUMERO = "584126571155";
     const MINUTOS_BLOQUEO_ASIENTO = 10;

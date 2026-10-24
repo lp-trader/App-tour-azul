@@ -2838,24 +2838,13 @@
         createdAt: new Date().toISOString()
       };
 
-      // 1. Guardar de respaldo en el almacenamiento local del dispositivo actual
-      try {
-        const rawLocal = localStorage.getItem(STORAGE_KEY_POSTULACIONES);
-        const list = rawLocal ? JSON.parse(rawLocal) : [];
-        list.unshift(candidateData);
-        localStorage.setItem(STORAGE_KEY_POSTULACIONES, JSON.stringify(list));
-      } catch (e) {
-        console.warn("Aviso de almacenamiento local:", e);
-      }
-
       recruitmentState.lastValidatedFormData = candidateData;
 
-      // 2. ENVIAR Y ESPERAR AL SERVIDOR CENTRAL (/api/candidatos)
-      // Esto garantiza que el admin lo verá en CUALQUIER dispositivo
-      let guardadoEnServidor = false;
+      // ENVIAR AL SERVIDOR CENTRAL (/api/candidatos)
+      // Garantiza almacenamiento permanente y reenvío al nuevo Google Sheet
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000);
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
         const respServer = await fetch("/api/candidatos", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -2864,89 +2853,88 @@
         });
         clearTimeout(timeoutId);
 
-        if (respServer.ok) {
-          const resData = await respServer.json();
-          if (resData && resData.ok) {
-            guardadoEnServidor = true;
-            console.log("Postulación guardada exitosamente en servidor central para todos los dispositivos:", resData);
+        const resData = await respServer.json().catch(() => null);
+
+        if (!respServer.ok || !resData || !resData.ok) {
+          const errorMsg = (resData && resData.error) ? resData.error : "No se pudo registrar la postulación en el servidor. Por favor verifica los datos e intenta de nuevo.";
+          if (submitBtn) submitBtn.disabled = false;
+          if (submitText) submitText.textContent = "Enviar mi postulación";
+          if (typeof showToastNotification === "function") {
+            showToastNotification(errorMsg, "error");
+          } else {
+            alert(errorMsg);
           }
+          return false;
         }
+
+        // Restablecer botón de envío tras confirmación del servidor
+        if (submitBtn) submitBtn.disabled = false;
+        if (submitText) submitText.textContent = "Enviar mi postulación";
+
+        const modalIdEl = document.getElementById("modal-exito-id");
+        const modalNombreEl = document.getElementById("modal-exito-nombre");
+        const modalTelEl = document.getElementById("modal-exito-telefono");
+        const modalFotoEl = document.getElementById("modal-exito-foto");
+
+        const assignedId = resData.id || docId;
+        if (modalIdEl) modalIdEl.textContent = assignedId;
+        if (modalNombreEl) modalNombreEl.textContent = nombre;
+        if (modalTelEl) modalTelEl.textContent = telefono;
+        if (modalFotoEl) modalFotoEl.textContent = candidateData.tieneFoto ? ("Sí (" + (candidateData.fotoNombre || "Adjunta") + ")") : "No adjunta";
+
+        // Mensaje estructurado para WhatsApp oficial
+        const msgWa = [
+          "¡Hola Tour Azul! 👋 Deseo postularme a la convocatoria de tripulación:",
+          "",
+          "📄 Código de postulación: *" + assignedId + "*",
+          "👤 Nombre: " + nombre,
+          "🎂 Edad: " + edad + " años",
+          "📱 Teléfono/WhatsApp: " + telefono,
+          "📍 Zona de residencia: " + zona,
+          "💼 Experiencia: " + expChecked.value,
+          "⏰ Disponibilidad: " + dispChecked.value,
+          "🚌 Punto de llegada: " + puntoChecked.value,
+          "✨ Motivación: " + motivacion,
+          (talento ? "🤭 Talento curioso: " + talento : ""),
+          (candidateData.tieneFoto ? "📷 Foto: Adjunta en mi postulación" : "📷 Foto: No adjunta")
+        ].filter(Boolean).join("
+");
+
+        const waExitoBtn = document.getElementById("btn-modal-exito-wa");
+        if (waExitoBtn) {
+          waExitoBtn.href = "https://wa.me/" + APP_CONFIG.whatsappNumero + "?text=" + encodeURIComponent(msgWa);
+        }
+
+        const modalExito = document.getElementById("modal-postulacion-exitosa");
+        if (modalExito) {
+          modalExito.classList.remove("hidden");
+          modalExito.classList.add("flex");
+        }
+
+        // Limpiar formulario y foto solo tras confirmación real del servidor
+        const formEl = document.getElementById("form-postulacion");
+        if (formEl) formEl.reset();
+        removeSelectedPhoto();
+        updateRecruitmentProgress();
+
+        if (window.lucide) lucide.createIcons();
+        if (typeof showToastNotification === "function") {
+          showToastNotification("¡Postulación enviada y registrada con éxito!", "success");
+        }
+        return true;
+
       } catch (errApi) {
-        console.warn("Aviso al contactar servidor central (se reintentará en segundo plano):", errApi);
-        // Guardar en cola de reintento si la red falló
-        try {
-          const pend = JSON.parse(localStorage.getItem("tour_azul_postulaciones_pendientes") || "[]");
-          pend.push(candidateData);
-          localStorage.setItem("tour_azul_postulaciones_pendientes", JSON.stringify(pend));
-        } catch (_) {}
+        console.error("Error al enviar postulación al servidor:", errApi);
+        if (submitBtn) submitBtn.disabled = false;
+        if (submitText) submitText.textContent = "Enviar mi postulación";
+        const msgRed = "Error de conexión con el servidor. No se pudo guardar la postulación. Por favor verifica tu conexión a internet e intenta nuevamente.";
+        if (typeof showToastNotification === "function") {
+          showToastNotification(msgRed, "error");
+        } else {
+          alert(msgRed);
+        }
+        return false;
       }
-
-      // 3. Reenviar de respaldo directo a Google Apps Script para la hoja "Tour Azul Postulaciones"
-      try {
-        const payloadSheets = {
-          accion: "postulacion",
-          ...candidateData,
-          codigo: docId,
-          foto: candidateData.tieneFoto ? (candidateData.fotoNombre ? ("Sí (" + candidateData.fotoNombre + ")") : "Sí adjunta") : "No adjunta"
-        };
-        enviarPostulacionAGoogleSheets(payloadSheets);
-      } catch (errSheets) {
-        console.warn("Aviso al enviar a Google Sheets:", errSheets);
-      }
-
-      // Restablecer botón de envío
-      if (submitBtn) submitBtn.disabled = false;
-      if (submitText) submitText.textContent = "Enviar mi postulación";
-
-      const modalIdEl = document.getElementById("modal-exito-id");
-      const modalNombreEl = document.getElementById("modal-exito-nombre");
-      const modalTelEl = document.getElementById("modal-exito-telefono");
-      const modalFotoEl = document.getElementById("modal-exito-foto");
-
-      if (modalIdEl) modalIdEl.textContent = docId;
-      if (modalNombreEl) modalNombreEl.textContent = nombre;
-      if (modalTelEl) modalTelEl.textContent = telefono;
-      if (modalFotoEl) modalFotoEl.textContent = candidateData.tieneFoto ? ("Sí (" + candidateData.fotoNombre + ")") : "No adjunta";
-
-      // Mensaje completo para WhatsApp oficial
-      const msgWa = [
-        "¡Hola Tour Azul! 👋 Deseo postularme a la convocatoria de tripulación:",
-        "",
-        "📄 Código de postulación: *" + docId + "*",
-        "👤 Nombre: " + nombre,
-        "🎂 Edad: " + edad + " años",
-        "📱 Teléfono/WhatsApp: " + telefono,
-        "📍 Zona de residencia: " + zona,
-        "💼 Experiencia: " + expChecked.value,
-        "⏰ Disponibilidad: " + dispChecked.value,
-        "🚌 Punto de llegada: " + puntoChecked.value,
-        "✨ Motivación: " + motivacion,
-        (talento ? "🤭 Talento curioso: " + talento : ""),
-        (candidateData.tieneFoto ? "📷 Foto: Adjunta en mi postulación (" + candidateData.fotoNombre + ")" : "📷 Foto: No adjunta")
-      ].filter(Boolean).join("\n");
-
-      const waExitoBtn = document.getElementById("btn-modal-exito-wa");
-      if (waExitoBtn) {
-        waExitoBtn.href = "https://wa.me/" + APP_CONFIG.whatsappNumero + "?text=" + encodeURIComponent(msgWa);
-      }
-
-      const modalExito = document.getElementById("modal-postulacion-exitosa");
-      if (modalExito) {
-        modalExito.classList.remove("hidden");
-        modalExito.classList.add("flex");
-      }
-
-      // Limpiar formulario y foto
-      const formEl = document.getElementById("form-postulacion");
-      if (formEl) formEl.reset();
-      removeSelectedPhoto();
-      updateRecruitmentProgress();
-
-      if (window.lucide) lucide.createIcons();
-      if (typeof showToastNotification === "function") {
-        showToastNotification("¡Postulación enviada y registrada con éxito en el sistema central!", "success");
-      }
-      return true;
     }
     window.handleRecruitmentSubmit = handleRecruitmentSubmit;
 
@@ -2991,41 +2979,8 @@
     window.closeRecruitmentSuccessModal = closeRecruitmentSuccessModal;
 
     // =========================================================================
-    // PANEL ADMINISTRATIVO CON CONTRASEÑA OFICIAL (010203)
+    // PANEL ADMINISTRATIVO CON AUTENTICACIÓN SEGURA EN SERVIDOR
     // =========================================================================
-
-    const ADMIN_PASSWORD_EXACTA = "010203";
-    const URL_APPS_SCRIPT_POSTULACIONES = "https://script.google.com/macros/s/AKfycbyHrjILLmIl0oiQ14LoqUzUv-I6PRIhk8jtffbxWYkW-Q3wyRsgumCEQim7T1QaxpCPVA/exec";
-
-    function getPostulacionesWebhookUrl() {
-      try {
-        const custom = localStorage.getItem("tour_azul_webhook_postulaciones_url");
-        if (custom && custom.startsWith("http")) return custom.trim();
-      } catch (_) {}
-      return URL_APPS_SCRIPT_POSTULACIONES;
-    }
-    window.getPostulacionesWebhookUrl = getPostulacionesWebhookUrl;
-
-    /**
-     * Envía de forma asíncrona la postulación a Google Apps Script para guardarla en la hoja "Tour Azul Postulaciones"
-     */
-    async function enviarPostulacionAGoogleSheets(data) {
-      const urlPrincipal = getPostulacionesWebhookUrl();
-      if (!urlPrincipal || !urlPrincipal.startsWith("http")) return;
-
-      try {
-        await fetch(urlPrincipal, {
-          method: "POST",
-          headers: { "Content-Type": "text/plain;charset=utf-8" },
-          body: JSON.stringify(data),
-          redirect: "follow"
-        });
-        console.log("Postulación guardada exitosamente en Google Sheets:", urlPrincipal);
-      } catch (err) {
-        console.warn("Aviso al enviar a Google Sheets:", err);
-      }
-    }
-    window.enviarPostulacionAGoogleSheets = enviarPostulacionAGoogleSheets;
 
     function getRecruitmentPasswordInput() {
       return document.getElementById("recruitment-admin-password-input") || document.getElementById("admin-password-input");
@@ -3035,8 +2990,9 @@
      * Despliega el formulario flotante y centrado solicitando la contraseña de administrador
      */
     function openAdminPostulacionesModal() {
-      // Si ya está autenticado en la sesión actual con la clave 010203, abrir directamente el panel
-      if (sessionStorage.getItem("tour_azul_admin_auth") === "010203") {
+      // Si ya tiene un token de administrador activo, abrir directamente el panel
+      const token = sessionStorage.getItem("tour_azul_admin_token") || localStorage.getItem("tour_azul_admin_token");
+      if (token) {
         if (window.openAdminCandidatos) {
           window.openAdminCandidatos();
         } else {
@@ -3105,9 +3061,9 @@
     window.toggleAdminPasswordVisibility = toggleAdminPasswordVisibility;
 
     /**
-     * Valida la contraseña de administrador (010203). Si es correcta, abre el panel.
+     * Valida la contraseña de administrador en el servidor (/api/admin/login)
      */
-    function handleAdminPasswordSubmit(event) {
+    async function handleAdminPasswordSubmit(event) {
       if (event && event.preventDefault) event.preventDefault();
 
       const pwdInput = getRecruitmentPasswordInput();
@@ -3116,46 +3072,49 @@
       const rawPassword = pwdInput ? (pwdInput.value || "") : "";
       const password = rawPassword.trim();
 
-      // Comprobación exacta de la clave de administrador: 010203
-      const esClaveCorrecta = (password === "010203");
-
-      if (esClaveCorrecta) {
-        // Contraseña correcta: cerramos el cuadro de contraseña
-        closeAdminPasswordModal();
-
-        // Guardar sesión para navegación fluida
-        try {
-          sessionStorage.setItem("tour_azul_admin_auth", "010203");
-        } catch (e) {}
-
-        // Abrir panel React de Administración de Candidatos
-        if (window.openAdminCandidatos) {
-          window.openAdminCandidatos();
-        } else {
-          window.location.hash = "#/admin-candidatos";
-        }
-
-        if (window.lucide) lucide.createIcons();
-        if (typeof showToastNotification === "function") {
-          showToastNotification("Contraseña correcta. Acceso concedido al Administrador.", "success");
-        }
+      if (!password) {
+        if (errBox) errBox.classList.remove("hidden");
+        if (errText) errText.textContent = "Por favor ingresa la contraseña.";
         return false;
-      } else {
-        // Contraseña inválida: mostrar alerta
-        if (errBox) {
-          errBox.classList.remove("hidden");
+      }
+
+      try {
+        const resp = await fetch("/api/admin/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ password })
+        });
+        const data = await resp.json().catch(() => null);
+
+        if (resp.ok && data && data.ok && data.token) {
+          closeAdminPasswordModal();
+          sessionStorage.setItem("tour_azul_admin_token", data.token);
+
+          // Abrir panel React de Administración de Candidatos
+          if (window.openAdminCandidatos) {
+            window.openAdminCandidatos();
+          } else {
+            window.location.hash = "#/admin-candidatos";
+          }
+
+          if (window.lucide) lucide.createIcons();
+          if (typeof showToastNotification === "function") {
+            showToastNotification("Acceso concedido al Administrador.", "success");
+          }
+          return false;
+        } else {
+          if (errBox) errBox.classList.remove("hidden");
+          if (errText) errText.textContent = (data && data.error) ? data.error : "Clave de administrador incorrecta.";
+          if (pwdInput) {
+            pwdInput.classList.add("border-rose-400", "ring-2", "ring-rose-200");
+            pwdInput.select();
+            pwdInput.focus();
+          }
+          return false;
         }
-        if (errText) {
-          errText.textContent = "Clave de administrador incorrecta. Solo el administrador tiene acceso.";
-        }
-        if (pwdInput) {
-          pwdInput.classList.add("border-rose-400", "ring-2", "ring-rose-200");
-          pwdInput.select();
-          pwdInput.focus();
-        }
-        if (typeof showToastNotification === "function") {
-          showToastNotification("Clave de administrador inválida.", "error");
-        }
+      } catch (err) {
+        if (errBox) errBox.classList.remove("hidden");
+        if (errText) errText.textContent = "Error al verificar credenciales con el servidor.";
         return false;
       }
     }
@@ -3213,8 +3172,7 @@
     }
 
     /**
-     * Carga la lista de postulaciones mediante petición fetch directa a Google Apps Script
-     * Trae los datos en tiempo real desde la hoja de Google Sheets en lugar de usar localStorage
+     * Carga la lista de postulaciones desde el servidor central y Google Sheets
      */
     async function cargarPostulacionesAdmin() {
       const listEl = document.getElementById("admin-postulaciones-list");
@@ -3222,65 +3180,21 @@
 
       listEl.innerHTML = '<div class="text-center py-12 text-slate-500 text-xs space-y-3">' +
         '<div class="w-8 h-8 border-3 border-tour-blue border-t-transparent rounded-full animate-spin mx-auto"></div>' +
-        '<p class="font-bold text-tour-navy text-sm">Consultando Google Sheets en tiempo real...</p>' +
-        '<p class="text-[11px] text-slate-400">Petición fetch directa a Google Apps Script (Hoja: Tour Azul Postulaciones)</p>' +
+        '<p class="font-bold text-tour-navy text-sm">Consultando postulaciones en tiempo real...</p>' +
+        '<p class="text-[11px] text-slate-400">Petición al servidor central y Google Sheets</p>' +
       '</div>';
-
-      // 1. Obtener postulaciones locales como respaldo base
-      let localItems = [];
-      try {
-        const rawLocal = localStorage.getItem(STORAGE_KEY_POSTULACIONES);
-        if (rawLocal) {
-          const parsed = JSON.parse(rawLocal);
-          if (Array.isArray(parsed)) localItems = parsed;
-        }
-      } catch (_) {}
 
       try {
         let rawItems = [];
-        
-        // 1. Intentar primero a través del backend unificado
-        try {
-          const apiResp = await fetch("/api/candidatos?sync=true&_t=" + Date.now());
-          if (apiResp.ok) {
-            const apiJson = await apiResp.json();
-            if (apiJson && Array.isArray(apiJson.candidatos)) {
-              rawItems = apiJson.candidatos;
-            }
-          }
-        } catch (_) {}
-
-        // 2. Si no trajo candidatos del backend, consultar directamente el Webhook de Google Apps Script (sin headers para evitar CORS)
-        if (rawItems.length === 0) {
-          const baseUrl = getPostulacionesWebhookUrl();
-          const separator = baseUrl.includes("?") ? "&" : "?";
-          const fetchUrl = baseUrl + separator + "accion=candidatos&_t=" + Date.now();
-
-          const respuesta = await fetch(fetchUrl);
-          if (respuesta.ok) {
-            const resultado = await respuesta.json();
-            if (Array.isArray(resultado)) {
-              rawItems = resultado;
-            } else if (resultado && Array.isArray(resultado.data)) {
-              rawItems = resultado.data;
-            } else if (resultado && Array.isArray(resultado.postulaciones)) {
-              rawItems = resultado.postulaciones;
-            } else if (resultado && Array.isArray(resultado.candidatos)) {
-              rawItems = resultado.candidatos;
-            }
+        const apiResp = await fetch("/api/candidatos?sync=true&_t=" + Date.now());
+        if (apiResp.ok) {
+          const apiJson = await apiResp.json();
+          if (apiJson && Array.isArray(apiJson.candidatos)) {
+            rawItems = apiJson.candidatos;
           }
         }
 
-        const remoteNormalized = rawItems.map((item, idx) => normalizarCandidatoPostulacion(item, idx)).filter(Boolean);
-
-        // Fusionar con locales que no estén todavía en Sheets
-        const idsRemotos = new Set(remoteNormalized.map(r => String(r.id || r.codigo || "").toLowerCase()));
-        const localesPendientes = localItems
-          .map((item, idx) => normalizarCandidatoPostulacion(item, idx))
-          .filter(Boolean)
-          .filter(l => !idsRemotos.has(String(l.id || l.codigo || "").toLowerCase()));
-
-        const items = [...localesPendientes, ...remoteNormalized];
+        const items = rawItems.map((item, idx) => normalizarCandidatoPostulacion(item, idx)).filter(Boolean);
 
         // Ordenar por fecha descendente
         items.sort((a, b) => {
@@ -3295,30 +3209,19 @@
 
         if (window.lucide) lucide.createIcons();
       } catch (err) {
-        console.warn("Fallo temporal al conectar con Google Apps Script, mostrando registros guardados localmente:", err);
-
-        if (localItems.length > 0) {
-          const items = localItems.map((item, idx) => normalizarCandidatoPostulacion(item, idx)).filter(Boolean);
-          adminPostulacionesCache = items;
-          actualizarMetricasAdmin(items);
-          renderAdminPostulacionesList(items);
-          if (typeof showToastNotification === "function") {
-            showToastNotification("Mostrando " + items.length + " postulaciones guardadas localmente.", "info");
-          }
-        } else {
-          listEl.innerHTML = '<div class="p-6 bg-amber-50 border border-amber-200 rounded-2xl text-center space-y-3">' +
-            '<div class="w-10 h-10 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center mx-auto">' +
-              '<i data-lucide="alert-triangle" class="w-5 h-5"></i>' +
-            '</div>' +
-            '<div>' +
-              '<p class="text-xs font-bold text-amber-900">No se pudieron cargar postulaciones remotas</p>' +
-              '<p class="text-[11px] text-amber-700 mt-1 max-w-md mx-auto">' + (err.message || 'Error de conexión con el Webhook de Google Apps Script.') + '</p>' +
-            '</div>' +
-            '<button type="button" onclick="cargarPostulacionesAdmin()" class="px-4 py-2 rounded-xl bg-white hover:bg-amber-100 text-amber-800 text-xs font-bold border border-amber-200 transition cursor-pointer active:scale-95 shadow-xs">' +
-              'Reintentar conexión' +
-            '</button>' +
-          '</div>';
-        }
+        console.warn("Fallo al consultar postulaciones:", err);
+        listEl.innerHTML = '<div class="p-6 bg-amber-50 border border-amber-200 rounded-2xl text-center space-y-3">' +
+          '<div class="w-10 h-10 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center mx-auto">' +
+            '<i data-lucide="alert-triangle" class="w-5 h-5"></i>' +
+          '</div>' +
+          '<div>' +
+            '<p class="text-xs font-bold text-amber-900">No se pudieron cargar postulaciones</p>' +
+            '<p class="text-[11px] text-amber-700 mt-1 max-w-md mx-auto">' + (err.message || 'Error de conexión con el servidor.') + '</p>' +
+          '</div>' +
+          '<button type="button" onclick="cargarPostulacionesAdmin()" class="px-4 py-2 rounded-xl bg-white hover:bg-amber-100 text-amber-800 text-xs font-bold border border-amber-200 transition cursor-pointer active:scale-95 shadow-xs">' +
+            'Reintentar' +
+          '</button>' +
+        '</div>';
         if (window.lucide) lucide.createIcons();
       }
     }
@@ -3492,24 +3395,9 @@
 
   // Fotos retro de fachada: decorativas, no interactivas
 
+    // Webhook dedicado para reservas e inventario de autobuses
     const ACTIVE_APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyHrjILLmIl0oiQ14LoqUzUv-I6PRIhk8jtffbxWYkW-Q3wyRsgumCEQim7T1QaxpCPVA/exec";
-    let WEBHOOK_URL = (function() {
-      try {
-        const stored = localStorage.getItem("tour_azul_webhook_postulaciones_url");
-        if (stored && stored.startsWith("http")) return stored.trim();
-      } catch (_) {}
-      return ACTIVE_APPS_SCRIPT_URL;
-    })();
-
-    // Sincronizar dinámicamente con la configuración del servidor central
-    try {
-      fetch("/api/config").then(function(r) { return r.json(); }).then(function(data) {
-        if (data && data.config && data.config.webhookUrl && data.config.webhookUrl.startsWith("http")) {
-          WEBHOOK_URL = data.config.webhookUrl.trim();
-          try { localStorage.setItem("tour_azul_webhook_postulaciones_url", WEBHOOK_URL); } catch (_) {}
-        }
-      }).catch(function() {});
-    } catch (_) {}
+    let WEBHOOK_URL = ACTIVE_APPS_SCRIPT_URL;
 
     const WHATSAPP_NUMERO = "584126571155";
     const MINUTOS_BLOQUEO_ASIENTO = 10;

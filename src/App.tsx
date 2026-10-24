@@ -1,33 +1,60 @@
 import React, { useState, useEffect } from 'react';
 import AdminCandidatos from './AdminCandidatos';
 
-const ADMIN_PASS = '010203';
-
 export default function App() {
   const [isAdminView, setIsAdminView] = useState<boolean>(() => {
     const hash = window.location.hash.toLowerCase();
     return hash.includes('admin') || hash.includes('candidatos');
   });
 
-  const checkIsAdminAuthenticated = () => {
-    return sessionStorage.getItem('tour_azul_admin_auth') === ADMIN_PASS ||
-           localStorage.getItem('tour_azul_admin_auth') === ADMIN_PASS;
+  const getStoredToken = (): string | null => {
+    return sessionStorage.getItem('tour_azul_admin_token') ||
+           localStorage.getItem('tour_azul_admin_token');
   };
 
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-    return checkIsAdminAuthenticated();
-  });
+  const [authToken, setAuthToken] = useState<string | null>(() => getStoredToken());
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => Boolean(getStoredToken()));
 
   const [showPasswordModal, setShowPasswordModal] = useState<boolean>(false);
   const [passwordInput, setPasswordInput] = useState<string>('');
   const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [validandoLogin, setValidandoLogin] = useState<boolean>(false);
   const [showPasswordText, setShowPasswordText] = useState<boolean>(false);
   const [recordarSesion, setRecordarSesion] = useState<boolean>(true);
 
+  // Verificar validez del token en el servidor de forma silenciosa
+  useEffect(() => {
+    const token = getStoredToken();
+    if (!token) {
+      setIsAuthenticated(false);
+      return;
+    }
+
+    fetch('/api/admin/verify', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.ok) {
+          setIsAuthenticated(true);
+          setAuthToken(token);
+        } else {
+          sessionStorage.removeItem('tour_azul_admin_token');
+          localStorage.removeItem('tour_azul_admin_token');
+          setIsAuthenticated(false);
+          setAuthToken(null);
+        }
+      })
+      .catch(() => {
+        // En caso de problema momentáneo de red, mantener sesión si existe token local
+        setIsAuthenticated(true);
+      });
+  }, []);
+
   // Abrir solicitud de acceso admin
   const requestAdminAccess = () => {
-    const isAuth = checkIsAdminAuthenticated();
-    if (isAuth) {
+    const token = getStoredToken();
+    if (token) {
       setIsAuthenticated(true);
       setIsAdminView(true);
       if (!window.location.hash.includes('admin')) {
@@ -45,8 +72,8 @@ export default function App() {
       const hash = window.location.hash.toLowerCase();
       const shouldBeAdmin = hash.includes('admin') || hash.includes('candidatos');
       if (shouldBeAdmin) {
-        const isAuth = checkIsAdminAuthenticated();
-        if (isAuth) {
+        const token = getStoredToken();
+        if (token) {
           setIsAuthenticated(true);
           setIsAdminView(true);
         } else {
@@ -117,8 +144,11 @@ export default function App() {
   };
 
   const handleLogout = () => {
+    sessionStorage.removeItem('tour_azul_admin_token');
+    localStorage.removeItem('tour_azul_admin_token');
     sessionStorage.removeItem('tour_azul_admin_auth');
     localStorage.removeItem('tour_azul_admin_auth');
+    setAuthToken(null);
     setIsAuthenticated(false);
     setIsAdminView(false);
     setShowPasswordModal(false);
@@ -127,25 +157,55 @@ export default function App() {
     }
   };
 
-  const handlePasswordSubmit = (e: React.FormEvent) => {
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (passwordInput.trim() === ADMIN_PASS) {
-      sessionStorage.setItem('tour_azul_admin_auth', ADMIN_PASS);
-      if (recordarSesion) {
-        localStorage.setItem('tour_azul_admin_auth', ADMIN_PASS);
+    const pwd = passwordInput.trim();
+    if (!pwd) {
+      setPasswordError('Por favor ingresa la clave de administrador.');
+      return;
+    }
+
+    setValidandoLogin(true);
+    setPasswordError(null);
+
+    try {
+      // Validación segura en el servidor
+      const res = await fetch('/api/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: pwd })
+      });
+
+      const data = await res.json();
+      if (res.ok && data.ok && data.token) {
+        sessionStorage.setItem('tour_azul_admin_token', data.token);
+        if (recordarSesion) {
+          localStorage.setItem('tour_azul_admin_token', data.token);
+        }
+        setAuthToken(data.token);
+        setIsAuthenticated(true);
+        setShowPasswordModal(false);
+        setIsAdminView(true);
+        window.history.pushState(null, '', '#/admin-candidatos');
+      } else {
+        setPasswordError(data.error || 'Clave incorrecta. Solo el administrador tiene acceso a este panel.');
       }
-      setIsAuthenticated(true);
-      setShowPasswordModal(false);
-      setIsAdminView(true);
-      window.history.pushState(null, '', '#/admin-candidatos');
-    } else {
-      setPasswordError('Clave incorrecta. Solo el administrador tiene acceso a este panel.');
+    } catch (err: any) {
+      setPasswordError('Error de conexión al verificar credenciales con el servidor.');
+    } finally {
+      setValidandoLogin(false);
     }
   };
 
   // Si está autenticado y en vista admin, renderizar panel
   if (isAdminView && isAuthenticated) {
-    return <AdminCandidatos onBack={handleCloseAdmin} onLogout={handleLogout} />;
+    return (
+      <AdminCandidatos 
+        onBack={handleCloseAdmin} 
+        onLogout={handleLogout} 
+        authToken={authToken} 
+      />
+    );
   }
 
   return (
@@ -157,7 +217,7 @@ export default function App() {
           id="btn-flotante-admin-candidatos"
           onClick={requestAdminAccess}
           className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-2xl bg-gradient-to-r from-blue-700 to-sky-600 hover:from-blue-800 hover:to-sky-700 text-white font-bold text-xs sm:text-sm shadow-xl hover:shadow-2xl border-2 border-white/60 backdrop-blur-md transition-all active:scale-95 cursor-pointer group"
-          title="Abrir Panel de Administración (Requiere clave de admin)"
+          title="Abrir Panel de Administración (Requiere clave de admin validada en servidor)"
         >
           <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 group-hover:scale-125 transition-transform animate-pulse"></span>
           <span className="text-sm">🛡️</span>
@@ -166,15 +226,16 @@ export default function App() {
         </button>
       </div>
 
-      {/* Modal Seguro de Acceso Administrador (Clave: 010203) */}
+      {/* Modal Seguro de Acceso Administrador (Validado en el servidor) */}
       {showPasswordModal && (
         <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="fixed inset-0" onClick={() => setShowPasswordModal(false)}></div>
+          <div className="fixed inset-0" onClick={() => !validandoLogin && setShowPasswordModal(false)}></div>
           <div className="relative w-full max-w-sm bg-white rounded-3xl p-6 sm:p-7 shadow-2xl border border-sky-100 text-center z-10 animate-float">
             
             <button
               type="button"
               onClick={() => setShowPasswordModal(false)}
+              disabled={validandoLogin}
               className="absolute top-4 right-4 p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition cursor-pointer"
               title="Cerrar"
             >
@@ -189,7 +250,7 @@ export default function App() {
               Acceso Administrador
             </h3>
             <p className="text-xs text-slate-500 mt-1 mb-5 leading-relaxed">
-              Este panel es de uso exclusivo para la coordinación de Tour Azul. Ingresa la clave de administrador para revisar todos los postulantes desde cualquier dispositivo.
+              Este panel es de uso exclusivo para la coordinación de Tour Azul. Ingresa la clave de administrador para gestionar las postulaciones.
             </p>
 
             <form onSubmit={handlePasswordSubmit} className="space-y-4 text-left">
@@ -205,9 +266,10 @@ export default function App() {
                       setPasswordInput(e.target.value);
                       setPasswordError(null);
                     }}
+                    disabled={validandoLogin}
                     placeholder="Ingresa la clave..."
                     autoFocus
-                    className="w-full px-4 py-2.5 pr-10 rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600 text-xs md:text-sm text-slate-800 transition bg-slate-50 font-mono"
+                    className="w-full px-4 py-2.5 pr-10 rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600 text-xs md:text-sm text-slate-800 transition bg-slate-50 font-mono disabled:opacity-50"
                   />
                   <button
                     type="button"
@@ -244,15 +306,24 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => setShowPasswordModal(false)}
-                  className="flex-1 py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition active:scale-95 cursor-pointer"
+                  disabled={validandoLogin}
+                  className="flex-1 py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition active:scale-95 cursor-pointer disabled:opacity-50"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold uppercase tracking-wider shadow-md hover:shadow-lg transition active:scale-95 cursor-pointer"
+                  disabled={validandoLogin}
+                  className="flex-1 py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold uppercase tracking-wider shadow-md hover:shadow-lg transition active:scale-95 cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
                 >
-                  Ingresar
+                  {validandoLogin ? (
+                    <>
+                      <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                      <span>Verificando...</span>
+                    </>
+                  ) : (
+                    <span>Ingresar</span>
+                  )}
                 </button>
               </div>
             </form>

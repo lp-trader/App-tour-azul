@@ -15,7 +15,14 @@
     "createdAt": "2026-10-22T13:56:19.741Z",
     "fecha": "22/10/2026, 1:56:19 p. m.",
     "syncedToSheets": true,
-    "_origen": "server"
+    "_origen": "server",
+    "Código": "POST-20261022-3304",
+    "Nombre": "Luis Perera Conexión OK",
+    "Teléfono": "0412-6571155",
+    "Zona": "Cabudare",
+    "estado": "Recibida",
+    "Estado": "Recibida",
+    "Fecha": "22/10/2026, 1:56:19 p. m."
   },
   {
     "nombre": "Luis Perera Prueba",
@@ -32,7 +39,14 @@
     "createdAt": "2026-10-21T23:27:39.897Z",
     "fecha": "21/10/2026, 11:27:39 p. m.",
     "syncedToSheets": true,
-    "_origen": "server"
+    "_origen": "server",
+    "Código": "POST-20261021-3511",
+    "Nombre": "Luis Perera Prueba",
+    "Teléfono": "0412-1234567",
+    "Zona": "Cabudare",
+    "estado": "Recibida",
+    "Estado": "Recibida",
+    "Fecha": "21/10/2026, 11:27:39 p. m."
   },
   {
     "Fecha": "2026-10-22T13:09:05.498Z",
@@ -48,7 +62,15 @@
     "Talento": "Prueba inicial",
     "Foto": "",
     "_origen": "sheets",
-    "syncedToSheets": true
+    "syncedToSheets": true,
+    "id": "POST-6240",
+    "codigo": "POST-6240",
+    "nombre": "Verificación Tour Azul",
+    "telefono": "0412-0000000",
+    "zona": "Barquisimeto",
+    "estado": "Recibida",
+    "Estado": "Recibida",
+    "fecha": "2026-10-22T13:09:05.498Z"
   },
   {
     "Fecha": "2026-10-22T13:09:15.362Z",
@@ -64,7 +86,15 @@
     "Talento": "Prueba técnica",
     "Foto": "",
     "_origen": "sheets",
-    "syncedToSheets": true
+    "syncedToSheets": true,
+    "id": "POST-2692",
+    "codigo": "POST-2692",
+    "nombre": "Prueba desde Node",
+    "telefono": "0412-5555555",
+    "zona": "Cabudare",
+    "estado": "Recibida",
+    "Estado": "Recibida",
+    "fecha": "2026-10-22T13:09:15.362Z"
   },
   {
     "Fecha": "2026-10-22T13:09:59.849Z",
@@ -80,7 +110,15 @@
     "Talento": "Organización turística",
     "Foto": "",
     "_origen": "sheets",
-    "syncedToSheets": true
+    "syncedToSheets": true,
+    "id": "POST-1723",
+    "codigo": "POST-1723",
+    "nombre": "Luis Perera",
+    "telefono": "0412-1234567",
+    "zona": "Cabudare",
+    "estado": "Recibida",
+    "Estado": "Recibida",
+    "fecha": "2026-10-22T13:09:59.849Z"
   },
   {
     "Fecha": "2026-10-23T14:32:56.342Z",
@@ -96,9 +134,16 @@
     "Talento": "Fotografía",
     "Foto": "",
     "_origen": "sheets",
-    "syncedToSheets": true
+    "syncedToSheets": true,
+    "id": "POST-6454",
+    "codigo": "POST-6454",
+    "nombre": "Prueba Multi-Dispositivo",
+    "telefono": "0412-9999999",
+    "zona": "Barquisimeto Este",
+    "estado": "Recibida",
+    "Estado": "Recibida",
+    "fecha": "2026-10-23T14:32:56.342Z"
   },
-
   {
     "Fecha": "2026-10-23T14:39:03.086Z",
     "Código": "POST-1727",
@@ -113,6 +158,14 @@
     "Talento": "Playa playa playa",
     "Foto": "",
     "_origen": "sheets",
-    "syncedToSheets": true
+    "syncedToSheets": true,
+    "id": "POST-1727",
+    "codigo": "POST-1727",
+    "nombre": "Astrid carolina",
+    "telefono": 4245219141,
+    "zona": "Nueva Segovia",
+    "estado": "Recibida",
+    "Estado": "Recibida",
+    "fecha": "2026-10-23T14:39:03.086Z"
   }
 ]

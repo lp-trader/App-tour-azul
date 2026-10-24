@@ -1,6 +1,8 @@
 {
-  "webhookUrl": "https://script.google.com/macros/s/AKfycbyHrjILLmIl0oiQ14LoqUzUv-I6PRIhk8jtffbxWYkW-Q3wyRsgumCEQim7T1QaxpCPVA/exec",
-  "sheetName": "Tour Azul Postulaciones",
-  "spreadsheetName": "Registro Tour Azul",
-  "updatedAt": "2026-10-22T06:10:00Z"
+  "webhookUrl": "",
+  "sheetName": "Postulaciones",
+  "spreadsheetName": "Postulaciones Tour Azul",
+  "updatedAt": "2026-10-23T08:20:00Z",
+  "status": "pending_configuration",
+  "previousWebhookDisconnected": true
 }

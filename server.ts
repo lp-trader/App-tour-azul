@@ -2,9 +2,54 @@ import express from 'express';
 import { createServer as createViteServer } from 'vite';
 import fs from 'fs';
 import path from 'path';
+import crypto from 'crypto';
 
 const CONFIG_FILE = path.resolve('data/config.json');
 const CANDIDATOS_FILE = path.resolve('data/candidatos.json');
+
+// Contraseña administrativa en el servidor (no expuesta al navegador)
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '010203';
+
+// Almacén de sesiones administrativas activas en memoria (Token -> Expiración)
+interface AdminSession {
+  token: string;
+  createdAt: number;
+  expiresAt: number;
+}
+const activeAdminSessions = new Map<string, AdminSession>();
+
+function createAdminSession(): { token: string; expiresAt: number } {
+  const token = crypto.randomBytes(32).toString('hex');
+  const now = Date.now();
+  const expiresAt = now + 24 * 60 * 60 * 1000; // 24 horas de validez
+  activeAdminSessions.set(token, { token, createdAt: now, expiresAt });
+  return { token, expiresAt };
+}
+
+function isValidAdminSession(token?: string | null): boolean {
+  if (!token) return false;
+  const clean = token.replace(/^Bearer\s+/i, '').trim();
+  const session = activeAdminSessions.get(clean);
+  if (!session) return false;
+  if (Date.now() > session.expiresAt) {
+    activeAdminSessions.delete(clean);
+    return false;
+  }
+  return true;
+}
+
+// Middleware para proteger rutas administrativas
+function requireAdminAuth(req: express.Request, res: express.Response, next: express.NextFunction) {
+  const authHeader = req.headers.authorization || (req.headers['x-admin-token'] as string);
+  if (isValidAdminSession(authHeader)) {
+    return next();
+  }
+  return res.status(401).json({
+    ok: false,
+    error: 'No autorizado. Se requiere sesión de administrador válida.',
+    code: 'AUTH_REQUIRED'
+  });
+}
 
 function ensureDataFiles() {
   const dataDir = path.resolve('data');
@@ -13,9 +58,10 @@ function ensureDataFiles() {
   }
   if (!fs.existsSync(CONFIG_FILE)) {
     fs.writeFileSync(CONFIG_FILE, JSON.stringify({
-      webhookUrl: "https://script.google.com/macros/s/AKfycbyHrjILLmIl0oiQ14LoqUzUv-I6PRIhk8jtffbxWYkW-Q3wyRsgumCEQim7T1QaxpCPVA/exec",
-      sheetName: "Tour Azul Postulaciones",
-      spreadsheetName: "Registro Tour Azul"
+      webhookUrl: "", // Desconectado por defecto hasta que el usuario ingrese la nueva URL
+      sheetName: "Postulaciones",
+      spreadsheetName: "Postulaciones Tour Azul",
+      updatedAt: new Date().toISOString()
     }, null, 2));
   }
   if (!fs.existsSync(CANDIDATOS_FILE)) {
@@ -27,12 +73,19 @@ function getConfig() {
   try {
     ensureDataFiles();
     const raw = fs.readFileSync(CONFIG_FILE, 'utf-8');
-    return JSON.parse(raw);
+    const parsed = JSON.parse(raw);
+    return {
+      webhookUrl: typeof parsed.webhookUrl === 'string' ? parsed.webhookUrl.trim() : '',
+      sheetName: parsed.sheetName || 'Postulaciones',
+      spreadsheetName: parsed.spreadsheetName || 'Postulaciones Tour Azul',
+      updatedAt: parsed.updatedAt || new Date().toISOString()
+    };
   } catch (err) {
     return {
-      webhookUrl: "https://script.google.com/macros/s/AKfycbyHrjILLmIl0oiQ14LoqUzUv-I6PRIhk8jtffbxWYkW-Q3wyRsgumCEQim7T1QaxpCPVA/exec",
-      sheetName: "Tour Azul Postulaciones",
-      spreadsheetName: "Registro Tour Azul"
+      webhookUrl: "",
+      sheetName: "Postulaciones",
+      spreadsheetName: "Postulaciones Tour Azul",
+      updatedAt: new Date().toISOString()
     };
   }
 }
@@ -79,18 +132,18 @@ function saveCandidatosList(list: any[]) {
 }
 
 /**
- * Reenvía una postulación al Webhook de Google Apps Script (hoja "Tour Azul Postulaciones" en "Registro Tour Azul")
+ * Reenvía una postulación al Webhook de Google Apps Script del nuevo documento.
+ * Guarda en una única pestaña ("Postulaciones") sin crear hojas por envío.
  */
-async function forwardToGoogleSheets(candidate: any, webhookUrl: string): Promise<{ ok: boolean; statusText?: string }> {
+async function forwardToGoogleSheets(candidate: any, webhookUrl: string): Promise<{ ok: boolean; statusText?: string; raw?: any }> {
   if (!webhookUrl || !webhookUrl.startsWith('http')) {
-    return { ok: false, statusText: 'URL de webhook inválida' };
+    return { ok: false, statusText: 'Google Sheets no conectado (pendiente de configurar URL de Apps Script)' };
   }
 
-  // Sanitizar foto: Google Sheets permite máximo 50.000 caracteres por celda.
-  // No enviar cadenas base64 gigantes que rompen el appendRow de Apps Script.
-  let fotoSanitizada = candidate.foto || candidate.Foto || (candidate.tieneFoto ? 'Sí adjunta' : 'No adjunta');
-  if (typeof fotoSanitizada === 'string' && fotoSanitizada.length > 500) {
-    fotoSanitizada = candidate.fotoNombre ? `Sí adjunta (${candidate.fotoNombre})` : 'Sí adjunta (imagen seleccionada)';
+  // Sanitizar foto: Si es enlace http o /uploads, enviar la URL. Si es texto, enviar descripción.
+  let fotoValor = candidate.fotoUrl || candidate.foto || candidate.Foto || (candidate.tieneFoto ? 'Sí adjunta' : 'No adjunta');
+  if (typeof fotoValor === 'string' && fotoValor.length > 500 && !fotoValor.startsWith('data:image')) {
+    fotoValor = candidate.fotoNombre ? `Sí adjunta (${candidate.fotoNombre})` : 'Sí adjunta';
   }
 
   const payload = {
@@ -107,7 +160,8 @@ async function forwardToGoogleSheets(candidate: any, webhookUrl: string): Promis
     punto_partida: candidate.punto_partida || candidate.puntoPartida || candidate['Punto de partida'] || '',
     motivacion: candidate.motivacion || candidate.Motivación || '',
     talento: candidate.talento || candidate.Talento || 'No especificado',
-    foto: fotoSanitizada,
+    foto: fotoValor,
+    fotoUrl: candidate.fotoUrl || null,
     fotoNombre: candidate.fotoNombre || null,
     tieneFoto: Boolean(candidate.tieneFoto),
     estado: candidate.estado || candidate.Estado || 'Recibida',
@@ -116,7 +170,7 @@ async function forwardToGoogleSheets(candidate: any, webhookUrl: string): Promis
 
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+    const timeoutId = setTimeout(() => controller.abort(), 12000); // 12s timeout
 
     const res = await fetch(webhookUrl, {
       method: 'POST',
@@ -126,10 +180,24 @@ async function forwardToGoogleSheets(candidate: any, webhookUrl: string): Promis
     });
     clearTimeout(timeoutId);
 
+    const text = await res.text();
+    let json: any = null;
+    try {
+      json = JSON.parse(text);
+    } catch (_) {}
+
+    if (json && (json.ok === true || json.status === 'success')) {
+      return { ok: true, statusText: json.mensaje || 'Guardado exitosamente en Google Sheets', raw: json };
+    }
+
+    if (json && (json.ok === false || json.status === 'error')) {
+      return { ok: false, statusText: json.error || 'Error reportado por Google Apps Script', raw: json };
+    }
+
     if (res.ok) {
-      return { ok: true, statusText: 'Guardado exitosamente en Google Sheets' };
+      return { ok: true, statusText: 'Google Apps Script respondió satisfactoriamente', raw: text.slice(0, 200) };
     } else {
-      return { ok: false, statusText: `HTTP ${res.status}: ${res.statusText}` };
+      return { ok: false, statusText: `HTTP ${res.status}: ${res.statusText}`, raw: text.slice(0, 200) };
     }
   } catch (err: any) {
     return { ok: false, statusText: err.message || String(err) };
@@ -149,40 +217,80 @@ async function startServer() {
     res.json({ ok: true, timestamp: Date.now(), service: 'Tour Azul Backend' });
   });
 
-  // 2. Obtener Configuración (URL Webhook y nombres de hoja)
-  app.get('/api/config', (_req, res) => {
-    const cfg = getConfig();
-    res.json({ ok: true, config: cfg });
+  // 2. Autenticación Administrativa en el Servidor (Protege contraseñas y operaciones sensibles)
+  app.post('/api/admin/login', (req, res) => {
+    const { password } = req.body;
+    if (!password || String(password).trim() !== ADMIN_PASSWORD) {
+      return res.status(401).json({
+        ok: false,
+        error: 'Clave de administrador incorrecta. Acceso denegado.'
+      });
+    }
+
+    const session = createAdminSession();
+    return res.json({
+      ok: true,
+      token: session.token,
+      expiresAt: session.expiresAt,
+      message: 'Autenticación administrativa exitosa'
+    });
   });
 
-  // 3. Guardar Configuración del Webhook
-  app.post('/api/config', (req, res) => {
+  // Verificar validez de sesión administrativa
+  app.get('/api/admin/verify', (req, res) => {
+    const authHeader = req.headers.authorization || (req.headers['x-admin-token'] as string);
+    const valid = isValidAdminSession(authHeader);
+    if (valid) {
+      return res.json({ ok: true, valid: true });
+    }
+    return res.status(401).json({ ok: false, valid: false, error: 'Sesión no válida o expirada' });
+  });
+
+  // 3. Obtener Configuración de Conexión de Postulaciones
+  app.get('/api/config', (_req, res) => {
+    const cfg = getConfig();
+    res.json({
+      ok: true,
+      config: cfg,
+      isConfigured: Boolean(cfg.webhookUrl && cfg.webhookUrl.startsWith('http'))
+    });
+  });
+
+  // 4. Guardar Configuración del Nuevo Webhook (Requiere autenticación admin)
+  app.post('/api/config', requireAdminAuth, (req, res) => {
     const { webhookUrl, sheetName, spreadsheetName } = req.body;
     const current = getConfig();
     const updated = {
       ...current,
       webhookUrl: (webhookUrl !== undefined ? String(webhookUrl).trim() : current.webhookUrl),
-      sheetName: (sheetName !== undefined ? String(sheetName).trim() : (current.sheetName || 'Tour Azul Postulaciones')),
-      spreadsheetName: (spreadsheetName !== undefined ? String(spreadsheetName).trim() : (current.spreadsheetName || 'Registro Tour Azul')),
+      sheetName: (sheetName !== undefined && String(sheetName).trim().length > 0 ? String(sheetName).trim() : 'Postulaciones'),
+      spreadsheetName: (spreadsheetName !== undefined && String(spreadsheetName).trim().length > 0 ? String(spreadsheetName).trim() : 'Postulaciones Tour Azul'),
       updatedAt: new Date().toISOString()
     };
     saveConfig(updated);
-    res.json({ ok: true, config: updated, message: 'Configuración actualizada en el servidor para todos los dispositivos' });
+    res.json({
+      ok: true,
+      config: updated,
+      message: 'Configuración de conexión actualizada con éxito'
+    });
   });
 
-  // 4. Probar Conexión con Google Sheets
-  app.post('/api/test-sheets', async (req, res) => {
+  // 5. Probar Conexión con el Nuevo Google Apps Script (Requiere autenticación admin)
+  app.post('/api/test-sheets', requireAdminAuth, async (req, res) => {
     const url = req.body.url ? String(req.body.url).trim() : getConfig().webhookUrl;
     if (!url || !url.startsWith('http')) {
-      return res.status(400).json({ ok: false, message: 'Debes proporcionar una URL válida de Google Apps Script' });
+      return res.status(400).json({
+        ok: false,
+        message: 'Debes proporcionar la URL completa de la aplicación web de Google Apps Script (termina en /exec)'
+      });
     }
 
     try {
       const sep = url.includes('?') ? '&' : '?';
-      const testGetUrl = `${url}${sep}accion=candidatos&_t=${Date.now()}`;
-      
+      const testGetUrl = `${url}${sep}accion=test&_t=${Date.now()}`;
+
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 9000);
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
 
       const resp = await fetch(testGetUrl, { signal: controller.signal });
       clearTimeout(timeoutId);
@@ -193,62 +301,57 @@ async function startServer() {
         parsed = JSON.parse(text);
       } catch (_) {}
 
-      if (parsed && (parsed.status === 'success' || parsed.ok || Array.isArray(parsed) || parsed.servicio)) {
-        const count = Array.isArray(parsed.data) ? parsed.data.length : (Array.isArray(parsed) ? parsed.length : 0);
+      if (parsed && (parsed.ok === true || parsed.status === 'success')) {
         return res.json({
           ok: true,
-          message: `¡Conexión exitosa con Google Apps Script! La hoja respondió correctamente. Candidatos encontrados en Google Sheets: ${count}.`,
+          message: `¡Conexión exitosa con el nuevo Google Sheet! Pestaña activa: "${parsed.pestana || 'Postulaciones'}". Postulaciones registradas: ${parsed.totalPostulaciones !== undefined ? parsed.totalPostulaciones : (Array.isArray(parsed.data) ? parsed.data.length : 0)}.`,
           details: parsed
         });
       }
 
-      // Si devolvió HTML de error de Google
       if (text.includes('Script function not found: doGet')) {
         return res.json({
           ok: false,
-          message: 'Error en Apps Script: La función doGet no existe. Asegúrate de copiar TODO el archivo Code.gs en el editor de Apps Script.',
-          raw: text.slice(0, 300)
+          message: 'Error en Apps Script: La función doGet no fue encontrada. Asegúrate de copiar TODO el archivo Postulaciones_GoogleSheet.gs en el editor de Apps Script.'
         });
       }
 
-      if (text.includes('unable to open the file at this time') || text.includes('Page Not Found')) {
+      if (text.includes('unable to open the file') || text.includes('Page Not Found')) {
         return res.json({
           ok: false,
-          message: 'No se pudo abrir el archivo de Google Sheets. Verifica que la implementación esté en modo "Cualquier usuario" (Anyone) y ejecutada como "Yo".',
-          raw: text.slice(0, 300)
+          message: 'No se pudo acceder a la hoja. Verifica que la implementación esté configurada con: "Quién tiene acceso: Cualquier usuario" (Anyone).'
         });
       }
 
       return res.json({
         ok: false,
-        message: `El script respondió pero con un contenido no esperado: ${text.slice(0, 200)}`
+        message: `El script respondió pero con un contenido inesperado: ${text.slice(0, 250)}`
       });
 
     } catch (err: any) {
       return res.json({
         ok: false,
-        message: `Error al conectar con la URL: ${err.message || err}. Verifica la conexión a internet o los permisos de la implementación.`
+        message: `Error al conectar con la URL: ${err.message || err}. Verifica la conexión o la URL de publicación.`
       });
     }
   });
 
-  // 5. Obtener Todos los Candidatos (Compartido entre todos los dispositivos)
+  // 6. Obtener Lista de Candidatos (Consulta servidor y nuevo Google Sheet)
   app.get('/api/candidatos', async (req, res) => {
     let localList = getCandidatosList();
     const cfg = getConfig();
-    const shouldSync = req.query.sync !== 'false'; // Sincronizar por defecto con Google Sheets
+    const shouldSync = req.query.sync !== 'false';
+    const isWebhookConfigured = Boolean(cfg.webhookUrl && cfg.webhookUrl.startsWith('http'));
 
-    // Si se solicita sincronización y hay webhook configurado
-    if (shouldSync && cfg.webhookUrl && cfg.webhookUrl.startsWith('http')) {
+    // Sincronizar con el nuevo Google Sheet si la URL está configurada
+    if (shouldSync && isWebhookConfigured) {
       try {
         const sep = cfg.webhookUrl.includes('?') ? '&' : '?';
         const remoteUrl = `${cfg.webhookUrl}${sep}accion=candidatos&_t=${Date.now()}`;
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 12000); // 12s timeout para permitir respuesta de Apps Script
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-        const resp = await fetch(remoteUrl, { 
-          signal: controller.signal
-        });
+        const resp = await fetch(remoteUrl, { signal: controller.signal });
         clearTimeout(timeoutId);
 
         if (resp.ok) {
@@ -256,10 +359,7 @@ async function startServer() {
           let remotos: any[] = [];
           if (json && json.status === 'success' && Array.isArray(json.data)) remotos = json.data;
           else if (Array.isArray(json)) remotos = json;
-          else if (json && Array.isArray(json.postulaciones)) remotos = json.postulaciones;
-          else if (json && Array.isArray(json.candidatos)) remotos = json.candidatos;
 
-          // Merge inteligente: actualizar estados y añadir faltantes
           const localMap = new Map<string, number>();
           localList.forEach((c: any, idx: number) => {
             const key = String(c.id || c.codigo || c.Código || '').toLowerCase().trim();
@@ -268,9 +368,8 @@ async function startServer() {
 
           let huboCambios = false;
           for (const r of remotos) {
-            // Descartar filas vacías o fantasma sin nombre ni teléfono
-            const nom = String(r.nombre || r.Nombre || r.nombreCompleto || r['Nombre Completo'] || '').trim();
-            const tel = String(r.telefono || r.Teléfono || r.whatsapp || '').trim();
+            const nom = String(r.nombre || r.Nombre || '').trim();
+            const tel = String(r.telefono || r.Teléfono || '').trim();
             if (!nom && !tel) continue;
 
             const rId = String(r.id || r.codigo || r.Código || `POST-${Date.now()}`).trim();
@@ -318,23 +417,12 @@ async function startServer() {
             }
           }
 
-          // Limpiar de localList registros que no tengan ni nombre ni código válido
-          const prevLen = localList.length;
-          localList = localList.filter((c: any) => {
-            const n = String(c.nombre || c.Nombre || '').trim();
-            const cod = String(c.id || c.codigo || c.Código || '').trim();
-            return n.length > 0 || cod.length > 0;
-          });
-          if (localList.length !== prevLen) {
-            huboCambios = true;
-          }
-
           if (huboCambios) {
             saveCandidatosList(localList);
           }
         }
       } catch (err) {
-        console.warn('Aviso al consultar Google Sheets en GET /api/candidatos (continuando con lista local):', err);
+        console.warn('Aviso sincronizando con nuevo Google Sheet:', err);
       }
     }
 
@@ -342,17 +430,61 @@ async function startServer() {
       ok: true,
       candidatos: localList,
       total: localList.length,
+      webhookConfigured: isWebhookConfigured,
       webhookUrl: cfg.webhookUrl,
+      sheetName: cfg.sheetName,
       lastSync: new Date().toISOString()
     });
   });
 
-  // 6. Registrar Candidato (Desde cualquier dispositivo: móvil, tablet, PC)
+  // 7. Registrar Postulación Válida desde el Formulario
   app.post('/api/candidatos', async (req, res) => {
     try {
       const data = req.body;
-      if (!data || (!data.nombre && !data.Nombre)) {
-        return res.status(400).json({ ok: false, error: 'Datos de postulación incompletos' });
+      if (!data) {
+        return res.status(400).json({ ok: false, error: 'No se recibieron datos de postulación' });
+      }
+
+      // Validaciones estrictas del formulario (campos obligatorios)
+      const nombre = String(data.nombre || data.Nombre || '').trim();
+      if (!nombre || nombre.length < 3) {
+        return res.status(400).json({ ok: false, error: 'El nombre completo es obligatorio y debe tener al menos 3 caracteres.' });
+      }
+
+      const edadVal = data.edad !== undefined ? data.edad : data.Edad;
+      const edad = parseInt(edadVal, 10);
+      if (isNaN(edad) || edad < 16 || edad > 85) {
+        return res.status(400).json({ ok: false, error: 'Debes ingresar una edad válida entre 16 y 85 años.' });
+      }
+
+      const telefono = String(data.telefono || data.Teléfono || '').trim();
+      if (!telefono || telefono.length < 7) {
+        return res.status(400).json({ ok: false, error: 'El número de teléfono y WhatsApp es obligatorio.' });
+      }
+
+      const zona = String(data.zona || data.Zona || '').trim();
+      if (!zona) {
+        return res.status(400).json({ ok: false, error: 'Debes indicar tu zona de residencia.' });
+      }
+
+      const experiencia = String(data.experiencia || data.Experiencia || '').trim();
+      if (!experiencia) {
+        return res.status(400).json({ ok: false, error: 'Debes responder a la pregunta de experiencia.' });
+      }
+
+      const disponibilidad = String(data.disponibilidad || data.Disponibilidad || '').trim();
+      if (!disponibilidad) {
+        return res.status(400).json({ ok: false, error: 'Debes indicar tu disponibilidad para fines de semana.' });
+      }
+
+      const puntoPartida = String(data.punto_partida || data.puntoPartida || data['Punto de partida'] || '').trim();
+      if (!puntoPartida) {
+        return res.status(400).json({ ok: false, error: 'Debes confirmar si puedes llegar al punto de partida en Barquisimeto.' });
+      }
+
+      const motivacion = String(data.motivacion || data.Motivación || '').trim();
+      if (!motivacion || motivacion.length < 8) {
+        return res.status(400).json({ ok: false, error: 'Por favor cuéntanos tus motivos para postularte.' });
       }
 
       const now = new Date();
@@ -360,6 +492,7 @@ async function startServer() {
       const randomTag = Math.floor(1000 + Math.random() * 9000);
       const id = String(data.id || data.codigo || data.Código || `POST-${dateStr}-${randomTag}`).trim();
 
+      // Procesamiento de foto
       const rawPhoto = data.foto || data.fotoBase64 || data.Foto;
       let fotoUrl = data.fotoUrl || null;
 
@@ -378,31 +511,45 @@ async function startServer() {
             fotoUrl = `/uploads/${fileName}`;
           }
         } catch (errFoto) {
-          console.warn('Aviso guardando imagen en disco:', errFoto);
-          fotoUrl = rawPhoto;
+          console.warn('Aviso guardando imagen:', errFoto);
+          fotoUrl = null;
         }
       } else if (rawPhoto && typeof rawPhoto === 'string' && (rawPhoto.startsWith('http') || rawPhoto.startsWith('/uploads'))) {
         fotoUrl = rawPhoto;
       }
 
       const candidato: any = {
-        ...data,
         id,
         codigo: id,
+        Código: id,
+        nombre,
+        Nombre: nombre,
+        edad,
+        telefono,
+        Teléfono: telefono,
+        zona,
+        Zona: zona,
+        experiencia,
+        disponibilidad,
+        punto_partida: puntoPartida,
+        puntoPartida,
+        'Punto de partida': puntoPartida,
+        motivacion,
+        Motivación: motivacion,
+        talento: String(data.talento || data.Talento || 'No especificado').trim(),
         foto: fotoUrl || (data.tieneFoto ? (data.fotoNombre || 'Sí adjunta') : 'No adjunta'),
-        fotoUrl: fotoUrl,
+        fotoUrl,
+        fotoNombre: data.fotoNombre || null,
         tieneFoto: Boolean(fotoUrl || data.tieneFoto),
         createdAt: data.createdAt || now.toISOString(),
         fecha: data.fecha || now.toLocaleString('es-VE'),
-        estado: data.estado || data.Estado || 'Recibida',
+        estado: 'Recibida',
+        Estado: 'Recibida',
         syncedToSheets: false,
         _origen: 'server'
       };
 
-      // Limpiar propiedades redundantes que sobrecarguen el archivo JSON
-      delete candidato.fotoBase64;
-
-      // Guardar en la base de datos persistente del servidor
+      // Guardar en la base de datos central del servidor
       const list = getCandidatosList();
       const existingIdx = list.findIndex(c => String(c.id) === String(id) || String(c.codigo) === String(id));
       if (existingIdx !== -1) {
@@ -412,12 +559,19 @@ async function startServer() {
       }
       saveCandidatosList(list);
 
-      // Intentar reenvío inmediato a Google Sheets si hay webhook
+      // Reenvío al nuevo Google Sheet si la URL está configurada
       const cfg = getConfig();
-      let forwardResult = { ok: false, statusText: 'No intentado' };
+      let sheetsResult = { ok: false, statusText: 'Google Sheets no configurado aún' };
+
       if (cfg.webhookUrl && cfg.webhookUrl.startsWith('http')) {
-        forwardResult = await forwardToGoogleSheets(candidato, cfg.webhookUrl);
-        if (forwardResult.ok) {
+        // Enviar con la foto en base64 para que el Apps Script la suba a Google Drive si corresponde
+        const candidateForSheets = {
+          ...candidato,
+          foto: (rawPhoto && typeof rawPhoto === 'string' && rawPhoto.startsWith('data:image')) ? rawPhoto : candidato.foto
+        };
+        sheetsResult = await forwardToGoogleSheets(candidateForSheets, cfg.webhookUrl);
+
+        if (sheetsResult.ok) {
           candidato.syncedToSheets = true;
           const updatedIdx = list.findIndex(c => String(c.id) === String(id));
           if (updatedIdx !== -1) {
@@ -427,23 +581,25 @@ async function startServer() {
         }
       }
 
-      console.log(`[Postulación recibida] Aspirante: "${candidato.nombre || candidato.Nombre}" (${id}). Sincronizado a Sheets: ${candidato.syncedToSheets}`);
+      console.log(`[Postulación registrada] Aspirante: "${nombre}" (${id}). Sincronizado a nuevo Sheets: ${candidato.syncedToSheets}`);
 
       res.json({
         ok: true,
         id,
         candidato,
         syncedToSheets: candidato.syncedToSheets,
-        sheetsResult: forwardResult
+        sheetsResult,
+        sheetsPending: !candidato.syncedToSheets && (!cfg.webhookUrl || !cfg.webhookUrl.startsWith('http'))
       });
+
     } catch (errPost: any) {
       console.error('Error procesando POST /api/candidatos:', errPost);
-      res.status(500).json({ ok: false, error: errPost.message || String(errPost) });
+      res.status(500).json({ ok: false, error: errPost.message || 'Error interno al registrar la postulación' });
     }
   });
 
-  // 7. Actualizar Estado de un Candidato (Visible inmediatamente en todos los dispositivos)
-  app.patch('/api/candidatos/:id', async (req, res) => {
+  // 8. Actualizar Estado de un Candidato (Requiere autenticación admin)
+  app.patch('/api/candidatos/:id', requireAdminAuth, async (req, res) => {
     try {
       const targetId = String(req.params.id).trim().toLowerCase();
       const { estado, notas } = req.body;
@@ -453,7 +609,7 @@ async function startServer() {
       }
 
       const list = getCandidatosList();
-      const idx = list.findIndex(c => 
+      const idx = list.findIndex(c =>
         String(c.id || c.codigo || c.Código || '').trim().toLowerCase() === targetId
       );
 
@@ -472,7 +628,7 @@ async function startServer() {
 
       saveCandidatosList(list);
 
-      // Notificar cambio de estado a Google Sheets si el webhook está configurado
+      // Sincronizar actualización de estado con el nuevo Google Sheet
       const cfg = getConfig();
       if (cfg.webhookUrl && cfg.webhookUrl.startsWith('http')) {
         try {
@@ -483,25 +639,26 @@ async function startServer() {
               accion: 'actualizar_estado',
               codigo: list[idx].id || list[idx].codigo,
               id: list[idx].id || list[idx].codigo,
-              estado: list[idx].estado
+              estado: list[idx].estado,
+              notas: list[idx].notas || ''
             })
           }).catch(errW => console.warn('Aviso notificando cambio de estado a Google Sheets:', errW));
         } catch (_) {}
       }
 
-      res.json({ ok: true, candidato: list[idx], message: 'Estado actualizado en todos los dispositivos' });
+      res.json({ ok: true, candidato: list[idx], message: 'Estado actualizado correctamente' });
     } catch (err: any) {
       res.status(500).json({ ok: false, error: err.message || String(err) });
     }
   });
 
-  // 8. Eliminar Candidato (Para descartar registros de prueba)
-  app.delete('/api/candidatos/:id', (req, res) => {
+  // 9. Eliminar Candidato (Requiere autenticación admin)
+  app.delete('/api/candidatos/:id', requireAdminAuth, (req, res) => {
     try {
       const targetId = String(req.params.id).trim().toLowerCase();
       let list = getCandidatosList();
       const initialLen = list.length;
-      list = list.filter(c => 
+      list = list.filter(c =>
         String(c.id || c.codigo || c.Código || '').trim().toLowerCase() !== targetId
       );
 
@@ -510,29 +667,66 @@ async function startServer() {
       }
 
       saveCandidatosList(list);
-      res.json({ ok: true, message: 'Candidato eliminado de la lista central' });
+      res.json({ ok: true, message: 'Candidato eliminado del registro' });
     } catch (err: any) {
       res.status(500).json({ ok: false, error: err.message || String(err) });
     }
   });
 
-  // 9. Exportar Candidatos a CSV (Compatible con Microsoft Excel con caracteres en español)
+  // 10. Sincronizar Postulaciones Pendientes hacia el Nuevo Google Sheet (Requiere autenticación admin)
+  app.post('/api/sync-sheets', requireAdminAuth, async (_req, res) => {
+    const cfg = getConfig();
+    if (!cfg.webhookUrl || !cfg.webhookUrl.startsWith('http')) {
+      return res.status(400).json({
+        ok: false,
+        message: 'No se puede sincronizar: Debes configurar primero la URL del nuevo Apps Script en el panel.'
+      });
+    }
+
+    const list = getCandidatosList();
+    let exitosas = 0;
+    let fallidas = 0;
+
+    for (let i = 0; i < list.length; i++) {
+      const c = list[i];
+      if (!c.syncedToSheets) {
+        const resEnvio = await forwardToGoogleSheets(c, cfg.webhookUrl);
+        if (resEnvio.ok) {
+          list[i].syncedToSheets = true;
+          exitosas++;
+        } else {
+          fallidas++;
+        }
+      }
+    }
+
+    saveCandidatosList(list);
+    res.json({
+      ok: true,
+      total: list.length,
+      exitosas,
+      fallidas,
+      message: `Sincronización completada en la pestaña "${cfg.sheetName}". Exitosas: ${exitosas}. Fallidas: ${fallidas}.`
+    });
+  });
+
+  // 11. Exportar Candidatos a CSV (Compatible con Microsoft Excel)
   app.get('/api/candidatos/export.csv', (_req, res) => {
     try {
       const list = getCandidatosList();
       const headers = [
         'Código',
-        'Fecha',
+        'Fecha Registro',
         'Nombre Completo',
         'Edad',
-        'Teléfono',
-        'Zona',
+        'Teléfono / WhatsApp',
+        'Zona de Residencia',
         'Experiencia',
         'Disponibilidad',
         'Punto de partida',
         'Motivación',
         'Talento Curioso',
-        'Foto',
+        'Fotografía',
         'Estado',
         'Sincronizado a Sheets'
       ];
@@ -560,52 +754,17 @@ async function startServer() {
         escapeCsv(c.syncedToSheets ? 'Sí' : 'No')
       ].join(','));
 
-      // BOM UTF-8 para apertura correcta en Excel
       const csvContent = '\uFEFF' + [headers.map(escapeCsv).join(','), ...rows].join('\r\n');
 
       res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-      res.setHeader('Content-Disposition', 'attachment; filename="candidatos_tour_azul.csv"');
+      res.setHeader('Content-Disposition', 'attachment; filename="postulaciones_tour_azul.csv"');
       res.send(csvContent);
     } catch (err: any) {
       res.status(500).send(`Error generando CSV: ${err.message}`);
     }
   });
 
-  // 10. Sincronizar todos los candidatos pendientes hacia Google Sheets
-  app.post('/api/sync-sheets', async (_req, res) => {
-    const cfg = getConfig();
-    if (!cfg.webhookUrl || !cfg.webhookUrl.startsWith('http')) {
-      return res.status(400).json({ ok: false, message: 'URL de Webhook no configurada' });
-    }
-
-    const list = getCandidatosList();
-    let exitosas = 0;
-    let fallidas = 0;
-
-    for (let i = 0; i < list.length; i++) {
-      const c = list[i];
-      if (!c.syncedToSheets) {
-        const resEnvio = await forwardToGoogleSheets(c, cfg.webhookUrl);
-        if (resEnvio.ok) {
-          list[i].syncedToSheets = true;
-          exitosas++;
-        } else {
-          fallidas++;
-        }
-      }
-    }
-
-    saveCandidatosList(list);
-    res.json({
-      ok: true,
-      total: list.length,
-      exitosas,
-      fallidas,
-      message: `Se sincronizaron ${exitosas} postulaciones con la hoja "${cfg.sheetName}". Fallidas: ${fallidas}.`
-    });
-  });
-
-  // Manejador global de errores para Express para evitar caídas de servidor
+  // Manejador global de errores para Express
   app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
     console.error('Error no capturado en servidor:', err);
     res.status(500).json({ ok: false, error: err.message || 'Error interno del servidor' });
