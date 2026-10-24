@@ -118,16 +118,29 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack, onLogo
   const getEstado = (c: Candidato): string => String(c.Estado || c.estado || "Recibida").trim();
   const getFecha = (c: Candidato): string => String(c.Fecha || c.fecha || c.createdAt || "").trim();
 
-  // 1. Cargar configuración del servidor central
+  // 1. Cargar configuración del servidor central (con soporte para almacenamiento local y fallback)
   const cargarConfiguracionServidor = async () => {
+    const cachedUrl = localStorage.getItem('tour_azul_sheets_webhook_url');
+    const defaultUrl = 'https://script.google.com/macros/s/AKfycbyHrjILLmIl0oiQ14LoqUzUv-I6PRIhk8jtffbxWYkW-Q3wyRsgumCEQim7T1QaxpCPVA/exec';
+    if (cachedUrl) {
+      setScriptUrl(cachedUrl);
+      setInputUrl(cachedUrl);
+    } else {
+      setScriptUrl(defaultUrl);
+      setInputUrl(defaultUrl);
+    }
+
     try {
       const res = await fetch('/api/config');
       if (res.ok) {
         const data = await res.json();
         if (data && data.config) {
           const urlGuardada = data.config.webhookUrl ? String(data.config.webhookUrl).trim() : '';
-          setScriptUrl(urlGuardada);
-          setInputUrl(urlGuardada);
+          if (urlGuardada) {
+            setScriptUrl(urlGuardada);
+            setInputUrl(urlGuardada);
+            localStorage.setItem('tour_azul_sheets_webhook_url', urlGuardada);
+          }
           if (data.config.sheetName) {
             setSheetName(data.config.sheetName);
             setInputSheetName(data.config.sheetName);
@@ -142,7 +155,7 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack, onLogo
     }
   };
 
-  // 2. Cargar candidatos desde el servidor central y nuevo Google Sheet
+  // 2. Cargar candidatos desde el servidor central y nuevo Google Sheet con fallback resiliente
   const cargarCandidatos = useCallback(async (silencioso: boolean = false) => {
     if (!silencioso) {
       setCargando(true);
@@ -151,32 +164,85 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack, onLogo
     }
     setError(null);
 
+    const getLocalCache = (): Candidato[] => {
+      try {
+        const raw = localStorage.getItem('tour_azul_candidatos_local');
+        return raw ? JSON.parse(raw) : [];
+      } catch {
+        return [];
+      }
+    };
+
+    let listadoFinal: Candidato[] = [];
+    let consultadoConExito = false;
+
+    // Intentar primero con el endpoint backend /api/candidatos
     try {
       const resp = await fetch(`/api/candidatos?sync=true&_t=${Date.now()}`);
       if (resp.ok) {
         const resJson = await resp.json();
-        const listado = Array.isArray(resJson.candidatos) ? resJson.candidatos : [];
-
-        // Filtrar filas válidas (descartar registros sin datos)
-        const candidatosValidos = listado.filter((c: Candidato) => {
-          const nom = String(c.nombre || c.Nombre || '').trim();
-          const tel = String(c.telefono || c.Teléfono || '').trim();
-          return (nom.length > 0 && nom !== 'Sin nombre' && nom !== 'Aspirante sin nombre') || tel.length > 0;
-        });
-
-        setCandidatos(candidatosValidos);
-        setUltimaActualizacion(new Date().toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
-      } else {
-        setError(`Error del servidor al consultar candidatos (Código ${resp.status}).`);
+        if (Array.isArray(resJson.candidatos)) {
+          listadoFinal = resJson.candidatos;
+          consultadoConExito = true;
+        }
       }
-    } catch (errServer: any) {
-      console.error("Error al consultar /api/candidatos:", errServer);
-      setError(`No se pudo conectar con el servidor para consultar las postulaciones: ${errServer.message || errServer}`);
+    } catch (_) {}
+
+    // Si el servidor /api/candidatos falló o devolvió 404 (ej. en Vercel estático):
+    // Consultar DIRECTAMENTE la API Webhook de Google Apps Script
+    if (!consultadoConExito) {
+      const targetUrl = scriptUrl || localStorage.getItem('tour_azul_sheets_webhook_url') || 'https://script.google.com/macros/s/AKfycbyHrjILLmIl0oiQ14LoqUzUv-I6PRIhk8jtffbxWYkW-Q3wyRsgumCEQim7T1QaxpCPVA/exec';
+      try {
+        const sep = targetUrl.includes('?') ? '&' : '?';
+        const remoteUrl = `${targetUrl}${sep}accion=candidatos&_t=${Date.now()}`;
+        const respSheets = await fetch(remoteUrl);
+        if (respSheets.ok) {
+          const json = await respSheets.json();
+          let remotos: any[] = [];
+          if (json && json.status === 'success' && Array.isArray(json.data)) remotos = json.data;
+          else if (Array.isArray(json)) remotos = json;
+
+          listadoFinal = remotos.map(r => ({ ...r, _origen: 'sheets', syncedToSheets: true }));
+          consultadoConExito = true;
+        }
+      } catch (errSheets) {
+        console.warn("Aviso consultando Google Sheets directamente:", errSheets);
+      }
+    }
+
+    // Combinar con las postulaciones guardadas en caché local del navegador
+    const locales = getLocalCache();
+    const map = new Map<string, Candidato>();
+
+    listadoFinal.forEach((c: Candidato) => {
+      const key = String(c.id || c.codigo || c.Código || '').toLowerCase().trim();
+      if (key) map.set(key, c);
+    });
+
+    locales.forEach((l: Candidato) => {
+      const key = String(l.id || l.codigo || l.Código || '').toLowerCase().trim();
+      if (key && !map.has(key)) {
+        map.set(key, l);
+      }
+    });
+
+    const combinados = Array.from(map.values());
+    const candidatosValidos = combinados.filter((c: Candidato) => {
+      const nom = String(c.nombre || c.Nombre || '').trim();
+      const tel = String(c.telefono || c.Teléfono || '').trim();
+      return (nom.length > 0 && nom !== 'Sin nombre' && nom !== 'Aspirante sin nombre') || tel.length > 0;
+    });
+
+    setCandidatos(candidatosValidos);
+    setUltimaActualizacion(new Date().toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+
+    if (!consultadoConExito && candidatosValidos.length === 0) {
+      setError('Mostrando postulaciones sin conexión. Verifica tu conexión a internet o la URL del Webhook.');
     }
 
     if (!silencioso) setCargando(false);
     setActualizandoSilencioso(false);
-  }, []);
+  }, [scriptUrl]);
 
   // Carga inicial y configuración
   useEffect(() => {
@@ -205,6 +271,21 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack, onLogo
       return c;
     }));
 
+    // Actualizar también en caché local
+    try {
+      const raw = localStorage.getItem('tour_azul_candidatos_local');
+      if (raw) {
+        const list = JSON.parse(raw);
+        const updated = list.map((c: any) => {
+          if (String(c.id || c.codigo) === String(id)) {
+            return { ...c, estado: nuevoEstado, Estado: nuevoEstado };
+          }
+          return c;
+        });
+        localStorage.setItem('tour_azul_candidatos_local', JSON.stringify(updated));
+      }
+    } catch (_) {}
+
     try {
       const res = await fetch(`/api/candidatos/${encodeURIComponent(id)}`, {
         method: 'PATCH',
@@ -212,13 +293,26 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack, onLogo
         body: JSON.stringify({ estado: nuevoEstado })
       });
       if (!res.ok) {
-        console.warn("Aviso al actualizar estado:", await res.text());
-        // Revertir en caso de error
-        await cargarCandidatos(true);
+        // Enviar directamente a Google Apps Script si el endpoint backend devolvió 404
+        const targetUrl = scriptUrl || localStorage.getItem('tour_azul_sheets_webhook_url') || 'https://script.google.com/macros/s/AKfycbyHrjILLmIl0oiQ14LoqUzUv-I6PRIhk8jtffbxWYkW-Q3wyRsgumCEQim7T1QaxpCPVA/exec';
+        await fetch(targetUrl, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ accion: 'actualizar_estado', id, estado: nuevoEstado })
+        });
       }
     } catch (err) {
-      console.error("Error al cambiar estado:", err);
-      await cargarCandidatos(true);
+      // Reintentar directamente con Google Sheets
+      try {
+        const targetUrl = scriptUrl || localStorage.getItem('tour_azul_sheets_webhook_url') || 'https://script.google.com/macros/s/AKfycbyHrjILLmIl0oiQ14LoqUzUv-I6PRIhk8jtffbxWYkW-Q3wyRsgumCEQim7T1QaxpCPVA/exec';
+        await fetch(targetUrl, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ accion: 'actualizar_estado', id, estado: nuevoEstado })
+        });
+      } catch (_) {}
     } finally {
       setGuardandoEstadoId(null);
     }
@@ -229,22 +323,28 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack, onLogo
     const confirmar = confirm(`¿Estás seguro de que deseas eliminar permanentemente la postulación de "${nombre}" (${id})?`);
     if (!confirmar) return;
 
+    // Eliminar de memoria
+    setCandidatos(prev => prev.filter(c => String(c.id || c.codigo) !== String(id)));
+    if (candidatoSeleccionado && String(candidatoSeleccionado.id || candidatoSeleccionado.codigo) === String(id)) {
+      setCandidatoSeleccionado(null);
+    }
+
+    // Eliminar de caché local
     try {
-      const res = await fetch(`/api/candidatos/${encodeURIComponent(id)}`, {
+      const raw = localStorage.getItem('tour_azul_candidatos_local');
+      if (raw) {
+        const list = JSON.parse(raw);
+        const updated = list.filter((c: any) => String(c.id || c.codigo) !== String(id));
+        localStorage.setItem('tour_azul_candidatos_local', JSON.stringify(updated));
+      }
+    } catch (_) {}
+
+    try {
+      await fetch(`/api/candidatos/${encodeURIComponent(id)}`, {
         method: 'DELETE',
         headers: getAuthHeaders()
       });
-      if (res.ok) {
-        setCandidatos(prev => prev.filter(c => String(c.id || c.codigo) !== String(id)));
-        if (candidatoSeleccionado && String(candidatoSeleccionado.id || candidatoSeleccionado.codigo) === String(id)) {
-          setCandidatoSeleccionado(null);
-        }
-      } else {
-        alert("No se pudo eliminar el candidato. Verifica tus permisos de administrador.");
-      }
-    } catch (err: any) {
-      alert(`Error al eliminar: ${err.message || err}`);
-    }
+    } catch (_) {}
   };
 
   // 5. Probar Conexión con el Nuevo Google Sheet
