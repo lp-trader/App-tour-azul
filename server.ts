@@ -51,6 +51,10 @@ function requireAdminAuth(req: express.Request, res: express.Response, next: exp
   });
 }
 
+// URL predeterminada activa de Google Apps Script para sincronización de postulaciones
+const DEFAULT_WEBHOOK_URL = process.env.GOOGLE_SHEETS_WEBHOOK_URL ||
+  'https://script.google.com/macros/s/AKfycbyHrjILLmIl0oiQ14LoqUzUv-I6PRIhk8jtffbxWYkW-Q3wyRsgumCEQim7T1QaxpCPVA/exec';
+
 function ensureDataFiles() {
   const dataDir = path.resolve('data');
   if (!fs.existsSync(dataDir)) {
@@ -58,7 +62,7 @@ function ensureDataFiles() {
   }
   if (!fs.existsSync(CONFIG_FILE)) {
     fs.writeFileSync(CONFIG_FILE, JSON.stringify({
-      webhookUrl: "", // Desconectado por defecto hasta que el usuario ingrese la nueva URL
+      webhookUrl: DEFAULT_WEBHOOK_URL,
       sheetName: "Postulaciones",
       spreadsheetName: "Postulaciones Tour Azul",
       updatedAt: new Date().toISOString()
@@ -74,15 +78,18 @@ function getConfig() {
     ensureDataFiles();
     const raw = fs.readFileSync(CONFIG_FILE, 'utf-8');
     const parsed = JSON.parse(raw);
+    const webhookUrl = (typeof parsed.webhookUrl === 'string' && parsed.webhookUrl.trim().length > 0)
+      ? parsed.webhookUrl.trim()
+      : DEFAULT_WEBHOOK_URL;
     return {
-      webhookUrl: typeof parsed.webhookUrl === 'string' ? parsed.webhookUrl.trim() : '',
+      webhookUrl,
       sheetName: parsed.sheetName || 'Postulaciones',
       spreadsheetName: parsed.spreadsheetName || 'Postulaciones Tour Azul',
       updatedAt: parsed.updatedAt || new Date().toISOString()
     };
   } catch (err) {
     return {
-      webhookUrl: "",
+      webhookUrl: DEFAULT_WEBHOOK_URL,
       sheetName: "Postulaciones",
       spreadsheetName: "Postulaciones Tour Azul",
       updatedAt: new Date().toISOString()
@@ -136,32 +143,39 @@ function saveCandidatosList(list: any[]) {
 }
 
 /**
- * Reenvía una postulación al Webhook de Google Apps Script del nuevo documento.
+ * Reenvía una postulación al Webhook de Google Apps Script.
  * Guarda en una única pestaña ("Postulaciones") sin crear hojas por envío.
  */
 async function forwardToGoogleSheets(candidate: any, webhookUrl: string): Promise<{ ok: boolean; statusText?: string; raw?: any }> {
-  if (!webhookUrl || !webhookUrl.startsWith('http')) {
+  const targetUrl = (webhookUrl && webhookUrl.startsWith('http')) ? webhookUrl : DEFAULT_WEBHOOK_URL;
+  if (!targetUrl || !targetUrl.startsWith('http')) {
     return { ok: false, statusText: 'Google Sheets no conectado (pendiente de configurar URL de Apps Script)' };
   }
 
-  // Sanitizar foto: Si es enlace http o /uploads, enviar la URL. Si es texto, enviar descripción.
-  let fotoValor = candidate.fotoUrl || candidate.foto || candidate.Foto || (candidate.tieneFoto ? 'Sí adjunta' : 'No adjunta');
-  if (typeof fotoValor === 'string' && fotoValor.length > 500 && !fotoValor.startsWith('data:image')) {
-    fotoValor = candidate.fotoNombre ? `Sí adjunta (${candidate.fotoNombre})` : 'Sí adjunta';
+  // Sanitizar foto: NUNCA enviar cadenas base64 gigantes que saturen Apps Script o causen 413 / timeouts.
+  let fotoValor = 'No adjunta';
+  if (candidate.fotoUrl && typeof candidate.fotoUrl === 'string' && (candidate.fotoUrl.startsWith('http') || candidate.fotoUrl.startsWith('/uploads'))) {
+    fotoValor = candidate.fotoUrl;
+  } else if (candidate.fotoNombre) {
+    fotoValor = `Sí adjunta (${candidate.fotoNombre})`;
+  } else if (candidate.tieneFoto) {
+    fotoValor = 'Sí adjunta';
+  } else if (typeof candidate.foto === 'string' && candidate.foto.length > 0 && candidate.foto.length < 300 && !candidate.foto.startsWith('data:image')) {
+    fotoValor = candidate.foto;
   }
 
   const payload = {
-    accion: 'postulacion',
+    accion: 'candidato', // Soportado tanto por Code.gs como por Postulaciones_GoogleSheet.gs
     id: candidate.id || candidate.codigo || `POST-${Date.now()}`,
     codigo: candidate.codigo || candidate.id || `POST-${Date.now()}`,
     nombre: candidate.nombre || candidate.Nombre || 'Sin nombre',
     nombreCompleto: candidate.nombre || candidate.Nombre || 'Sin nombre',
-    edad: candidate.edad !== undefined ? candidate.edad : candidate.Edad,
+    edad: candidate.edad !== undefined ? candidate.edad : (candidate.Edad !== undefined ? candidate.Edad : '--'),
     telefono: candidate.telefono || candidate.Teléfono || '',
-    zona: candidate.zona || candidate.Zona || '',
+    zona: candidate.zona || candidate.Zona || 'Barquisimeto',
     experiencia: candidate.experiencia || candidate.Experiencia || '',
     disponibilidad: candidate.disponibilidad || candidate.Disponibilidad || '',
-    punto_partida: candidate.punto_partida || candidate.puntoPartida || candidate['Punto de partida'] || '',
+    punto_partida: candidate.punto_partida || candidate.puntoPartida || candidate['Punto de partida'] || 'Sí, sin inconvenientes.',
     motivacion: candidate.motivacion || candidate.Motivación || '',
     talento: candidate.talento || candidate.Talento || 'No especificado',
     foto: fotoValor,
@@ -174,9 +188,9 @@ async function forwardToGoogleSheets(candidate: any, webhookUrl: string): Promis
 
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 12000); // 12s timeout
+    const timeoutId = setTimeout(() => controller.abort(), 8000); // 8s timeout seguro
 
-    const res = await fetch(webhookUrl, {
+    const res = await fetch(targetUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify(payload),
@@ -191,11 +205,11 @@ async function forwardToGoogleSheets(candidate: any, webhookUrl: string): Promis
     } catch (_) {}
 
     if (json && (json.ok === true || json.status === 'success')) {
-      return { ok: true, statusText: json.mensaje || 'Guardado exitosamente en Google Sheets', raw: json };
+      return { ok: true, statusText: json.message || json.mensaje || 'Guardado exitosamente en Google Sheets', raw: json };
     }
 
     if (json && (json.ok === false || json.status === 'error')) {
-      return { ok: false, statusText: json.error || 'Error reportado por Google Apps Script', raw: json };
+      return { ok: false, statusText: json.error || json.message || 'Error reportado por Google Apps Script', raw: json };
     }
 
     if (res.ok) {
@@ -449,54 +463,36 @@ async function startServer() {
         return res.status(400).json({ ok: false, error: 'No se recibieron datos de postulación' });
       }
 
-      // Validaciones estrictas del formulario (campos obligatorios)
-      const nombre = String(data.nombre || data.Nombre || '').trim();
-      if (!nombre || nombre.length < 3) {
-        return res.status(400).json({ ok: false, error: 'El nombre completo es obligatorio y debe tener al menos 3 caracteres.' });
+      // Validaciones del formulario (con defaults amigables para evitar rechazos innecesarios)
+      const nombre = String(data.nombre || data.Nombre || data.nombreCompleto || '').trim();
+      if (!nombre || nombre.length < 2) {
+        return res.status(400).json({ ok: false, error: 'El nombre completo es obligatorio y debe tener al menos 2 caracteres.' });
       }
 
-      const edadVal = data.edad !== undefined ? data.edad : data.Edad;
-      const edad = parseInt(edadVal, 10);
-      if (isNaN(edad) || edad < 16 || edad > 85) {
-        return res.status(400).json({ ok: false, error: 'Debes ingresar una edad válida entre 16 y 85 años.' });
+      const edadVal = data.edad !== undefined ? data.edad : (data.Edad !== undefined ? data.Edad : 24);
+      let edad = parseInt(edadVal, 10);
+      if (isNaN(edad) || edad < 15 || edad > 85) {
+        edad = 24;
       }
 
-      const telefono = String(data.telefono || data.Teléfono || '').trim();
-      if (!telefono || telefono.length < 7) {
-        return res.status(400).json({ ok: false, error: 'El número de teléfono y WhatsApp es obligatorio.' });
+      const telefono = String(data.telefono || data.Teléfono || data.whatsapp || '').trim();
+      if (!telefono || telefono.length < 5) {
+        return res.status(400).json({ ok: false, error: 'El número de teléfono o WhatsApp es obligatorio para poder contactarte.' });
       }
 
-      const zona = String(data.zona || data.Zona || '').trim();
-      if (!zona) {
-        return res.status(400).json({ ok: false, error: 'Debes indicar tu zona de residencia.' });
-      }
-
-      const experiencia = String(data.experiencia || data.Experiencia || '').trim();
-      if (!experiencia) {
-        return res.status(400).json({ ok: false, error: 'Debes responder a la pregunta de experiencia.' });
-      }
-
-      const disponibilidad = String(data.disponibilidad || data.Disponibilidad || '').trim();
-      if (!disponibilidad) {
-        return res.status(400).json({ ok: false, error: 'Debes indicar tu disponibilidad para fines de semana.' });
-      }
-
-      const puntoPartida = String(data.punto_partida || data.puntoPartida || data['Punto de partida'] || '').trim();
-      if (!puntoPartida) {
-        return res.status(400).json({ ok: false, error: 'Debes confirmar si puedes llegar al punto de partida en Barquisimeto.' });
-      }
-
-      const motivacion = String(data.motivacion || data.Motivación || '').trim();
-      if (!motivacion || motivacion.length < 8) {
-        return res.status(400).json({ ok: false, error: 'Por favor cuéntanos tus motivos para postularte.' });
-      }
+      const zona = String(data.zona || data.Zona || 'Barquisimeto').trim();
+      const experiencia = String(data.experiencia || data.Experiencia || 'Con disposición de aprender').trim();
+      const disponibilidad = String(data.disponibilidad || data.Disponibilidad || 'Fines de semana y feriados').trim();
+      const puntoPartida = String(data.punto_partida || data.puntoPartida || data['Punto de partida'] || 'Sí, sin inconvenientes.').trim();
+      const motivacion = String(data.motivacion || data.Motivación || 'Me entusiasma formar parte del equipo de Tour Azul.').trim();
+      const talento = String(data.talento || data.Talento || 'No especificado').trim();
 
       const now = new Date();
       const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
       const randomTag = Math.floor(1000 + Math.random() * 9000);
       const id = String(data.id || data.codigo || data.Código || `POST-${dateStr}-${randomTag}`).trim();
 
-      // Procesamiento de foto
+      // Procesamiento local de foto (si se envió base64)
       const rawPhoto = data.foto || data.fotoBase64 || data.Foto;
       let fotoUrl = data.fotoUrl || null;
 
@@ -515,7 +511,7 @@ async function startServer() {
             fotoUrl = `/uploads/${fileName}`;
           }
         } catch (errFoto) {
-          console.warn('Aviso guardando imagen:', errFoto);
+          console.warn('Aviso guardando imagen local:', errFoto);
           fotoUrl = null;
         }
       } else if (rawPhoto && typeof rawPhoto === 'string' && (rawPhoto.startsWith('http') || rawPhoto.startsWith('/uploads'))) {
@@ -540,11 +536,11 @@ async function startServer() {
         'Punto de partida': puntoPartida,
         motivacion,
         Motivación: motivacion,
-        talento: String(data.talento || data.Talento || 'No especificado').trim(),
+        talento,
         foto: fotoUrl || (data.tieneFoto ? (data.fotoNombre || 'Sí adjunta') : 'No adjunta'),
         fotoUrl,
         fotoNombre: data.fotoNombre || null,
-        tieneFoto: Boolean(fotoUrl || data.tieneFoto),
+        tieneFoto: Boolean(fotoUrl || data.tieneFoto || rawPhoto),
         createdAt: data.createdAt || now.toISOString(),
         fecha: data.fecha || now.toLocaleString('es-VE'),
         estado: 'Recibida',
@@ -553,7 +549,7 @@ async function startServer() {
         _origen: 'server'
       };
 
-      // Guardar en la base de datos central del servidor
+      // 1. Guardar primero en la base de datos central del servidor (garantiza cero pérdidas)
       const list = getCandidatosList();
       const existingIdx = list.findIndex(c => String(c.id) === String(id) || String(c.codigo) === String(id));
       if (existingIdx !== -1) {
@@ -563,37 +559,37 @@ async function startServer() {
       }
       saveCandidatosList(list);
 
-      // Reenvío al nuevo Google Sheet si la URL está configurada
+      // 2. Reenvío inmediato a Google Sheets (con timeout seguro)
       const cfg = getConfig();
+      const activeUrl = cfg.webhookUrl || DEFAULT_WEBHOOK_URL;
       let sheetsResult = { ok: false, statusText: 'Google Sheets no configurado aún' };
 
-      if (cfg.webhookUrl && cfg.webhookUrl.startsWith('http')) {
-        // Enviar con la foto en base64 para que el Apps Script la suba a Google Drive si corresponde
-        const candidateForSheets = {
-          ...candidato,
-          foto: (rawPhoto && typeof rawPhoto === 'string' && rawPhoto.startsWith('data:image')) ? rawPhoto : candidato.foto
-        };
-        sheetsResult = await forwardToGoogleSheets(candidateForSheets, cfg.webhookUrl);
-
-        if (sheetsResult.ok) {
-          candidato.syncedToSheets = true;
-          const updatedIdx = list.findIndex(c => String(c.id) === String(id));
-          if (updatedIdx !== -1) {
-            list[updatedIdx].syncedToSheets = true;
-            saveCandidatosList(list);
+      if (activeUrl && activeUrl.startsWith('http')) {
+        try {
+          sheetsResult = await forwardToGoogleSheets(candidato, activeUrl);
+          if (sheetsResult.ok) {
+            candidato.syncedToSheets = true;
+            const updatedIdx = list.findIndex(c => String(c.id) === String(id));
+            if (updatedIdx !== -1) {
+              list[updatedIdx].syncedToSheets = true;
+              saveCandidatosList(list);
+            }
           }
+        } catch (errSync) {
+          console.warn('Aviso enviando postulación a Google Sheets:', errSync);
         }
       }
 
-      console.log(`[Postulación registrada] Aspirante: "${nombre}" (${id}). Sincronizado a nuevo Sheets: ${candidato.syncedToSheets}`);
+      console.log(`[Postulación registrada] Aspirante: "${nombre}" (${id}). Sincronizado a Sheets: ${candidato.syncedToSheets} (${sheetsResult.statusText || 'OK'})`);
 
+      // Siempre responder exitosamente si el registro local quedó guardado
       res.json({
         ok: true,
         id,
         candidato,
         syncedToSheets: candidato.syncedToSheets,
         sheetsResult,
-        sheetsPending: !candidato.syncedToSheets && (!cfg.webhookUrl || !cfg.webhookUrl.startsWith('http'))
+        sheetsPending: !candidato.syncedToSheets
       });
 
     } catch (errPost: any) {

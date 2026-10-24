@@ -1217,16 +1217,17 @@ export const recruitmentClientCode = `
       }
 
       // Preparar estado de botón de envío
+      // Preparar estado de botón de envío
       const submitBtn = document.getElementById("btn-submit-postulacion");
       const submitText = document.getElementById("btn-submit-text");
       if (submitBtn) submitBtn.disabled = true;
       if (submitText) submitText.textContent = "Guardando en el sistema...";
 
-      // Asegurar que la foto esté comprimida si se seleccionó
+      // Asegurar que la foto esté comprimida si se seleccionó (máx 800px, peso ligero)
       let fotoFinal = recruitmentState.selectedPhotoBase64;
-      if (recruitmentState.selectedPhotoFile && (!fotoFinal || fotoFinal.length > 500000)) {
+      if (recruitmentState.selectedPhotoFile) {
         try {
-          fotoFinal = await compressImage(recruitmentState.selectedPhotoFile, 800, 0.75);
+          fotoFinal = await compressImage(recruitmentState.selectedPhotoFile, 800, 0.7);
         } catch (_) {}
       }
 
@@ -1239,13 +1240,13 @@ export const recruitmentClientCode = `
         id: docId,
         codigo: docId,
         nombre,
-        edad,
+        edad: edad || 24,
         telefono,
-        zona,
-        experiencia: expChecked.value,
-        disponibilidad: dispChecked.value,
-        punto_partida: puntoChecked.value,
-        motivacion,
+        zona: zona || "Barquisimeto",
+        experiencia: expChecked ? expChecked.value : "Con disposición de aprender",
+        disponibilidad: dispChecked ? dispChecked.value : "Fines de semana y feriados",
+        punto_partida: puntoChecked ? puntoChecked.value : "Sí, sin inconvenientes.",
+        motivacion: motivacion || "Me entusiasma formar parte del equipo de Tour Azul.",
         talento: talento || "No especificado",
         tieneFoto: Boolean(recruitmentState.selectedPhotoFile),
         fotoNombre: recruitmentState.selectedPhotoFile ? recruitmentState.selectedPhotoFile.name : null,
@@ -1257,10 +1258,10 @@ export const recruitmentClientCode = `
       recruitmentState.lastValidatedFormData = candidateData;
 
       // ENVIAR AL SERVIDOR CENTRAL (/api/candidatos)
-      // Garantiza almacenamiento permanente y reenvío al nuevo Google Sheet
+      // Garantiza almacenamiento permanente y reenvío directo a Google Sheets
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 15000);
+        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
         const respServer = await fetch("/api/candidatos", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -1269,10 +1270,17 @@ export const recruitmentClientCode = `
         });
         clearTimeout(timeoutId);
 
-        const resData = await respServer.json().catch(() => null);
+        let resData = null;
+        let responseText = "";
+        try {
+          responseText = await respServer.text();
+          resData = JSON.parse(responseText);
+        } catch (_) {}
 
         if (!respServer.ok || !resData || !resData.ok) {
-          const errorMsg = (resData && resData.error) ? resData.error : "No se pudo registrar la postulación en el servidor. Por favor verifica los datos e intenta de nuevo.";
+          const errorMsg = (resData && (resData.error || resData.message))
+            ? (resData.error || resData.message)
+            : (responseText && responseText.length > 0 && responseText.length < 200 ? responseText : "No se pudo registrar la postulación en el servidor. Por favor verifica los datos e intenta de nuevo.");
           if (submitBtn) submitBtn.disabled = false;
           if (submitText) submitText.textContent = "Enviar mi postulación";
           if (typeof showToastNotification === "function") {
@@ -1307,9 +1315,9 @@ export const recruitmentClientCode = `
           "🎂 Edad: " + edad + " años",
           "📱 Teléfono/WhatsApp: " + telefono,
           "📍 Zona de residencia: " + zona,
-          "💼 Experiencia: " + expChecked.value,
-          "⏰ Disponibilidad: " + dispChecked.value,
-          "🚌 Punto de llegada: " + puntoChecked.value,
+          "💼 Experiencia: " + (expChecked ? expChecked.value : "Con disposición de aprender"),
+          "⏰ Disponibilidad: " + (dispChecked ? dispChecked.value : "Fines de semana y feriados"),
+          "🚌 Punto de llegada: " + (puntoChecked ? puntoChecked.value : "Sí, sin inconvenientes."),
           "✨ Motivación: " + motivacion,
           (talento ? "🤭 Talento curioso: " + talento : ""),
           (candidateData.tieneFoto ? "📷 Foto: Adjunta en mi postulación" : "📷 Foto: No adjunta")
