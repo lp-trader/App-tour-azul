@@ -152,16 +152,21 @@ async function forwardToGoogleSheets(candidate: any, webhookUrl: string): Promis
     return { ok: false, statusText: 'Google Sheets no conectado (pendiente de configurar URL de Apps Script)' };
   }
 
-  // Sanitizar foto: NUNCA enviar cadenas base64 gigantes que saturen Apps Script o causen 413 / timeouts.
+  // Sanitizar y estructurar fotografía para Google Apps Script
+  const rawPhoto = candidate.fotoBase64 || candidate.foto || candidate.Foto;
   let fotoValor = 'No adjunta';
-  if (candidate.fotoUrl && typeof candidate.fotoUrl === 'string' && (candidate.fotoUrl.startsWith('http') || candidate.fotoUrl.startsWith('/uploads'))) {
+
+  if (candidate.fotoUrl && typeof candidate.fotoUrl === 'string' && candidate.fotoUrl.startsWith('http')) {
     fotoValor = candidate.fotoUrl;
-  } else if (candidate.fotoNombre) {
-    fotoValor = `Sí adjunta (${candidate.fotoNombre})`;
-  } else if (candidate.tieneFoto) {
-    fotoValor = 'Sí adjunta';
-  } else if (typeof candidate.foto === 'string' && candidate.foto.length > 0 && candidate.foto.length < 300 && !candidate.foto.startsWith('data:image')) {
+  } else if (rawPhoto && typeof rawPhoto === 'string' && rawPhoto.startsWith('data:image')) {
+    // Si viene la imagen en base64, Apps Script la recibe y la guarda en Google Drive de forma automática
+    fotoValor = rawPhoto;
+  } else if (candidate.fotoUrl && typeof candidate.fotoUrl === 'string' && candidate.fotoUrl.startsWith('/uploads')) {
+    fotoValor = candidate.fotoUrl;
+  } else if (typeof candidate.foto === 'string' && candidate.foto.length > 0 && !candidate.foto.startsWith('Sí adjunta')) {
     fotoValor = candidate.foto;
+  } else if (candidate.tieneFoto) {
+    fotoValor = candidate.fotoNombre ? `Sí adjunta (${candidate.fotoNombre})` : 'Sí adjunta';
   }
 
   const payload = {
@@ -179,9 +184,10 @@ async function forwardToGoogleSheets(candidate: any, webhookUrl: string): Promis
     motivacion: candidate.motivacion || candidate.Motivación || '',
     talento: candidate.talento || candidate.Talento || 'No especificado',
     foto: fotoValor,
+    fotoBase64: (rawPhoto && typeof rawPhoto === 'string' && rawPhoto.startsWith('data:image')) ? rawPhoto : null,
     fotoUrl: candidate.fotoUrl || null,
     fotoNombre: candidate.fotoNombre || null,
-    tieneFoto: Boolean(candidate.tieneFoto),
+    tieneFoto: Boolean(candidate.tieneFoto || (rawPhoto && rawPhoto !== 'No adjunta')),
     estado: candidate.estado || candidate.Estado || 'Recibida',
     fecha: candidate.fecha || candidate.createdAt || new Date().toLocaleString('es-VE')
   };
@@ -241,6 +247,44 @@ async function startServer() {
   });
 
   app.use('/uploads', express.static(path.resolve('public/uploads')));
+
+  // Endpoint universal para servir la fotografía de un candidato a cualquier dispositivo
+  app.get('/api/candidatos/:id/foto', (req, res) => {
+    const id = String(req.params.id || '').trim();
+    if (!id) return res.status(404).send('ID de candidato no especificado');
+
+    // 1. Verificar si existe en disco en public/uploads
+    const uploadsDir = path.resolve('public/uploads');
+    const posibles = [`foto_${id}.jpg`, `foto_${id}.jpeg`, `foto_${id}.png`, `foto_${id}.webp`];
+    for (const f of posibles) {
+      const p = path.join(uploadsDir, f);
+      if (fs.existsSync(p)) {
+        res.setHeader('Cache-Control', 'public, max-age=86400');
+        return res.sendFile(p);
+      }
+    }
+
+    // 2. Verificar en la base de datos central data/candidatos.json
+    const list = getCandidatosList();
+    const cand = list.find(c => String(c.id || c.codigo || c.Código || '').toLowerCase() === id.toLowerCase());
+    if (cand) {
+      const pData = cand.fotoBase64 || cand.foto || cand.Foto;
+      if (pData && typeof pData === 'string' && pData.startsWith('data:image')) {
+        const matches = pData.match(/^data:image\/([a-zA-Z0-9]+);base64,(.+)$/);
+        if (matches) {
+          const mime = matches[1] === 'jpg' ? 'image/jpeg' : `image/${matches[1]}`;
+          res.setHeader('Content-Type', mime);
+          res.setHeader('Cache-Control', 'public, max-age=86400');
+          return res.send(Buffer.from(matches[2], 'base64'));
+        }
+      }
+      if (cand.fotoUrl && typeof cand.fotoUrl === 'string' && cand.fotoUrl.startsWith('http')) {
+        return res.redirect(cand.fotoUrl);
+      }
+    }
+
+    return res.status(404).send('Fotografía no disponible');
+  });
 
   // 1. Endpoint de Salud
   app.get('/api/health', (_req, res) => {
@@ -431,6 +475,9 @@ async function startServer() {
               syncedToSheets: true
             };
 
+            const remoteFoto = String(r.foto || r.Foto || '').trim();
+            const remoteTieneFotoValida = remoteFoto.startsWith('http') || remoteFoto.startsWith('data:image') || remoteFoto.includes('drive.google.com');
+
             if (localMap.has(rIdKey)) {
               const idx = localMap.get(rIdKey)!;
               const remoteEstado = r.estado || r.Estado;
@@ -438,6 +485,12 @@ async function startServer() {
                 localList[idx].estado = remoteEstado;
                 localList[idx].Estado = remoteEstado;
                 localList[idx].syncedToSheets = true;
+                huboCambios = true;
+              }
+              // Si Google Sheets trae una foto válida (ej: Google Drive thumbnail) y el registro local no la tenía
+              if (remoteTieneFotoValida && (!localList[idx].foto || localList[idx].foto === 'No adjunta' || localList[idx].foto === 'Sí adjunta')) {
+                localList[idx].foto = remoteFoto;
+                localList[idx].fotoUrl = remoteFoto;
                 huboCambios = true;
               }
             } else {
@@ -507,8 +560,10 @@ async function startServer() {
       // Procesamiento local de foto (si se envió base64)
       const rawPhoto = data.foto || data.fotoBase64 || data.Foto;
       let fotoUrl = data.fotoUrl || null;
+      let fotoBase64 = null;
 
       if (rawPhoto && typeof rawPhoto === 'string' && rawPhoto.startsWith('data:image')) {
+        fotoBase64 = rawPhoto;
         try {
           const uploadsDir = path.resolve('public/uploads');
           if (!fs.existsSync(uploadsDir)) {
@@ -524,10 +579,14 @@ async function startServer() {
           }
         } catch (errFoto) {
           console.warn('Aviso guardando imagen local:', errFoto);
-          fotoUrl = null;
         }
       } else if (rawPhoto && typeof rawPhoto === 'string' && (rawPhoto.startsWith('http') || rawPhoto.startsWith('/uploads'))) {
         fotoUrl = rawPhoto;
+      }
+
+      // Si no tenemos URL estática pero sí base64, usar el endpoint dedicado
+      if (!fotoUrl && fotoBase64) {
+        fotoUrl = `/api/candidatos/${id}/foto`;
       }
 
       const candidato: any = {
@@ -549,10 +608,11 @@ async function startServer() {
         motivacion,
         Motivación: motivacion,
         talento,
-        foto: fotoUrl || (data.tieneFoto ? (data.fotoNombre || 'Sí adjunta') : 'No adjunta'),
-        fotoUrl,
+        foto: fotoBase64 || fotoUrl || (data.tieneFoto ? (data.fotoNombre || 'Sí adjunta') : 'No adjunta'),
+        fotoBase64,
+        fotoUrl: fotoUrl || `/api/candidatos/${id}/foto`,
         fotoNombre: data.fotoNombre || null,
-        tieneFoto: Boolean(fotoUrl || data.tieneFoto || rawPhoto),
+        tieneFoto: Boolean(fotoUrl || fotoBase64 || data.tieneFoto),
         createdAt: data.createdAt || now.toISOString(),
         fecha: data.fecha || now.toLocaleString('es-VE'),
         estado: 'Recibida',

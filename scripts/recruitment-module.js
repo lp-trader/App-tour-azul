@@ -1223,11 +1223,12 @@ export const recruitmentClientCode = `
       if (submitBtn) submitBtn.disabled = true;
       if (submitText) submitText.textContent = "Guardando en el sistema...";
 
-      // Asegurar que la foto esté comprimida si se seleccionó (máx 800px, peso ligero)
+      // Asegurar que la foto esté comprimida si se seleccionó (máx 640px, peso óptimo ~30KB)
       let fotoFinal = recruitmentState.selectedPhotoBase64;
       if (recruitmentState.selectedPhotoFile) {
         try {
-          fotoFinal = await compressImage(recruitmentState.selectedPhotoFile, 800, 0.7);
+          fotoFinal = await compressImage(recruitmentState.selectedPhotoFile, 640, 0.7);
+          recruitmentState.selectedPhotoBase64 = fotoFinal;
         } catch (_) {}
       }
 
@@ -1248,9 +1249,10 @@ export const recruitmentClientCode = `
         punto_partida: puntoChecked ? puntoChecked.value : "Sí, sin inconvenientes.",
         motivacion: motivacion || "Me entusiasma formar parte del equipo de Tour Azul.",
         talento: talento || "No especificado",
-        tieneFoto: Boolean(recruitmentState.selectedPhotoFile),
+        tieneFoto: Boolean(recruitmentState.selectedPhotoFile || fotoFinal),
         fotoNombre: recruitmentState.selectedPhotoFile ? recruitmentState.selectedPhotoFile.name : null,
         foto: fotoFinal || null,
+        fotoBase64: fotoFinal || null,
         estado: "Recibida",
         createdAt: new Date().toISOString()
       };
@@ -1271,7 +1273,7 @@ export const recruitmentClientCode = `
 
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 6000); // 6s timeout rápido
+        const timeoutId = setTimeout(() => controller.abort(), 8000); // 8s timeout seguro
         const respServer = await fetch("/api/candidatos", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -1327,9 +1329,10 @@ export const recruitmentClientCode = `
           punto_partida: puntoChecked ? puntoChecked.value : "Sí, sin inconvenientes.",
           motivacion: motivacion || "Me entusiasma formar parte del equipo de Tour Azul.",
           talento: talento || "No especificado",
-          foto: candidateData.tieneFoto ? (candidateData.fotoNombre || "Sí adjunta") : "No adjunta",
+          foto: fotoFinal || (candidateData.tieneFoto ? (candidateData.fotoNombre || "Sí adjunta") : "No adjunta"),
+          fotoBase64: fotoFinal || null,
           fotoNombre: candidateData.fotoNombre || null,
-          tieneFoto: Boolean(candidateData.tieneFoto),
+          tieneFoto: Boolean(candidateData.tieneFoto || fotoFinal),
           estado: "Recibida",
           fecha: new Date().toLocaleString("es-VE")
         };

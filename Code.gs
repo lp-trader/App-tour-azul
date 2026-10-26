@@ -974,10 +974,48 @@ function guardarPostulacionEnHoja(ss, data) {
   const motivacion = data.motivacion || data.Motivación || "";
   const talento = data.talento || data.Talento || "No especificado";
 
-  // SANITIZACIÓN DE FOTO: NUNCA insertar cadenas base64 gigantes que superen el límite de 50.000 caracteres de Google Sheets
-  let foto = data.foto || data.Foto || data.fotoNombre || data.fotoUrl || (data.tieneFoto ? "Sí adjunta" : "No adjunta");
-  if (typeof foto === "string" && foto.length > 500) {
-    foto = data.fotoNombre ? ("Sí adjunta (" + data.fotoNombre + ")") : "Sí adjunta (imagen seleccionada)";
+  // Procesar fotografía del candidato
+  const rawFoto = data.foto || data.fotoBase64 || data.Foto;
+  let foto = "No adjunta";
+
+  if (rawFoto && typeof rawFoto === "string" && rawFoto.indexOf("base64,") !== -1) {
+    try {
+      const partes = rawFoto.split("base64,");
+      const meta = partes[0];
+      const base64Data = partes[1];
+      let mimeType = "image/jpeg";
+      let extension = ".jpg";
+      if (meta.indexOf("image/png") !== -1) {
+        mimeType = "image/png";
+        extension = ".png";
+      } else if (meta.indexOf("image/webp") !== -1) {
+        mimeType = "image/webp";
+        extension = ".webp";
+      }
+      const decodedBytes = Utilities.base64Decode(base64Data);
+      const blob = Utilities.newBlob(decodedBytes, mimeType, "foto_" + idPostulacion + extension);
+      let folder;
+      const folders = DriveApp.getFoldersByName("Fotos Postulaciones Tour Azul");
+      if (folders.hasNext()) {
+        folder = folders.next();
+      } else {
+        folder = DriveApp.createFolder("Fotos Postulaciones Tour Azul");
+      }
+      const file = folder.createFile(blob);
+      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      foto = "https://drive.google.com/thumbnail?id=" + file.getId() + "&sz=w1000";
+    } catch (eDrive) {
+      Logger.log("Aviso Drive en Code.gs: " + eDrive);
+      if (rawFoto.length < 48000) {
+        foto = rawFoto;
+      } else {
+        foto = data.fotoNombre ? ("Sí adjunta (" + data.fotoNombre + ")") : "Sí adjunta";
+      }
+    }
+  } else if (typeof rawFoto === "string" && (rawFoto.startsWith("http") || rawFoto.startsWith("/uploads"))) {
+    foto = rawFoto;
+  } else if (data.tieneFoto) {
+    foto = data.fotoNombre ? ("Sí adjunta (" + data.fotoNombre + ")") : "Sí adjunta";
   }
   const estado = data.estado || data.Estado || "Recibida";
 
@@ -1100,7 +1138,13 @@ function obtenerCandidatosPostulaciones(ss) {
     const puntoVal = String(r[idxPunto] || "").trim();
     const motivVal = String(r[idxMotiv] || "").trim();
     const talentoVal = String(r[idxTalento] || "").trim();
-    const fotoVal = String(r[idxFoto] || "").trim();
+    let fotoVal = String(r[idxFoto] || "").trim();
+    if (fotoVal.indexOf("drive.google.com") !== -1) {
+      const matchDrive = fotoVal.match(/\/d\/([a-zA-Z0-9_-]+)/) || fotoVal.match(/id=([a-zA-Z0-9_-]+)/);
+      if (matchDrive && matchDrive[1]) {
+        fotoVal = "https://drive.google.com/thumbnail?id=" + matchDrive[1] + "&sz=w1000";
+      }
+    }
     const estadoVal = String(r[idxEstado] || "Recibida").trim();
 
     // Objeto compatible con ambas nomenclaturas (PascalCase y camelCase) para que AdminCandidatos.tsx lo lea sin problemas

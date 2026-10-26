@@ -95,18 +95,47 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack, onLogo
     return headers;
   }, [getToken]);
 
-  // Helper para validar si hay una foto real
-  const isFotoValida = (foto?: string) => {
+  // Helper para validar si hay una foto real (evita falsos positivos como strings de 'Sí adjunta')
+  const isFotoValida = (foto?: string): boolean => {
     if (!foto) return false;
     const f = String(foto).trim();
-    if (!f || f === 'No adjunta' || f === 'No' || f === '-' || f === 'Sin foto' || f === 'No especificado') return false;
-    return f.startsWith('http') || f.startsWith('data:image') || f.startsWith('/uploads') || f.startsWith('/') || f.includes('.jpg') || f.includes('.png') || f.includes('.webp');
+    if (!f || f === 'No adjunta' || f === 'No' || f === '-' || f === 'Sin foto' || f === 'No especificado' || f === 'null' || f === 'undefined') return false;
+    if (f.startsWith('Sí adjunta') || f.startsWith('Si adjunta')) return false;
+    if (f.includes('drive.google.com') || f.includes('googleusercontent.com')) return true;
+    return f.startsWith('http://') || f.startsWith('https://') || f.startsWith('data:image/') || f.startsWith('/uploads/') || f.startsWith('/api/candidatos/') || f.includes('.jpg') || f.includes('.png') || f.includes('.webp');
+  };
+
+  // Normaliza y formatea la URL de la fotografía para que cargue como imagen directa en cualquier navegador y dispositivo
+  const formatPhotoUrl = (rawFoto?: string, candidateId?: string): string => {
+    if (!rawFoto) return '';
+    let f = String(rawFoto).trim();
+    if (!isFotoValida(f)) return '';
+
+    // Convertir enlaces de Google Drive estándar (view / open) a enlace directo de imagen thumbnail
+    if (f.includes('drive.google.com')) {
+      const match = f.match(/\/d\/([a-zA-Z0-9_-]+)/) || f.match(/id=([a-zA-Z0-9_-]+)/);
+      if (match && match[1]) {
+        return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w1000`;
+      }
+    }
+
+    return f;
   };
 
   // Normalizadores de campos (siempre devuelven string seguro para evitar errores con .toLowerCase())
   const getNombre = (c: Candidato): string => String(c.Nombre || c.nombre || "Sin nombre").trim();
   const getCodigo = (c: Candidato): string => String(c.Código || c.codigo || c.id || "S/C").trim();
-  const getFoto = (c: Candidato): string => String(c.fotoUrl || c.Foto || c.foto || "").trim();
+  const getFoto = (c: Candidato): string => {
+    const id = getCodigo(c);
+    const raw = String(c.fotoUrl || c.Foto || c.foto || c.fotoBase64 || '').trim();
+    const formatted = formatPhotoUrl(raw, id);
+    if (formatted) return formatted;
+    // Si el candidato tenía foto registrada pero no vino URL directa en la hoja, consultar endpoint del servidor
+    if ((c.tieneFoto || raw.includes('adjunta')) && id && id !== 'S/C') {
+      return `/api/candidatos/${encodeURIComponent(id)}/foto`;
+    }
+    return '';
+  };
   const getEdad = (c: Candidato): string | number => c.Edad !== undefined && c.Edad !== '' ? c.Edad : (c.edad !== undefined && c.edad !== '' ? c.edad : "--");
   const getZona = (c: Candidato): string => String(c.Zona || c.zona || "No especificada").trim();
   const getTelefono = (c: Candidato): string => String(c.Teléfono ?? c.telefono ?? "--").trim();
@@ -1039,10 +1068,27 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack, onLogo
                                   e.stopPropagation();
                                   setFotoAmpliada({ url: foto, nombre: nom, codigo: id });
                                 }}
-                                className="w-10 h-10 rounded-xl overflow-hidden border border-slate-200 hover:border-blue-500 shadow-xs transition hover:scale-105 active:scale-95 cursor-zoom-in block"
+                                className="w-10 h-10 rounded-xl overflow-hidden border border-slate-200 hover:border-blue-500 shadow-xs transition hover:scale-105 active:scale-95 cursor-zoom-in block bg-slate-100"
                                 title="Ver fotografía ampliada"
                               >
-                                <img src={foto} alt={nom} className="w-full h-full object-cover" />
+                                <img 
+                                  src={foto} 
+                                  alt={nom} 
+                                  className="w-full h-full object-cover" 
+                                  loading="lazy"
+                                  onError={(e) => {
+                                    const img = e.currentTarget;
+                                    if (!img.dataset.tried && id && id !== 'S/C') {
+                                      img.dataset.tried = 'true';
+                                      img.src = `/api/candidatos/${encodeURIComponent(id)}/foto`;
+                                    } else {
+                                      img.style.display = 'none';
+                                      if (img.parentElement) {
+                                        img.parentElement.innerHTML = '👤';
+                                      }
+                                    }
+                                  }}
+                                />
                               </button>
                             ) : (
                               <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400 font-bold text-xs" title="Sin fotografía">
@@ -1198,25 +1244,50 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack, onLogo
               <div className="mt-4 space-y-3.5 text-xs">
                 {/* Foto si está disponible */}
                 {isFotoValida(getFoto(candidatoSeleccionado)) && (
-                  <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-2xl border border-slate-100">
+                  <div className="flex items-center gap-3.5 p-3.5 bg-slate-50 rounded-2xl border border-slate-100">
                     <img 
                       src={getFoto(candidatoSeleccionado)} 
                       alt={getNombre(candidatoSeleccionado)} 
-                      className="w-16 h-16 rounded-xl object-cover border border-slate-200"
+                      className="w-16 h-16 rounded-xl object-cover border border-slate-200 cursor-zoom-in shadow-xs hover:scale-105 transition"
+                      onClick={() => setFotoAmpliada({
+                        url: getFoto(candidatoSeleccionado),
+                        nombre: getNombre(candidatoSeleccionado),
+                        codigo: getCodigo(candidatoSeleccionado)
+                      })}
+                      onError={(e) => {
+                        const img = e.currentTarget;
+                        const id = getCodigo(candidatoSeleccionado);
+                        if (!img.dataset.tried && id && id !== 'S/C') {
+                          img.dataset.tried = 'true';
+                          img.src = `/api/candidatos/${encodeURIComponent(id)}/foto`;
+                        }
+                      }}
                     />
-                    <div>
+                    <div className="space-y-1">
                       <span className="text-[10px] font-bold uppercase text-slate-400 block">Fotografía del aspirante</span>
-                      <button
-                        type="button"
-                        onClick={() => setFotoAmpliada({
-                          url: getFoto(candidatoSeleccionado),
-                          nombre: getNombre(candidatoSeleccionado),
-                          codigo: getCodigo(candidatoSeleccionado)
-                        })}
-                        className="text-xs font-bold text-blue-600 hover:underline mt-1 cursor-pointer"
-                      >
-                        🔍 Ver en pantalla completa
-                      </button>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setFotoAmpliada({
+                            url: getFoto(candidatoSeleccionado),
+                            nombre: getNombre(candidatoSeleccionado),
+                            codigo: getCodigo(candidatoSeleccionado)
+                          })}
+                          className="text-xs font-bold text-blue-600 hover:underline cursor-pointer flex items-center gap-1"
+                        >
+                          <span>🔍 Ver en pantalla completa</span>
+                        </button>
+                        {getFoto(candidatoSeleccionado).startsWith('http') && (
+                          <a
+                            href={getFoto(candidatoSeleccionado)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs font-bold text-slate-500 hover:text-slate-800 hover:underline"
+                          >
+                            ↗️ Abrir enlace
+                          </a>
+                        )}
+                      </div>
                     </div>
                   </div>
                 )}

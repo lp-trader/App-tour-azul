@@ -397,21 +397,28 @@ function procesarFotografia(codigo, nombre, data) {
       var folder = obtenerOCrearCarpetaDrive(NOMBRE_CARPETA_DRIVE_FOTOS);
       var file = folder.createFile(blob);
       
-      // Establecer permiso para que el administrador pueda verla con el enlace
+      // Establecer permiso para que el administrador pueda verla con el enlace desde cualquier dispositivo
       file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-      return file.getUrl();
+      var fileId = file.getId();
+      // Retornar enlace directo de imagen para que cargue inmediatamente en etiquetas <img> de cualquier dispositivo
+      return "https://drive.google.com/thumbnail?id=" + fileId + "&sz=w1000";
 
     } catch (errDrive) {
       Logger.log("Aviso al guardar en Google Drive: " + errDrive);
-      return data.fotoNombre ? ("Sí adjunta (" + data.fotoNombre + ")") : "Sí adjunta (guardada)";
+      // Respaldo resiliente: Si la imagen base64 cabe en la celda (< 48.000 caracteres), guardarla directamente
+      if (rawFoto.length < 48000) {
+        return rawFoto;
+      }
+      return data.fotoNombre ? ("Sí adjunta (" + data.fotoNombre + ")") : "Sí adjunta";
     }
   }
 
-  if (typeof rawFoto === "string" && rawFoto.length > 500) {
-    return data.fotoNombre ? ("Sí adjunta (" + data.fotoNombre + ")") : "Sí adjunta";
+  // Si ya es un enlace directo
+  if (typeof rawFoto === "string" && (rawFoto.startsWith("http") || rawFoto.startsWith("/uploads"))) {
+    return rawFoto;
   }
 
-  return rawFoto || (data.fotoNombre ? ("Sí adjunta (" + data.fotoNombre + ")") : "Sí adjunta");
+  return (data.fotoNombre ? ("Sí adjunta (" + data.fotoNombre + ")") : "Sí adjunta");
 }
 
 /**
@@ -508,8 +515,8 @@ function obtenerTodasLasPostulaciones(sheet) {
       Motivación: String(r[9] || ""),
       talento: String(r[10] || ""),
       Talento: String(r[10] || ""),
-      foto: String(r[11] || ""),
-      Foto: String(r[11] || ""),
+      foto: normalizarFotoParaVisualizar(r[11]),
+      Foto: normalizarFotoParaVisualizar(r[11]),
       estado: String(r[12] || "Recibida"),
       Estado: String(r[12] || "Recibida"),
       notas: String(r[13] || ""),
@@ -527,6 +534,21 @@ function obtenerTodasLasPostulaciones(sheet) {
 function padNumero(num, size) {
   var s = String(num);
   while (s.length < (size || 3)) s = "0" + s;
+  return s;
+}
+
+/**
+ * Convierte enlaces de Google Drive en URLs de imagen directa (thumbnails)
+ */
+function normalizarFotoParaVisualizar(val) {
+  if (!val) return "";
+  var s = String(val).trim();
+  if (s.indexOf("drive.google.com") !== -1) {
+    var match = s.match(/\/d\/([a-zA-Z0-9_-]+)/) || s.match(/id=([a-zA-Z0-9_-]+)/);
+    if (match && match[1]) {
+      return "https://drive.google.com/thumbnail?id=" + match[1] + "&sz=w1000";
+    }
+  }
   return s;
 }
 

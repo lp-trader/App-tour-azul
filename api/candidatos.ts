@@ -22,6 +22,7 @@ export default async function handler(req: any, res: any) {
 
       const id = String(data.id || data.codigo || data.Código || `POST-${Date.now()}`).trim();
 
+      const rawFoto = data.foto || data.fotoBase64 || data.Foto;
       const payload = {
         accion: 'candidato',
         id,
@@ -36,9 +37,11 @@ export default async function handler(req: any, res: any) {
         punto_partida: data.punto_partida || 'Sí, sin inconvenientes.',
         motivacion: data.motivacion || 'Me entusiasma formar parte del equipo de Tour Azul.',
         talento: data.talento || 'No especificado',
-        foto: data.tieneFoto ? (data.fotoNombre || 'Sí adjunta') : 'No adjunta',
+        foto: rawFoto || (data.tieneFoto ? (data.fotoNombre || 'Sí adjunta') : 'No adjunta'),
+        fotoBase64: rawFoto || null,
+        fotoUrl: data.fotoUrl || null,
         fotoNombre: data.fotoNombre || null,
-        tieneFoto: Boolean(data.tieneFoto),
+        tieneFoto: Boolean(data.tieneFoto || rawFoto),
         estado: 'Recibida',
         fecha: new Date().toLocaleString('es-VE')
       };
