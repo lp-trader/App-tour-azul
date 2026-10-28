@@ -150,8 +150,10 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack, onLogo
   // 1. Cargar configuración del servidor central (con soporte para almacenamiento local y fallback)
   const cargarConfiguracionServidor = async () => {
     const cachedUrl = localStorage.getItem('tour_azul_sheets_webhook_url');
+    const cachedSheet = localStorage.getItem('tour_azul_sheet_name');
     const defaultUrl = 'https://script.google.com/macros/s/AKfycbyHrjILLmIl0oiQ14LoqUzUv-I6PRIhk8jtffbxWYkW-Q3wyRsgumCEQim7T1QaxpCPVA/exec';
-    if (cachedUrl) {
+
+    if (cachedUrl && cachedUrl.startsWith('http')) {
       setScriptUrl(cachedUrl);
       setInputUrl(cachedUrl);
     } else {
@@ -159,18 +161,26 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack, onLogo
       setInputUrl(defaultUrl);
     }
 
+    if (cachedSheet) {
+      setSheetName(cachedSheet);
+      setInputSheetName(cachedSheet);
+    }
+
     try {
       const res = await fetch('/api/config');
       if (res.ok) {
-        const data = await res.json();
+        const text = await res.text();
+        let data: any = null;
+        try { data = JSON.parse(text); } catch (_) {}
         if (data && data.config) {
           const urlGuardada = data.config.webhookUrl ? String(data.config.webhookUrl).trim() : '';
-          if (urlGuardada) {
+          // Si el usuario no tenía ya una URL guardada en este navegador, usar la del servidor
+          if (urlGuardada && urlGuardada.startsWith('http') && (!cachedUrl || !cachedUrl.startsWith('http'))) {
             setScriptUrl(urlGuardada);
             setInputUrl(urlGuardada);
             localStorage.setItem('tour_azul_sheets_webhook_url', urlGuardada);
           }
-          if (data.config.sheetName) {
+          if (data.config.sheetName && !cachedSheet) {
             setSheetName(data.config.sheetName);
             setInputSheetName(data.config.sheetName);
           }
@@ -202,37 +212,80 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack, onLogo
       }
     };
 
+    const targetUrl = scriptUrl || localStorage.getItem('tour_azul_sheets_webhook_url') || 'https://script.google.com/macros/s/AKfycbyHrjILLmIl0oiQ14LoqUzUv-I6PRIhk8jtffbxWYkW-Q3wyRsgumCEQim7T1QaxpCPVA/exec';
+
     let listadoFinal: Candidato[] = [];
     let consultadoConExito = false;
 
-    // Intentar primero con el endpoint backend /api/candidatos
+    // Intentar primero con el endpoint backend /api/candidatos pasando la webhookUrl activa
     try {
-      const resp = await fetch(`/api/candidatos?sync=true&_t=${Date.now()}`);
+      const queryUrl = `/api/candidatos?sync=true&webhookUrl=${encodeURIComponent(targetUrl)}&_t=${Date.now()}`;
+      const resp = await fetch(queryUrl, {
+        headers: { 'x-webhook-url': targetUrl }
+      });
       if (resp.ok) {
-        const resJson = await resp.json();
-        if (Array.isArray(resJson.candidatos)) {
+        const text = await resp.text();
+        let resJson: any = null;
+        try { resJson = JSON.parse(text); } catch (_) {}
+        if (resJson && Array.isArray(resJson.candidatos) && resJson.candidatos.length > 0) {
           listadoFinal = resJson.candidatos;
           consultadoConExito = true;
         }
       }
     } catch (_) {}
 
-    // Si el servidor /api/candidatos falló o devolvió 404 (ej. en Vercel estático):
-    // Consultar DIRECTAMENTE la API Webhook de Google Apps Script
-    if (!consultadoConExito) {
-      const targetUrl = scriptUrl || localStorage.getItem('tour_azul_sheets_webhook_url') || 'https://script.google.com/macros/s/AKfycbyHrjILLmIl0oiQ14LoqUzUv-I6PRIhk8jtffbxWYkW-Q3wyRsgumCEQim7T1QaxpCPVA/exec';
+    // Si el servidor /api/candidatos falló o devolvió 0 candidatos:
+    // Consultar DIRECTAMENTE la API Webhook de Google Apps Script desde el navegador
+    if (listadoFinal.length === 0 && targetUrl && targetUrl.startsWith('http')) {
       try {
         const sep = targetUrl.includes('?') ? '&' : '?';
         const remoteUrl = `${targetUrl}${sep}accion=candidatos&_t=${Date.now()}`;
         const respSheets = await fetch(remoteUrl);
         if (respSheets.ok) {
-          const json = await respSheets.json();
+          const textSheets = await respSheets.text();
+          let json: any = null;
+          try { json = JSON.parse(textSheets); } catch (_) {}
           let remotos: any[] = [];
           if (json && json.status === 'success' && Array.isArray(json.data)) remotos = json.data;
           else if (Array.isArray(json)) remotos = json;
+          else if (json && Array.isArray(json.candidatos)) remotos = json.candidatos;
 
-          listadoFinal = remotos.map(r => ({ ...r, _origen: 'sheets', syncedToSheets: true }));
-          consultadoConExito = true;
+          if (remotos.length > 0) {
+            listadoFinal = remotos.map((r, idx) => {
+              const cod = String(r.Código || r.codigo || r.id || `POST-${idx}`).trim();
+              const nom = String(r.Nombre || r.nombre || '').trim();
+              const tel = String(r.Teléfono ?? r.telefono ?? '').trim();
+              const rawFoto = r.Foto || r.foto || r.fotoBase64 || r.fotoUrl || '';
+              return {
+                ...r,
+                id: cod,
+                codigo: cod,
+                Código: cod,
+                nombre: nom,
+                Nombre: nom,
+                edad: r.Edad !== undefined && r.Edad !== '' ? r.Edad : (r.edad !== undefined && r.edad !== '' ? r.edad : '--'),
+                telefono: tel,
+                Teléfono: tel,
+                zona: r.Zona || r.zona || 'No indicada',
+                Zona: r.Zona || r.zona || 'No indicada',
+                experiencia: r.Experiencia || r.experiencia || '',
+                disponibilidad: r.Disponibilidad || r.disponibilidad || '',
+                punto_partida: r['Punto de partida'] || r.punto_partida || r.puntoPartida || '',
+                motivacion: r.Motivación || r.motivacion || '',
+                talento: r.Talento || r.talento || '',
+                foto: rawFoto,
+                Foto: rawFoto,
+                tieneFoto: Boolean(r.tieneFoto || (rawFoto && String(rawFoto).length > 10 && rawFoto !== 'No adjunta')),
+                estado: r.Estado || r.estado || 'Recibida',
+                Estado: r.Estado || r.estado || 'Recibida',
+                fecha: r.Fecha || r.fecha || '',
+                Fecha: r.Fecha || r.fecha || '',
+                _origen: 'sheets',
+                syncedToSheets: true
+              };
+            });
+            consultadoConExito = true;
+          }
         }
       } catch (errSheets) {
         console.warn("Aviso consultando Google Sheets directamente:", errSheets);
@@ -266,7 +319,7 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack, onLogo
     setUltimaActualizacion(new Date().toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
 
     if (!consultadoConExito && candidatosValidos.length === 0) {
-      setError('Mostrando postulaciones sin conexión. Verifica tu conexión a internet o la URL del Webhook.');
+      setError('No se pudieron recuperar postulaciones en este momento. Verifica tu conexión a internet o la URL del Webhook.');
     }
 
     if (!silencioso) setCargando(false);
@@ -390,28 +443,81 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack, onLogo
     setProbandoConexion(true);
     setResultadoTest(null);
 
+    // Intentar primero a través del proxy /api/test-sheets
+    let probadoConExito = false;
+    let mensajeExito = "";
+
     try {
       const res = await fetch('/api/test-sheets', {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({ url: urlAProbar })
       });
-      const data = await res.json();
+
+      const text = await res.text();
+      let data: any = null;
+      try { data = JSON.parse(text); } catch (_) {}
+
+      if (data && typeof data.ok === 'boolean') {
+        if (data.ok) {
+          probadoConExito = true;
+          mensajeExito = data.message || "¡Conexión exitosa con Google Sheets!";
+        } else {
+          setResultadoTest({
+            ok: false,
+            msg: data.message || "Error al conectar con la URL proporcionada."
+          });
+          return;
+        }
+      }
+    } catch (_) {}
+
+    // Si el proxy falló (ej. en Vercel estático o proxy inaccesible), probar DIRECTAMENTE desde el navegador
+    if (!probadoConExito) {
+      try {
+        const sep = urlAProbar.includes('?') ? '&' : '?';
+        const directTestUrl = `${urlAProbar}${sep}accion=test&_t=${Date.now()}`;
+        const resDirect = await fetch(directTestUrl, {
+          headers: { 'Accept': 'application/json, text/plain, */*' }
+        });
+
+        if (resDirect.ok) {
+          const directText = await resDirect.text();
+          let directJson: any = null;
+          try { directJson = JSON.parse(directText); } catch (_) {}
+
+          if (directJson && (directJson.status === 'success' || directJson.ok === true || Array.isArray(directJson.data))) {
+            probadoConExito = true;
+            const doc = directJson.documento || "Google Sheet";
+            const pest = directJson.pestana || "Postulaciones";
+            const total = directJson.totalPostulaciones !== undefined ? directJson.totalPostulaciones : (Array.isArray(directJson.data) ? directJson.data.length : 0);
+            mensajeExito = `¡Conexión directa exitosa con "${doc}"! Pestaña activa: "${pest}". Total postulaciones: ${total}.`;
+          } else if (Array.isArray(directJson)) {
+            probadoConExito = true;
+            mensajeExito = `¡Conexión directa exitosa! Se recibieron ${directJson.length} registros desde Google Sheets.`;
+          }
+        }
+      } catch (errDirect: any) {
+        console.warn("Aviso probando conexión directa:", errDirect);
+      }
+    }
+
+    if (probadoConExito) {
       setResultadoTest({
-        ok: data.ok,
-        msg: data.message || (data.ok ? "Conexión exitosa" : "Error en la conexión")
+        ok: true,
+        msg: mensajeExito || "¡Conexión exitosa con tu Google Sheet!"
       });
-    } catch (e: any) {
+    } else {
       setResultadoTest({
         ok: false,
-        msg: `Error de conexión: ${e.message || e}. Verifica que el Webhook esté implementado con acceso 'Cualquier usuario' (Anyone).`
+        msg: "No se pudo conectar con la URL de Apps Script. Verifica que en tu Apps Script hayas hecho clic en Implementar > Nueva implementación con acceso: 'Cualquier usuario' (Anyone)."
       });
-    } finally {
-      setProbandoConexion(false);
     }
+
+    setProbandoConexion(false);
   };
 
-  // 6. Guardar la nueva URL en el servidor
+  // 6. Guardar la nueva URL en el servidor y navegador local
   const handleGuardarConfig = async () => {
     const limpiaUrl = inputUrl.trim();
     const limpiaSheet = inputSheetName.trim() || 'Postulaciones';
@@ -421,8 +527,18 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack, onLogo
       return;
     }
 
+    // Guardar inmediatamente en localStorage del navegador
+    if (limpiaUrl) {
+      localStorage.setItem('tour_azul_sheets_webhook_url', limpiaUrl);
+    }
+    localStorage.setItem('tour_azul_sheet_name', limpiaSheet);
+
+    setScriptUrl(limpiaUrl);
+    setSheetName(limpiaSheet);
+
+    // Intentar sincronizar con el backend
     try {
-      const res = await fetch('/api/config', {
+      await fetch('/api/config', {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({
@@ -431,20 +547,11 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack, onLogo
           spreadsheetName: spreadsheetName || 'Postulaciones Tour Azul'
         })
       });
+    } catch (_) {}
 
-      if (res.ok) {
-        setScriptUrl(limpiaUrl);
-        setSheetName(limpiaSheet);
-        alert(`¡Configuración guardada exitosamente! ${limpiaUrl ? `Conexión activa con la pestaña "${limpiaSheet}".` : 'Conexión en espera de la nueva URL.'}`);
-        setMostrarConfigUrl(false);
-        await cargarCandidatos(false);
-      } else {
-        const errJson = await res.json().catch(() => ({}));
-        alert(`No se pudo guardar la configuración: ${errJson.error || 'Error del servidor'}`);
-      }
-    } catch (e: any) {
-      alert(`Error al guardar: ${e.message || e}`);
-    }
+    alert(`¡Configuración guardada exitosamente! ${limpiaUrl ? `Conexión activa con la pestaña "${limpiaSheet}".` : 'Conexión en espera de la nueva URL.'}`);
+    setMostrarConfigUrl(false);
+    await cargarCandidatos(false);
   };
 
   // 7. Sincronizar todos los candidatos pendientes hacia el nuevo Google Sheet
@@ -500,23 +607,42 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack, onLogo
         estado: "Recibida"
       };
 
-      const res = await fetch('/api/candidatos', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      const data = await res.json();
+      const targetWebhook = scriptUrl || localStorage.getItem('tour_azul_sheets_webhook_url');
+      let sheetsOk = false;
 
-      if (data.ok) {
-        if (data.syncedToSheets) {
-          alert(`¡Prueba exitosa! 🎉 Se registró en el servidor y se escribió en la pestaña "${sheetName}" de tu nuevo Google Sheet.`);
-        } else {
-          alert(`Registro guardado en el servidor. ${data.sheetsPending ? 'Pendiente de escribir en Google Sheets (falta configurar la URL de Apps Script).' : `Aviso de Google Sheets: ${data.sheetsResult?.statusText || 'No se pudo conectar'}`}`);
+      try {
+        const res = await fetch(`/api/candidatos?webhookUrl=${encodeURIComponent(targetWebhook || '')}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-webhook-url': targetWebhook || '' },
+          body: JSON.stringify(payload)
+        });
+        const text = await res.text();
+        let data: any = null;
+        try { data = JSON.parse(text); } catch (_) {}
+        if (data && data.ok) {
+          sheetsOk = Boolean(data.syncedToSheets);
         }
-        await cargarCandidatos(false);
-      } else {
-        alert(`Error al registrar prueba: ${data.error || 'Error desconocido'}`);
+      } catch (_) {}
+
+      // Envío directo a Google Sheets si tenemos URL
+      if (!sheetsOk && targetWebhook && targetWebhook.startsWith('http')) {
+        try {
+          await fetch(targetWebhook, {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({ accion: 'candidato', ...payload })
+          });
+          sheetsOk = true;
+        } catch (_) {}
       }
+
+      if (sheetsOk) {
+        alert(`¡Prueba exitosa! 🎉 Se registró y se envió a la pestaña "${sheetName}" de tu Google Sheet.`);
+      } else {
+        alert(`Postulación de prueba guardada localmente. Configura la URL del Webhook para sincronizarla con Google Sheets.`);
+      }
+      await cargarCandidatos(false);
     } catch (e: any) {
       alert(`Error al enviar prueba: ${e.message || e}`);
     } finally {

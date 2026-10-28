@@ -1,17 +1,29 @@
 const DEFAULT_WEBHOOK_URL = process.env.GOOGLE_SHEETS_WEBHOOK_URL ||
   'https://script.google.com/macros/s/AKfycbyHrjILLmIl0oiQ14LoqUzUv-I6PRIhk8jtffbxWYkW-Q3wyRsgumCEQim7T1QaxpCPVA/exec';
 
+function resolveWebhookUrl(req: any): string {
+  const queryUrl = req.query && typeof req.query.webhookUrl === 'string' ? req.query.webhookUrl.trim() : '';
+  if (queryUrl && queryUrl.startsWith('http')) return queryUrl;
+
+  const headerUrl = req.headers && typeof req.headers['x-webhook-url'] === 'string' ? req.headers['x-webhook-url'].trim() : '';
+  if (headerUrl && headerUrl.startsWith('http')) return headerUrl;
+
+  return DEFAULT_WEBHOOK_URL;
+}
+
 export default async function handler(req: any, res: any) {
-  // Configurar cabeceras CORS
+  // CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-admin-token');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-admin-token, x-webhook-url');
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
 
-  // 1. Guardar postulación desde formulario
+  const webhookUrl = resolveWebhookUrl(req);
+
+  // 1. Guardar postulación desde formulario o prueba administrativa
   if (req.method === 'POST') {
     try {
       const data = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
@@ -21,67 +33,154 @@ export default async function handler(req: any, res: any) {
       }
 
       const id = String(data.id || data.codigo || data.Código || `POST-${Date.now()}`).trim();
-
       const rawFoto = data.foto || data.fotoBase64 || data.Foto;
+      const tieneFotoBool = Boolean(data.tieneFoto || (rawFoto && String(rawFoto).length > 20));
+
       const payload = {
         accion: 'candidato',
         id,
         codigo: id,
+        Código: id,
         nombre,
         nombreCompleto: nombre,
-        edad: data.edad || 24,
-        telefono: data.telefono || data.Teléfono || '',
-        zona: data.zona || data.Zona || 'Barquisimeto',
-        experiencia: data.experiencia || 'Con disposición de aprender',
-        disponibilidad: data.disponibilidad || 'Fines de semana y feriados',
-        punto_partida: data.punto_partida || 'Sí, sin inconvenientes.',
-        motivacion: data.motivacion || 'Me entusiasma formar parte del equipo de Tour Azul.',
-        talento: data.talento || 'No especificado',
-        foto: rawFoto || (data.tieneFoto ? (data.fotoNombre || 'Sí adjunta') : 'No adjunta'),
+        Nombre: nombre,
+        edad: data.edad !== undefined ? data.edad : (data.Edad !== undefined ? data.Edad : 24),
+        telefono: String(data.telefono || data.Teléfono || ''),
+        Teléfono: String(data.telefono || data.Teléfono || ''),
+        zona: String(data.zona || data.Zona || 'Barquisimeto'),
+        Zona: String(data.zona || data.Zona || 'Barquisimeto'),
+        experiencia: String(data.experiencia || data.Experiencia || 'Con disposición de aprender'),
+        disponibilidad: String(data.disponibilidad || data.Disponibilidad || 'Fines de semana y feriados'),
+        punto_partida: String(data.punto_partida || data['Punto de partida'] || 'Sí, sin inconvenientes.'),
+        motivacion: String(data.motivacion || data.Motivación || 'Me entusiasma formar parte del equipo de Tour Azul.'),
+        talento: String(data.talento || data.Talento || 'No especificado'),
+        foto: rawFoto || (tieneFotoBool ? (data.fotoNombre || 'Sí adjunta') : 'No adjunta'),
+        Foto: rawFoto || (tieneFotoBool ? (data.fotoNombre || 'Sí adjunta') : 'No adjunta'),
         fotoBase64: rawFoto || null,
         fotoUrl: data.fotoUrl || null,
         fotoNombre: data.fotoNombre || null,
-        tieneFoto: Boolean(data.tieneFoto || rawFoto),
-        estado: 'Recibida',
-        fecha: new Date().toLocaleString('es-VE')
+        tieneFoto: tieneFotoBool,
+        estado: String(data.estado || data.Estado || 'Recibida'),
+        fecha: String(data.fecha || data.Fecha || new Date().toLocaleString('es-VE'))
       };
 
+      let sheetsOk = false;
+      let sheetsErr = null;
+
       try {
-        await fetch(DEFAULT_WEBHOOK_URL, {
+        const respGas = await fetch(webhookUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify(payload)
         });
-      } catch (errGAS) {
-        console.warn('Aviso enviando a Google Sheets desde serverless function:', errGAS);
+        sheetsOk = respGas.ok;
+      } catch (errGAS: any) {
+        sheetsErr = errGAS.message || String(errGAS);
+        console.warn('Aviso enviando a Google Sheets en serverless:', sheetsErr);
       }
 
       return res.status(200).json({
         ok: true,
         id,
         codigo: id,
-        message: 'Postulación registrada exitosamente en Google Sheets'
+        syncedToSheets: sheetsOk,
+        candidato: payload,
+        message: sheetsOk ? 'Postulación registrada exitosamente en Google Sheets' : 'Postulación recibida en servidor'
       });
     } catch (err: any) {
       return res.status(500).json({ ok: false, error: err.message || 'Error interno procesando postulación' });
     }
   }
 
-  // 2. Obtener lista de candidatos (Consulta directa a Google Sheets)
+  // 2. Obtener lista de candidatos (Consulta directa y estructurada a Google Sheets)
   if (req.method === 'GET') {
     try {
-      const resp = await fetch(`${DEFAULT_WEBHOOK_URL}?accion=candidatos&_t=${Date.now()}`);
+      const sep = webhookUrl.includes('?') ? '&' : '?';
+      const targetQuery = `${webhookUrl}${sep}accion=candidatos&_t=${Date.now()}`;
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 12000);
+
+      const resp = await fetch(targetQuery, {
+        signal: controller.signal,
+        headers: { 'Accept': 'application/json, text/plain, */*' }
+      });
+      clearTimeout(timeoutId);
+
       if (resp.ok) {
         const json: any = await resp.json();
         let remotos: any[] = [];
-        if (json && json.status === 'success' && Array.isArray(json.data)) remotos = json.data;
-        else if (Array.isArray(json)) remotos = json;
-        return res.status(200).json({ ok: true, candidatos: remotos, total: remotos.length });
+        if (json && json.status === 'success' && Array.isArray(json.data)) {
+          remotos = json.data;
+        } else if (Array.isArray(json)) {
+          remotos = json;
+        } else if (json && Array.isArray(json.candidatos)) {
+          remotos = json.candidatos;
+        }
+
+        // Normalizar cada registro para compatibilidad total con el frontend
+        const normalizados = remotos.map((r: any, idx: number) => {
+          const cod = String(r.Código || r.codigo || r.id || `POST-${idx}`).trim();
+          const nom = String(r.Nombre || r.nombre || '').trim();
+          const tel = String(r.Teléfono ?? r.telefono ?? '').trim();
+          const fotoVal = r.Foto || r.foto || r.fotoBase64 || r.fotoUrl || '';
+          const tieneFoto = Boolean(r.tieneFoto || (fotoVal && String(fotoVal).length > 10 && fotoVal !== 'No adjunta'));
+
+          return {
+            ...r,
+            id: cod,
+            codigo: cod,
+            Código: cod,
+            nombre: nom || 'Aspirante sin nombre',
+            Nombre: nom || 'Aspirante sin nombre',
+            edad: r.Edad !== undefined && r.Edad !== '' ? r.Edad : (r.edad !== undefined && r.edad !== '' ? r.edad : '--'),
+            telefono: tel || '--',
+            Teléfono: tel || '--',
+            zona: r.Zona || r.zona || 'No indicada',
+            Zona: r.Zona || r.zona || 'No indicada',
+            experiencia: r.Experiencia || r.experiencia || '',
+            disponibilidad: r.Disponibilidad || r.disponibilidad || '',
+            punto_partida: r['Punto de partida'] || r.punto_partida || r.puntoPartida || '',
+            motivacion: r.Motivación || r.motivacion || '',
+            talento: r.Talento || r.talento || '',
+            foto: fotoVal,
+            Foto: fotoVal,
+            fotoBase64: r.fotoBase64 || (String(fotoVal).startsWith('data:image/') ? fotoVal : null),
+            fotoUrl: r.fotoUrl || (String(fotoVal).startsWith('http') ? fotoVal : null),
+            tieneFoto,
+            estado: r.Estado || r.estado || 'Recibida',
+            Estado: r.Estado || r.estado || 'Recibida',
+            fecha: r.Fecha || r.fecha || '',
+            Fecha: r.Fecha || r.fecha || '',
+            syncedToSheets: true,
+            _origen: 'sheets'
+          };
+        }).filter((c: any) => {
+          // Filtrar filas vacías de la hoja
+          const nom = String(c.nombre).trim();
+          const tel = String(c.telefono).trim();
+          return (nom && nom !== 'Sin nombre' && nom !== 'Aspirante sin nombre') || (tel && tel !== '--');
+        });
+
+        return res.status(200).json({
+          ok: true,
+          candidatos: normalizados,
+          total: normalizados.length,
+          source: 'google-sheets',
+          webhookUrl
+        });
       }
     } catch (err: any) {
-      console.warn('Aviso consultando candidatos en Vercel:', err);
+      console.warn('Aviso consultando candidatos en Vercel:', err.message || err);
     }
-    return res.status(200).json({ ok: true, candidatos: [], total: 0 });
+
+    return res.status(200).json({
+      ok: true,
+      candidatos: [],
+      total: 0,
+      source: 'empty-fallback',
+      webhookUrl
+    });
   }
 
   // 3. Actualizar estado
@@ -91,13 +190,30 @@ export default async function handler(req: any, res: any) {
       const id = req.query.id || data.id;
       const estado = data.estado;
       if (id && estado) {
-        await fetch(DEFAULT_WEBHOOK_URL, {
+        await fetch(webhookUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify({ accion: 'actualizar_estado', id, estado })
         });
       }
       return res.status(200).json({ ok: true, message: 'Estado actualizado' });
+    } catch (err: any) {
+      return res.status(500).json({ ok: false, error: err.message });
+    }
+  }
+
+  // 4. Eliminar postulación
+  if (req.method === 'DELETE') {
+    try {
+      const id = req.query.id;
+      if (id) {
+        await fetch(webhookUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ accion: 'eliminar_candidato', id })
+        });
+      }
+      return res.status(200).json({ ok: true, message: 'Candidato eliminado' });
     } catch (err: any) {
       return res.status(500).json({ ok: false, error: err.message });
     }

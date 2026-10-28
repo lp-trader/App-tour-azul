@@ -1271,12 +1271,37 @@ export const recruitmentClientCode = `
       let serverConfirmed = false;
       let assignedId = docId;
 
+      const directPayload = {
+        accion: "candidato",
+        id: docId,
+        codigo: docId,
+        nombre: nombre,
+        nombreCompleto: nombre,
+        edad: edad || 24,
+        telefono: telefono,
+        zona: zona || "Barquisimeto",
+        experiencia: expChecked ? expChecked.value : "Con disposición de aprender",
+        disponibilidad: dispChecked ? dispChecked.value : "Fines de semana y feriados",
+        punto_partida: puntoChecked ? puntoChecked.value : "Sí, sin inconvenientes.",
+        motivacion: motivacion || "Me entusiasma formar parte del equipo de Tour Azul.",
+        talento: talento || "No especificado",
+        foto: fotoFinal || (candidateData.tieneFoto ? (candidateData.fotoNombre || "Sí adjunta") : "No adjunta"),
+        fotoBase64: fotoFinal || null,
+        fotoNombre: candidateData.fotoNombre || null,
+        tieneFoto: Boolean(candidateData.tieneFoto || fotoFinal),
+        estado: "Recibida",
+        fecha: new Date().toLocaleString("es-VE")
+      };
+
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 8000); // 8s timeout seguro
-        const respServer = await fetch("/api/candidatos", {
+        const timeoutId = setTimeout(() => controller.abort(), 8000);
+        const respServer = await fetch("/api/candidatos?webhookUrl=" + encodeURIComponent(webhookUrl), {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            "x-webhook-url": webhookUrl
+          },
           body: JSON.stringify(candidateData),
           signal: controller.signal
         });
@@ -1293,7 +1318,6 @@ export const recruitmentClientCode = `
           serverConfirmed = true;
           if (resData.id) assignedId = resData.id;
         } else if (respServer.status === 400 && resData && (resData.error || resData.message)) {
-          // Error de validación real del formulario
           const errorMsg = resData.error || resData.message;
           if (submitBtn) submitBtn.disabled = false;
           if (submitText) submitText.textContent = "Enviar mi postulación";
@@ -1303,42 +1327,14 @@ export const recruitmentClientCode = `
             alert(errorMsg);
           }
           return false;
-        } else {
-          // Código 404 (ej. despliegue estático en Vercel NOT_FOUND) o respuesta no JSON
-          console.warn("Aviso: el servidor devolvió código " + respServer.status + " en /api/candidatos. Se activa envío directo a Google Sheets.", responseText);
         }
       } catch (errApi) {
         console.warn("Aviso: /api/candidatos no disponible directamente. Activando guardado directo en Google Sheets:", errApi);
       }
 
-      // Si el servidor /api/candidatos no respondió positivamente (ej. Vercel estático con 404):
-      // Sincronizar DIRECTAMENTE con el Webhook de Google Apps Script
-      if (!serverConfirmed) {
-        if (submitText) submitText.textContent = "Guardando en Google Sheets...";
-        const directPayload = {
-          accion: "candidato",
-          id: docId,
-          codigo: docId,
-          nombre: nombre,
-          nombreCompleto: nombre,
-          edad: edad || 24,
-          telefono: telefono,
-          zona: zona || "Barquisimeto",
-          experiencia: expChecked ? expChecked.value : "Con disposición de aprender",
-          disponibilidad: dispChecked ? dispChecked.value : "Fines de semana y feriados",
-          punto_partida: puntoChecked ? puntoChecked.value : "Sí, sin inconvenientes.",
-          motivacion: motivacion || "Me entusiasma formar parte del equipo de Tour Azul.",
-          talento: talento || "No especificado",
-          foto: fotoFinal || (candidateData.tieneFoto ? (candidateData.fotoNombre || "Sí adjunta") : "No adjunta"),
-          fotoBase64: fotoFinal || null,
-          fotoNombre: candidateData.fotoNombre || null,
-          tieneFoto: Boolean(candidateData.tieneFoto || fotoFinal),
-          estado: "Recibida",
-          fecha: new Date().toLocaleString("es-VE")
-        };
-
+      // Sincronizar DIRECTAMENTE con el Webhook de Google Apps Script para garantizar registro en Google Sheets
+      if (webhookUrl && webhookUrl.startsWith("http")) {
         try {
-          // Envío con mode 'no-cors' para evitar restricciones de preflight en el navegador
           await fetch(webhookUrl, {
             method: "POST",
             mode: "no-cors",
