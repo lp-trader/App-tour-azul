@@ -1039,8 +1039,8 @@ export const recruitmentClientCode = `
 
       recruitmentState.selectedPhotoFile = file;
 
-      // Compresión inteligente de la imagen para garantizar que cualquier teléfono suba rápido y sin fallar
-      compressImage(file, 800, 0.75).then(compressedDataUrl => {
+      // Compresión inteligente de la imagen para garantizar que cualquier teléfono suba rápido y sin fallar (< 25 KB)
+      compressImage(file, 480, 0.58).then(compressedDataUrl => {
         recruitmentState.selectedPhotoBase64 = compressedDataUrl;
       }).catch(() => {
         const reader = new FileReader();
@@ -1223,11 +1223,11 @@ export const recruitmentClientCode = `
       if (submitBtn) submitBtn.disabled = true;
       if (submitText) submitText.textContent = "Guardando en el sistema...";
 
-      // Asegurar que la foto esté comprimida si se seleccionó (máx 640px, peso óptimo ~30KB)
+      // Asegurar que la foto esté comprimida si se seleccionó (máx 480px, peso óptimo ~18KB para caber siempre en Google Sheets)
       let fotoFinal = recruitmentState.selectedPhotoBase64;
       if (recruitmentState.selectedPhotoFile) {
         try {
-          fotoFinal = await compressImage(recruitmentState.selectedPhotoFile, 640, 0.7);
+          fotoFinal = await compressImage(recruitmentState.selectedPhotoFile, 480, 0.58);
           recruitmentState.selectedPhotoBase64 = fotoFinal;
         } catch (_) {}
       }

@@ -527,14 +527,27 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack, onLogo
   // 9. Copiar código de Postulaciones_GoogleSheet.gs al portapapeles
   const handleCopiarCodeGs = async () => {
     try {
-      const res = await fetch('/Postulaciones_GoogleSheet.gs');
-      const text = await res.text();
-      navigator.clipboard?.writeText(text);
-      setCopiadoCodeGs(true);
-      setTimeout(() => setCopiadoCodeGs(false), 3000);
-      alert("¡Código completo de Postulaciones_GoogleSheet.gs copiado al portapapeles! Ahora pégalo en el editor de Apps Script de tu nuevo documento de Google Sheets.");
+      let text = '';
+      try {
+        const res = await fetch('/Postulaciones_GoogleSheet.gs');
+        if (res.ok) text = await res.text();
+      } catch (_) {}
+      if (!text) {
+        try {
+          const res2 = await fetch('/api/admin/code-gs');
+          if (res2.ok) text = await res2.text();
+        } catch (_) {}
+      }
+      if (text) {
+        await navigator.clipboard.writeText(text);
+        setCopiadoCodeGs(true);
+        setTimeout(() => setCopiadoCodeGs(false), 4000);
+        alert("¡Código completo copiado al portapapeles! 📋\n\nPégalo en Extensiones > Apps Script de tu Google Sheet, guarda y despliega como Aplicación web.");
+      } else {
+        alert("No se pudo obtener el archivo automáticamente. Puedes copiar el archivo Postulaciones_GoogleSheet.gs directamente.");
+      }
     } catch (e) {
-      alert("No se pudo copiar automáticamente. Puedes abrir el archivo Postulaciones_GoogleSheet.gs para copiar su contenido.");
+      alert("No se pudo copiar automáticamente. Puedes copiar el archivo Postulaciones_GoogleSheet.gs directamente.");
     }
   };
 
@@ -805,25 +818,38 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack, onLogo
               <div className="space-y-3">
                 <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3 text-xs text-slate-700">
                   <strong className="block text-slate-900 font-bold text-xs uppercase tracking-wide">
-                    🧭 Pasos para configurar tu nuevo Google Sheet:
+                    🧭 Pasos para actualizar tu Apps Script y activar las fotos:
                   </strong>
-                  <ol className="list-decimal list-inside space-y-1.5 text-slate-600">
-                    <li>Crea una nueva hoja de cálculo vacía en Google Sheets (ej: "Tour Azul - Postulaciones").</li>
-                    <li>En el menú superior, ve a <strong>Extensiones &gt; Apps Script</strong>.</li>
-                    <li>Borra el código que aparezca y pega el contenido de <strong>Postulaciones_GoogleSheet.gs</strong>.</li>
-                    <li>Guarda con el icono de disco y haz clic en <strong>Implementar &gt; Nueva implementación</strong>.</li>
-                    <li>Elige tipo: <strong>Aplicación web</strong>, ejecutar como: <strong>"Yo"</strong>, quién tiene acceso: <strong>"Cualquier usuario" (Anyone)</strong>.</li>
-                    <li>Copia la URL que termina en <strong>/exec</strong> y pégala en la pestaña 1 de este panel.</li>
+                  <ol className="list-decimal list-inside space-y-2 text-slate-600">
+                    <li>Abre tu hoja de cálculo en Google Sheets y ve a <strong>Extensiones &gt; Apps Script</strong>.</li>
+                    <li>Selecciona todo el código existente (Ctrl + A / Cmd + A), bórralo y pega el código actualizado usando el botón azul inferior.</li>
+                    <li>
+                      <span className="font-semibold text-slate-800">Para crear la carpeta en Google Drive:</span> en la barra superior de Apps Script (al lado de "Depurar"), selecciona la función <strong>autorizarPermisosDrive</strong> y haz clic en <strong>Ejecutar</strong>. Google te pedirá aceptar permisos y creará de inmediato la carpeta <em>"Fotos Postulaciones Tour Azul"</em>.
+                      <p className="text-[11px] text-slate-500 mt-0.5 ml-4">
+                        (Nota: Si prefieres no usar Google Drive, las fotos se guardarán directamente en la celda de la hoja y en el servidor, funcionando igual en todos los dispositivos).
+                      </p>
+                    </li>
+                    <li>Guarda con el icono de disco y haz clic en <strong>Implementar &gt; Administrar implementaciones</strong> (o Nueva implementación).</li>
+                    <li>Edita la implementación activa, cambia la versión a <strong>"Nueva versión"</strong> y presiona <strong>Implementar</strong>.</li>
+                    <li>Copia la URL <strong>/exec</strong> y pégala en la pestaña 1 de este panel.</li>
                   </ol>
 
-                  <div className="pt-2">
+                  <div className="pt-2 flex flex-wrap items-center gap-3">
                     <button
                       type="button"
                       onClick={handleCopiarCodeGs}
-                      className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs transition cursor-pointer flex items-center gap-1.5 active:scale-95"
+                      className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs transition cursor-pointer flex items-center gap-1.5 active:scale-95"
                     >
                       <span>📋 {copiadoCodeGs ? "¡Código Copiado!" : "Copiar código completo de Postulaciones_GoogleSheet.gs"}</span>
                     </button>
+                    <a
+                      href="/Postulaciones_GoogleSheet.gs"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3 py-2 rounded-xl bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs border border-slate-200 transition"
+                    >
+                      📄 Ver archivo en navegador
+                    </a>
                   </div>
                 </div>
               </div>

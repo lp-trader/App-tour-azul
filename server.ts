@@ -291,6 +291,16 @@ async function startServer() {
     res.json({ ok: true, timestamp: Date.now(), service: 'Tour Azul Backend' });
   });
 
+  // Servir el código actualizado de Postulaciones_GoogleSheet.gs
+  app.get('/api/admin/code-gs', (_req, res) => {
+    const filePath = path.resolve('Postulaciones_GoogleSheet.gs');
+    if (fs.existsSync(filePath)) {
+      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+      return res.sendFile(filePath);
+    }
+    return res.status(404).send('Archivo no encontrado');
+  });
+
   // 2. Autenticación Administrativa en el Servidor (Protege contraseñas y operaciones sensibles)
   app.post('/api/admin/login', (req, res) => {
     const { password } = req.body;

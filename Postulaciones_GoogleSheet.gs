@@ -433,6 +433,29 @@ function obtenerOCrearCarpetaDrive(nombreCarpeta) {
 }
 
 /**
+ * ============================================================================
+ * FUNCIÓN DE AUTORIZACIÓN: EJECUTAR UNA SOLA VEZ EN EL EDITOR DE APPS SCRIPT
+ * ============================================================================
+ * Para que Google permita a este script crear la carpeta "Fotos Postulaciones Tour Azul"
+ * en tu Google Drive, selecciona "autorizarPermisosDrive" en el menú desplegable superior
+ * del editor de Apps Script y presiona "Ejecutar". Google te solicitará otorgar permisos.
+ * 
+ * Si no la ejecutas, no hay problema: las fotos se guardarán automáticamente en la celda
+ * de Google Sheets y en el servidor, garantizando visibilidad en todos los dispositivos.
+ * ============================================================================
+ */
+function autorizarPermisosDrive() {
+  try {
+    var folder = obtenerOCrearCarpetaDrive(NOMBRE_CARPETA_DRIVE_FOTOS);
+    Logger.log("¡Éxito! Carpeta lista en Google Drive: " + folder.getName() + " (ID: " + folder.getId() + ")");
+    return "¡Permisos de Google Drive concedidos exitosamente! Carpeta: " + folder.getName();
+  } catch (err) {
+    Logger.log("Error al autorizar Drive: " + err);
+    throw err;
+  }
+}
+
+/**
  * Actualiza el estado de una postulación existente en la hoja
  */
 function actualizarEstadoCandidato(sheet, data) {
