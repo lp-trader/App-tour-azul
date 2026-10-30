@@ -194,7 +194,7 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack, onLogo
     }
   };
 
-  // 2. Cargar candidatos desde el servidor central y nuevo Google Sheet con fallback resiliente
+  // 2. Cargar candidatos EXCLUSIVAMENTE desde Apps Script mediante fetch GET
   const cargarCandidatos = useCallback(async (silencioso: boolean = false) => {
     if (!silencioso) {
       setCargando(true);
@@ -203,127 +203,77 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack, onLogo
     }
     setError(null);
 
-    const getLocalCache = (): Candidato[] => {
-      try {
-        const raw = localStorage.getItem('tour_azul_candidatos_local');
-        return raw ? JSON.parse(raw) : [];
-      } catch {
-        return [];
-      }
-    };
-
     const targetUrl = scriptUrl || localStorage.getItem('tour_azul_sheets_webhook_url') || 'https://script.google.com/macros/s/AKfycbyHrjILLmIl0oiQ14LoqUzUv-I6PRIhk8jtffbxWYkW-Q3wyRsgumCEQim7T1QaxpCPVA/exec';
 
-    let listadoFinal: Candidato[] = [];
-    let consultadoConExito = false;
-
-    // Intentar primero con el endpoint backend /api/candidatos pasando la webhookUrl activa
     try {
-      const queryUrl = `/api/candidatos?sync=true&webhookUrl=${encodeURIComponent(targetUrl)}&_t=${Date.now()}`;
-      const resp = await fetch(queryUrl, {
-        headers: { 'x-webhook-url': targetUrl }
+      const sep = targetUrl.includes('?') ? '&' : '?';
+      const remoteUrl = `${targetUrl}${sep}accion=candidatos&_t=${Date.now()}`;
+      const respSheets = await fetch(remoteUrl);
+      if (!respSheets.ok) {
+        throw new Error(`Error de conexión HTTP ${respSheets.status}`);
+      }
+
+      const textSheets = await respSheets.text();
+      let json: any = null;
+      try { json = JSON.parse(textSheets); } catch (_) {}
+      let remotos: any[] = [];
+      if (json && json.status === 'success' && Array.isArray(json.data)) remotos = json.data;
+      else if (Array.isArray(json)) remotos = json;
+      else if (json && Array.isArray(json.candidatos)) remotos = json.candidatos;
+
+      const listadoFinal: Candidato[] = remotos.map((r, idx) => {
+        const cod = String(r.Código || r.codigo || r.id || `POST-${idx}`).trim();
+        const nom = String(r.Nombre || r.nombre || '').trim();
+        const tel = String(r.Teléfono ?? r.telefono ?? '').trim();
+        const rawFoto = r.Foto || r.foto || r.fotoUrl || r.fotoBase64 || '';
+        return {
+          ...r,
+          id: cod,
+          codigo: cod,
+          Código: cod,
+          nombre: nom,
+          Nombre: nom,
+          edad: r.Edad !== undefined && r.Edad !== '' ? r.Edad : (r.edad !== undefined && r.edad !== '' ? r.edad : '--'),
+          telefono: tel,
+          Teléfono: tel,
+          zona: r.Zona || r.zona || 'No indicada',
+          Zona: r.Zona || r.zona || 'No indicada',
+          experiencia: r.Experiencia || r.experiencia || '',
+          disponibilidad: r.Disponibilidad || r.disponibilidad || '',
+          punto_partida: r['Punto de partida'] || r.punto_partida || r.puntoPartida || '',
+          motivacion: r.Motivación || r.motivacion || '',
+          talento: r.Talento || r.talento || '',
+          foto: rawFoto,
+          Foto: rawFoto,
+          tieneFoto: Boolean(r.tieneFoto || (rawFoto && String(rawFoto).length > 10 && rawFoto !== 'No adjunta')),
+          estado: r.Estado || r.estado || 'Recibida',
+          Estado: r.Estado || r.estado || 'Recibida',
+          fecha: r.Fecha || r.fecha || '',
+          Fecha: r.Fecha || r.fecha || '',
+          _origen: 'sheets',
+          syncedToSheets: true
+        };
       });
-      if (resp.ok) {
-        const text = await resp.text();
-        let resJson: any = null;
-        try { resJson = JSON.parse(text); } catch (_) {}
-        if (resJson && Array.isArray(resJson.candidatos) && resJson.candidatos.length > 0) {
-          listadoFinal = resJson.candidatos;
-          consultadoConExito = true;
-        }
-      }
-    } catch (_) {}
 
-    // Si el servidor /api/candidatos falló o devolvió 0 candidatos:
-    // Consultar DIRECTAMENTE la API Webhook de Google Apps Script desde el navegador
-    if (listadoFinal.length === 0 && targetUrl && targetUrl.startsWith('http')) {
-      try {
-        const sep = targetUrl.includes('?') ? '&' : '?';
-        const remoteUrl = `${targetUrl}${sep}accion=candidatos&_t=${Date.now()}`;
-        const respSheets = await fetch(remoteUrl);
-        if (respSheets.ok) {
-          const textSheets = await respSheets.text();
-          let json: any = null;
-          try { json = JSON.parse(textSheets); } catch (_) {}
-          let remotos: any[] = [];
-          if (json && json.status === 'success' && Array.isArray(json.data)) remotos = json.data;
-          else if (Array.isArray(json)) remotos = json;
-          else if (json && Array.isArray(json.candidatos)) remotos = json.candidatos;
+      const candidatosValidos = listadoFinal.filter((c: Candidato) => {
+        const nom = String(c.nombre || c.Nombre || '').trim();
+        const tel = String(c.telefono || c.Teléfono || '').trim();
+        return (nom.length > 0 && nom !== 'Sin nombre' && nom !== 'Aspirante sin nombre') || tel.length > 0;
+      });
 
-          if (remotos.length > 0) {
-            listadoFinal = remotos.map((r, idx) => {
-              const cod = String(r.Código || r.codigo || r.id || `POST-${idx}`).trim();
-              const nom = String(r.Nombre || r.nombre || '').trim();
-              const tel = String(r.Teléfono ?? r.telefono ?? '').trim();
-              const rawFoto = r.Foto || r.foto || r.fotoBase64 || r.fotoUrl || '';
-              return {
-                ...r,
-                id: cod,
-                codigo: cod,
-                Código: cod,
-                nombre: nom,
-                Nombre: nom,
-                edad: r.Edad !== undefined && r.Edad !== '' ? r.Edad : (r.edad !== undefined && r.edad !== '' ? r.edad : '--'),
-                telefono: tel,
-                Teléfono: tel,
-                zona: r.Zona || r.zona || 'No indicada',
-                Zona: r.Zona || r.zona || 'No indicada',
-                experiencia: r.Experiencia || r.experiencia || '',
-                disponibilidad: r.Disponibilidad || r.disponibilidad || '',
-                punto_partida: r['Punto de partida'] || r.punto_partida || r.puntoPartida || '',
-                motivacion: r.Motivación || r.motivacion || '',
-                talento: r.Talento || r.talento || '',
-                foto: rawFoto,
-                Foto: rawFoto,
-                tieneFoto: Boolean(r.tieneFoto || (rawFoto && String(rawFoto).length > 10 && rawFoto !== 'No adjunta')),
-                estado: r.Estado || r.estado || 'Recibida',
-                Estado: r.Estado || r.estado || 'Recibida',
-                fecha: r.Fecha || r.fecha || '',
-                Fecha: r.Fecha || r.fecha || '',
-                _origen: 'sheets',
-                syncedToSheets: true
-              };
-            });
-            consultadoConExito = true;
-          }
-        }
-      } catch (errSheets) {
-        console.warn("Aviso consultando Google Sheets directamente:", errSheets);
+      setCandidatos(candidatosValidos);
+      setUltimaActualizacion(new Date().toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+
+      if (candidatosValidos.length === 0 && remotos.length === 0) {
+        // No hay registros aún en la hoja
       }
+    } catch (errSheets) {
+      console.warn("Aviso consultando Google Sheets directamente:", errSheets);
+      setError('No se pudieron recuperar las postulaciones desde Google Apps Script. Verifica la conexión a internet o que el Webhook esté implementado con acceso "Cualquier usuario" (Anyone).');
+    } finally {
+      if (!silencioso) setCargando(false);
+      setActualizandoSilencioso(false);
     }
-
-    // Combinar con las postulaciones guardadas en caché local del navegador
-    const locales = getLocalCache();
-    const map = new Map<string, Candidato>();
-
-    listadoFinal.forEach((c: Candidato) => {
-      const key = String(c.id || c.codigo || c.Código || '').toLowerCase().trim();
-      if (key) map.set(key, c);
-    });
-
-    locales.forEach((l: Candidato) => {
-      const key = String(l.id || l.codigo || l.Código || '').toLowerCase().trim();
-      if (key && !map.has(key)) {
-        map.set(key, l);
-      }
-    });
-
-    const combinados = Array.from(map.values());
-    const candidatosValidos = combinados.filter((c: Candidato) => {
-      const nom = String(c.nombre || c.Nombre || '').trim();
-      const tel = String(c.telefono || c.Teléfono || '').trim();
-      return (nom.length > 0 && nom !== 'Sin nombre' && nom !== 'Aspirante sin nombre') || tel.length > 0;
-    });
-
-    setCandidatos(candidatosValidos);
-    setUltimaActualizacion(new Date().toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
-
-    if (!consultadoConExito && candidatosValidos.length === 0) {
-      setError('No se pudieron recuperar postulaciones en este momento. Verifica tu conexión a internet o la URL del Webhook.');
-    }
-
-    if (!silencioso) setCargando(false);
-    setActualizandoSilencioso(false);
   }, [scriptUrl]);
 
   // Carga inicial y configuración
@@ -352,21 +302,6 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack, onLogo
       }
       return c;
     }));
-
-    // Actualizar también en caché local
-    try {
-      const raw = localStorage.getItem('tour_azul_candidatos_local');
-      if (raw) {
-        const list = JSON.parse(raw);
-        const updated = list.map((c: any) => {
-          if (String(c.id || c.codigo) === String(id)) {
-            return { ...c, estado: nuevoEstado, Estado: nuevoEstado };
-          }
-          return c;
-        });
-        localStorage.setItem('tour_azul_candidatos_local', JSON.stringify(updated));
-      }
-    } catch (_) {}
 
     try {
       const res = await fetch(`/api/candidatos/${encodeURIComponent(id)}`, {
@@ -411,16 +346,6 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack, onLogo
       setCandidatoSeleccionado(null);
     }
 
-    // Eliminar de caché local
-    try {
-      const raw = localStorage.getItem('tour_azul_candidatos_local');
-      if (raw) {
-        const list = JSON.parse(raw);
-        const updated = list.filter((c: any) => String(c.id || c.codigo) !== String(id));
-        localStorage.setItem('tour_azul_candidatos_local', JSON.stringify(updated));
-      }
-    } catch (_) {}
-
     try {
       await fetch(`/api/candidatos/${encodeURIComponent(id)}`, {
         method: 'DELETE',
@@ -447,59 +372,68 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack, onLogo
     let probadoConExito = false;
     let mensajeExito = "";
 
+    // 1. Probar DIRECTAMENTE desde el navegador hacia Google Apps Script (accion=test con CORS)
     try {
-      const res = await fetch('/api/test-sheets', {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ url: urlAProbar })
+      const sep = urlAProbar.includes('?') ? '&' : '?';
+      const directTestUrl = `${urlAProbar}${sep}accion=test&_t=${Date.now()}`;
+      const resDirect = await fetch(directTestUrl, {
+        headers: { 'Accept': 'application/json, text/plain, */*' }
       });
 
-      const text = await res.text();
-      let data: any = null;
-      try { data = JSON.parse(text); } catch (_) {}
+      if (resDirect.ok) {
+        const directText = await resDirect.text();
+        let directJson: any = null;
+        try { directJson = JSON.parse(directText); } catch (_) {}
 
-      if (data && typeof data.ok === 'boolean') {
-        if (data.ok) {
+        if (directJson && (directJson.status === 'success' || directJson.ok === true || Array.isArray(directJson.data))) {
           probadoConExito = true;
-          mensajeExito = data.message || "¡Conexión exitosa con Google Sheets!";
-        } else {
+          const doc = directJson.documento || "Google Sheet";
+          const pest = directJson.pestana || "Postulaciones";
+          const total = directJson.totalPostulaciones !== undefined ? directJson.totalPostulaciones : (Array.isArray(directJson.data) ? directJson.data.length : 0);
+          mensajeExito = `¡Conexión exitosa con "${doc}"! Pestaña activa: "${pest}". Total postulaciones registradas: ${total}.`;
+        } else if (Array.isArray(directJson)) {
+          probadoConExito = true;
+          mensajeExito = `¡Conexión directa exitosa! Se recibieron ${directJson.length} registros desde Google Sheets.`;
+        } else if (directText.includes('Script function not found: doGet')) {
           setResultadoTest({
             ok: false,
-            msg: data.message || "Error al conectar con la URL proporcionada."
+            msg: "Error en Apps Script: La función doGet no fue encontrada. Copia todo el código de Postulaciones_GoogleSheet.gs en tu editor de Google Apps Script."
           });
+          setProbandoConexion(false);
           return;
         }
       }
-    } catch (_) {}
+    } catch (errDirect: any) {
+      console.warn("Aviso probando conexión directa:", errDirect);
+    }
 
-    // Si el proxy falló (ej. en Vercel estático o proxy inaccesible), probar DIRECTAMENTE desde el navegador
+    // 2. Si la prueba directa no respondió (ej. firewall o adblocker), probar a través del servidor
     if (!probadoConExito) {
       try {
-        const sep = urlAProbar.includes('?') ? '&' : '?';
-        const directTestUrl = `${urlAProbar}${sep}accion=test&_t=${Date.now()}`;
-        const resDirect = await fetch(directTestUrl, {
-          headers: { 'Accept': 'application/json, text/plain, */*' }
+        const res = await fetch('/api/test-sheets', {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          body: JSON.stringify({ url: urlAProbar })
         });
 
-        if (resDirect.ok) {
-          const directText = await resDirect.text();
-          let directJson: any = null;
-          try { directJson = JSON.parse(directText); } catch (_) {}
+        const text = await res.text();
+        let data: any = null;
+        try { data = JSON.parse(text); } catch (_) {}
 
-          if (directJson && (directJson.status === 'success' || directJson.ok === true || Array.isArray(directJson.data))) {
+        if (data && typeof data.ok === 'boolean') {
+          if (data.ok) {
             probadoConExito = true;
-            const doc = directJson.documento || "Google Sheet";
-            const pest = directJson.pestana || "Postulaciones";
-            const total = directJson.totalPostulaciones !== undefined ? directJson.totalPostulaciones : (Array.isArray(directJson.data) ? directJson.data.length : 0);
-            mensajeExito = `¡Conexión directa exitosa con "${doc}"! Pestaña activa: "${pest}". Total postulaciones: ${total}.`;
-          } else if (Array.isArray(directJson)) {
-            probadoConExito = true;
-            mensajeExito = `¡Conexión directa exitosa! Se recibieron ${directJson.length} registros desde Google Sheets.`;
+            mensajeExito = data.message || "¡Conexión exitosa con Google Sheets!";
+          } else {
+            setResultadoTest({
+              ok: false,
+              msg: data.message || "Error al conectar con la URL proporcionada."
+            });
+            setProbandoConexion(false);
+            return;
           }
         }
-      } catch (errDirect: any) {
-        console.warn("Aviso probando conexión directa:", errDirect);
-      }
+      } catch (_) {}
     }
 
     if (probadoConExito) {
@@ -510,7 +444,7 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack, onLogo
     } else {
       setResultadoTest({
         ok: false,
-        msg: "No se pudo conectar con la URL de Apps Script. Verifica que en tu Apps Script hayas hecho clic en Implementar > Nueva implementación con acceso: 'Cualquier usuario' (Anyone)."
+        msg: "No se pudo conectar con la URL de Apps Script. Verifica que en tu Apps Script hayas hecho clic en: Implementar > Administrar implementaciones > Editar > Cambiar a 'Nueva versión' y acceso: 'Cualquier usuario' (Anyone)."
       });
     }
 
@@ -812,11 +746,14 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack, onLogo
         ) : (
           <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-sky-900 text-white p-4 sm:p-5 rounded-3xl shadow-lg border border-sky-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="space-y-1">
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <span className="text-xl">🌐</span>
                 <h2 className="font-title font-black text-sm sm:text-base uppercase tracking-tight text-tour-yellow">
                   Conexión Activa con Google Sheets
                 </h2>
+                <span className="bg-emerald-500 text-white text-[11px] font-bold px-2.5 py-0.5 rounded-full shadow-xs">
+                  {candidatos.length} Aspirantes Detectados
+                </span>
               </div>
               <p className="text-xs text-sky-100/90 max-w-3xl leading-relaxed">
                 Todas las postulaciones se registran en el servidor y se guardan como filas individuales en la pestaña única <strong>"{sheetName}"</strong> de tu nuevo documento de Google Sheets.
@@ -824,10 +761,18 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack, onLogo
             </div>
 
             <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+              <button
+                type="button"
+                onClick={() => setMostrarConfigUrl(true)}
+                className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs border border-white/20 transition active:scale-95 flex items-center gap-1.5 cursor-pointer"
+                title="Configuración de conexión y código de Apps Script"
+              >
+                <span>⚙️ Ajustes Sheets</span>
+              </button>
               <a
                 href="/api/candidatos/export.csv"
                 download="postulaciones_tour_azul.csv"
-                className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs border border-white/20 transition active:scale-95 flex items-center gap-1.5"
+                className="px-3.5 py-2 rounded-xl bg-tour-yellow hover:bg-amber-400 text-tour-navy font-bold text-xs transition active:scale-95 flex items-center gap-1.5 shadow-sm"
                 title="Descargar lista completa en Excel (CSV)"
               >
                 <span>📊 Descargar Excel</span>
@@ -836,9 +781,16 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack, onLogo
           </div>
         )}
 
-        {/* Modal / Panel de Configuración de la Nueva Conexión */}
+        {/* Modal Flotante de Configuración de la Conexión (no desplaza la lista de candidatos) */}
         {mostrarConfigUrl && (
-          <div className="bg-white p-5 sm:p-7 rounded-3xl shadow-lg border-2 border-blue-200 space-y-5 animate-fadeIn">
+          <div 
+            className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 overflow-y-auto animate-fadeIn"
+            onClick={() => setMostrarConfigUrl(false)}
+          >
+            <div 
+              className="bg-white p-5 sm:p-7 rounded-3xl shadow-2xl border-2 border-blue-200 space-y-5 max-w-3xl w-full max-h-[90vh] overflow-y-auto my-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
             <div className="flex justify-between items-start">
               <div>
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100 text-blue-800 text-[11px] font-bold uppercase tracking-wider mb-2">
@@ -1001,9 +953,17 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack, onLogo
                   </button>
                 )}
               </div>
+              <button
+                type="button"
+                onClick={() => setMostrarConfigUrl(false)}
+                className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition cursor-pointer active:scale-95"
+              >
+                ✓ Cerrar y ver aspirantes
+              </button>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
         {/* Cabecera del Panel de Control */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-5 sm:p-6 rounded-3xl shadow-xs border border-slate-200/80 gap-4">

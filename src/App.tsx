@@ -180,33 +180,33 @@ export default function App() {
       return;
     }
 
-    setValidandoLogin(true);
-    setPasswordError(null);
+    // Si ingresó la clave predeterminada 010203, otorgar acceso administrativo inmediato
+    if (pwd === '010203') {
+      const localToken = 'local-admin-' + Date.now();
+      sessionStorage.setItem('tour_azul_admin_token', localToken);
+      if (recordarSesion) localStorage.setItem('tour_azul_admin_token', localToken);
+      setAuthToken(localToken);
+      setIsAuthenticated(true);
+      setShowPasswordModal(false);
+      setIsAdminView(true);
+      window.history.pushState(null, '', '#/admin-candidatos');
+      setValidandoLogin(false);
+      // Notificar al servidor en segundo plano si está disponible
+      fetch('/api/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: pwd })
+      }).catch(() => {});
+      return;
+    }
 
     try {
-      // Validación segura en el servidor (con fallback para despliegues estáticos)
+      // Para otras claves o servidores personalizados, verificar con backend
       const res = await fetch('/api/admin/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ password: pwd })
       });
-
-      if (res.status === 404) {
-        if (pwd === '010203') {
-          const localToken = 'local-admin-' + Date.now();
-          sessionStorage.setItem('tour_azul_admin_token', localToken);
-          if (recordarSesion) localStorage.setItem('tour_azul_admin_token', localToken);
-          setAuthToken(localToken);
-          setIsAuthenticated(true);
-          setShowPasswordModal(false);
-          setIsAdminView(true);
-          window.history.pushState(null, '', '#/admin-candidatos');
-          return;
-        } else {
-          setPasswordError('Clave incorrecta. Solo el administrador tiene acceso a este panel.');
-          return;
-        }
-      }
 
       const data = await res.json().catch(() => null);
       if (res.ok && data && data.ok && data.token) {
@@ -223,18 +223,7 @@ export default function App() {
         setPasswordError((data && data.error) || 'Clave incorrecta. Solo el administrador tiene acceso a este panel.');
       }
     } catch (err: any) {
-      if (pwd === '010203') {
-        const localToken = 'local-admin-' + Date.now();
-        sessionStorage.setItem('tour_azul_admin_token', localToken);
-        if (recordarSesion) localStorage.setItem('tour_azul_admin_token', localToken);
-        setAuthToken(localToken);
-        setIsAuthenticated(true);
-        setShowPasswordModal(false);
-        setIsAdminView(true);
-        window.history.pushState(null, '', '#/admin-candidatos');
-      } else {
-        setPasswordError('Error de conexión al verificar credenciales con el servidor.');
-      }
+      setPasswordError('Error al validar credenciales. Verifica la clave ingresada.');
     } finally {
       setValidandoLogin(false);
     }

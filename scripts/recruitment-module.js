@@ -1039,8 +1039,8 @@ export const recruitmentClientCode = `
 
       recruitmentState.selectedPhotoFile = file;
 
-      // Compresión inteligente de la imagen para garantizar que cualquier teléfono suba rápido y sin fallar (< 25 KB)
-      compressImage(file, 480, 0.58).then(compressedDataUrl => {
+      // Compresión en el navegador (máximo 800 px de ancho, JPEG calidad 0.7)
+      compressImage(file, 800, 0.7).then(compressedDataUrl => {
         recruitmentState.selectedPhotoBase64 = compressedDataUrl;
       }).catch(() => {
         const reader = new FileReader();
@@ -1067,9 +1067,9 @@ export const recruitmentClientCode = `
     window.handlePhotoSelect = handlePhotoSelect;
 
     /**
-     * Comprime una imagen usando Canvas para que ocupe menos de 100 KB
+     * Comprime la foto en el navegador antes de enviarla (máximo 800 px de ancho, JPEG calidad 0.7)
      */
-    function compressImage(file, maxWidth, quality) {
+    function compressImage(file, maxWidth = 800, quality = 0.7) {
       return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = function(e) {
@@ -1077,14 +1077,9 @@ export const recruitmentClientCode = `
           img.onload = function() {
             let width = img.width;
             let height = img.height;
-            if (width > maxWidth || height > maxWidth) {
-              if (width > height) {
-                height = Math.round((height * maxWidth) / width);
-                width = maxWidth;
-              } else {
-                width = Math.round((width * maxWidth) / height);
-                height = maxWidth;
-              }
+            if (width > maxWidth) {
+              height = Math.round((height * maxWidth) / width);
+              width = maxWidth;
             }
             const canvas = document.createElement("canvas");
             canvas.width = width;
@@ -1096,8 +1091,8 @@ export const recruitmentClientCode = `
             ctx.drawImage(img, 0, 0, width, height);
             resolve(canvas.toDataURL("image/jpeg", quality));
           };
-          img.onerror = function() {
-            resolve(e.target.result);
+          img.onerror = function(err) {
+            reject(err);
           };
           img.src = e.target.result;
         };
@@ -1217,61 +1212,35 @@ export const recruitmentClientCode = `
       }
 
       // Preparar estado de botón de envío
-      // Preparar estado de botón de envío
+      // 1. Deshabilitar botón de enviar mientras se procesa
       const submitBtn = document.getElementById("btn-submit-postulacion");
       const submitText = document.getElementById("btn-submit-text");
       if (submitBtn) submitBtn.disabled = true;
-      if (submitText) submitText.textContent = "Guardando en el sistema...";
+      if (submitText) submitText.textContent = "Enviando postulación...";
 
-      // Asegurar que la foto esté comprimida si se seleccionó (máx 480px, peso óptimo ~18KB para caber siempre en Google Sheets)
+      // 2. Generar ID único usando crypto.randomUUID()
+      const docId = typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+        ? crypto.randomUUID()
+        : ("POST-" + Date.now() + "-" + Math.random().toString(36).substring(2, 9));
+
+      // 3. Comprimir la foto en el navegador antes de enviarla (máximo 800 px de ancho, JPEG calidad 0.7)
       let fotoFinal = recruitmentState.selectedPhotoBase64;
       if (recruitmentState.selectedPhotoFile) {
         try {
-          fotoFinal = await compressImage(recruitmentState.selectedPhotoFile, 480, 0.58);
+          fotoFinal = await compressImage(recruitmentState.selectedPhotoFile, 800, 0.7);
           recruitmentState.selectedPhotoBase64 = fotoFinal;
-        } catch (_) {}
+        } catch (errFoto) {
+          console.warn("Aviso al comprimir fotografía:", errFoto);
+        }
       }
 
-      // Generar ID único para la postulación
-      const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
-      const randomTag = Math.floor(1000 + Math.random() * 9000);
-      const docId = "POST-" + dateStr + "-" + randomTag;
-
-      const candidateData = {
-        id: docId,
-        codigo: docId,
-        nombre,
-        edad: edad || 24,
-        telefono,
-        zona: zona || "Barquisimeto",
-        experiencia: expChecked ? expChecked.value : "Con disposición de aprender",
-        disponibilidad: dispChecked ? dispChecked.value : "Fines de semana y feriados",
-        punto_partida: puntoChecked ? puntoChecked.value : "Sí, sin inconvenientes.",
-        motivacion: motivacion || "Me entusiasma formar parte del equipo de Tour Azul.",
-        talento: talento || "No especificado",
-        tieneFoto: Boolean(recruitmentState.selectedPhotoFile || fotoFinal),
-        fotoNombre: recruitmentState.selectedPhotoFile ? recruitmentState.selectedPhotoFile.name : null,
-        foto: fotoFinal || null,
-        fotoBase64: fotoFinal || null,
-        estado: "Recibida",
-        createdAt: new Date().toISOString()
-      };
-
-      recruitmentState.lastValidatedFormData = candidateData;
-
-      // ENVIAR POSTULACIÓN CON DOBLE CANAL RESILIENTE:
-      // Canal 1: Servidor central (/api/candidatos) si está disponible
-      // Canal 2: Envío directo a Google Apps Script Webhook (sin 404 en Vercel ni entornos estáticos)
-      // + Guardado en caché local para visualización inmediata en el Panel
+      // 4. Preparar payload con ID y foto comprimida en base64
       const DEFAULT_SHEETS_WEBHOOK = "https://script.google.com/macros/s/AKfycbyHrjILLmIl0oiQ14LoqUzUv-I6PRIhk8jtffbxWYkW-Q3wyRsgumCEQim7T1QaxpCPVA/exec";
       const webhookUrl = localStorage.getItem("tour_azul_sheets_webhook_url") ||
                          (window.__TOUR_AZUL_WEBHOOK_URL) ||
                          DEFAULT_SHEETS_WEBHOOK;
 
-      let serverConfirmed = false;
-      let assignedId = docId;
-
-      const directPayload = {
+      const postPayload = {
         accion: "candidato",
         id: docId,
         codigo: docId,
@@ -1285,84 +1254,26 @@ export const recruitmentClientCode = `
         punto_partida: puntoChecked ? puntoChecked.value : "Sí, sin inconvenientes.",
         motivacion: motivacion || "Me entusiasma formar parte del equipo de Tour Azul.",
         talento: talento || "No especificado",
-        foto: fotoFinal || (candidateData.tieneFoto ? (candidateData.fotoNombre || "Sí adjunta") : "No adjunta"),
+        foto: fotoFinal || "No adjunta",
         fotoBase64: fotoFinal || null,
-        fotoNombre: candidateData.fotoNombre || null,
-        tieneFoto: Boolean(candidateData.tieneFoto || fotoFinal),
+        tieneFoto: Boolean(fotoFinal),
         estado: "Recibida",
         fecha: new Date().toLocaleString("es-VE")
       };
 
+      // 5. Enviar el POST una sola vez, sin reintentos automáticos
       try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 8000);
-        const respServer = await fetch("/api/candidatos?webhookUrl=" + encodeURIComponent(webhookUrl), {
+        await fetch(webhookUrl, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-webhook-url": webhookUrl
-          },
-          body: JSON.stringify(candidateData),
-          signal: controller.signal
+          mode: "no-cors",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify(postPayload)
         });
-        clearTimeout(timeoutId);
-
-        let resData = null;
-        let responseText = "";
-        try {
-          responseText = await respServer.text();
-          resData = JSON.parse(responseText);
-        } catch (_) {}
-
-        if (respServer.ok && resData && resData.ok) {
-          serverConfirmed = true;
-          if (resData.id) assignedId = resData.id;
-        } else if (respServer.status === 400 && resData && (resData.error || resData.message)) {
-          const errorMsg = resData.error || resData.message;
-          if (submitBtn) submitBtn.disabled = false;
-          if (submitText) submitText.textContent = "Enviar mi postulación";
-          if (typeof showToastNotification === "function") {
-            showToastNotification(errorMsg, "error");
-          } else {
-            alert(errorMsg);
-          }
-          return false;
-        }
-      } catch (errApi) {
-        console.warn("Aviso: /api/candidatos no disponible directamente. Activando guardado directo en Google Sheets:", errApi);
+      } catch (gasErr) {
+        console.warn("Aviso al enviar a Apps Script:", gasErr);
       }
 
-      // Sincronizar DIRECTAMENTE con el Webhook de Google Apps Script para garantizar registro en Google Sheets
-      if (webhookUrl && webhookUrl.startsWith("http")) {
-        try {
-          await fetch(webhookUrl, {
-            method: "POST",
-            mode: "no-cors",
-            headers: { "Content-Type": "text/plain;charset=utf-8" },
-            body: JSON.stringify(directPayload)
-          });
-        } catch (gasErr) {
-          console.warn("Aviso en guardado directo Google Sheets:", gasErr);
-        }
-      }
-
-      // Guardar en caché local para que el Panel de Administración lo liste de inmediato
-      try {
-        const localCandidates = JSON.parse(localStorage.getItem("tour_azul_candidatos_local") || "[]");
-        const candidateRecord = {
-          ...candidateData,
-          id: assignedId,
-          codigo: assignedId,
-          syncedToSheets: true,
-          _origen: serverConfirmed ? "server" : "direct-sheets"
-        };
-        const updatedList = [candidateRecord, ...localCandidates.filter(c => String(c.id || c.codigo) !== String(assignedId))].slice(0, 150);
-        localStorage.setItem("tour_azul_candidatos_local", JSON.stringify(updatedList));
-      } catch (errLocal) {
-        console.warn("Aviso guardando en localStorage:", errLocal);
-      }
-
-      // Restablecer botón de envío tras confirmación exitosa
+      // Restablecer botón de envío tras finalizar el proceso
       if (submitBtn) submitBtn.disabled = false;
       if (submitText) submitText.textContent = "Enviar mi postulación";
 
@@ -1682,18 +1593,30 @@ export const recruitmentClientCode = `
 
       listEl.innerHTML = '<div class="text-center py-12 text-slate-500 text-xs space-y-3">' +
         '<div class="w-8 h-8 border-3 border-tour-blue border-t-transparent rounded-full animate-spin mx-auto"></div>' +
-        '<p class="font-bold text-tour-navy text-sm">Consultando postulaciones en tiempo real...</p>' +
-        '<p class="text-[11px] text-slate-400">Petición al servidor central y Google Sheets</p>' +
+        '<p class="font-bold text-tour-navy text-sm">Consultando postulaciones desde Google Apps Script...</p>' +
       '</div>';
 
       try {
+        const targetUrl = localStorage.getItem("tour_azul_sheets_webhook_url") ||
+                          (window.__TOUR_AZUL_WEBHOOK_URL) ||
+                          "https://script.google.com/macros/s/AKfycbyHrjILLmIl0oiQ14LoqUzUv-I6PRIhk8jtffbxWYkW-Q3wyRsgumCEQim7T1QaxpCPVA/exec";
+
         let rawItems = [];
-        const apiResp = await fetch("/api/candidatos?sync=true&_t=" + Date.now());
-        if (apiResp.ok) {
-          const apiJson = await apiResp.json();
-          if (apiJson && Array.isArray(apiJson.candidatos)) {
-            rawItems = apiJson.candidatos;
-          }
+        const sep = targetUrl.includes("?") ? "&" : "?";
+        const gResp = await fetch(targetUrl + sep + "accion=candidatos&_t=" + Date.now());
+        if (!gResp.ok) {
+          throw new Error("HTTP error " + gResp.status);
+        }
+
+        const gText = await gResp.text();
+        let gJson = null;
+        try { gJson = JSON.parse(gText); } catch (_) {}
+        if (gJson && gJson.status === "success" && Array.isArray(gJson.data)) {
+          rawItems = gJson.data;
+        } else if (Array.isArray(gJson)) {
+          rawItems = gJson;
+        } else if (gJson && Array.isArray(gJson.candidatos)) {
+          rawItems = gJson.candidatos;
         }
 
         const items = rawItems.map((item, idx) => normalizarCandidatoPostulacion(item, idx)).filter(Boolean);
