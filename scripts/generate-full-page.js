@@ -72,6 +72,9 @@ const html = `<!DOCTYPE html>
   <!-- HTML2Canvas CDN for Ticket Download -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
+  <!-- heic2any for iPhone HEIC/HEIF photo conversion -->
+  <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
+
   <style>
     :root {
       --azul-rey: #1F3FE0;

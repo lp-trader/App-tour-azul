@@ -416,7 +416,7 @@ export const recruitmentHtmlSection = `
             <input 
               type="file" 
               id="postulacion-foto-input" 
-              accept=".jpg, .jpeg, .png, .webp, image/jpeg, image/png, image/webp" 
+              accept="image/*, .jpg, .jpeg, .png, .webp, .heic, .heif" 
               onchange="handlePhotoSelect(event)" 
               class="hidden"
             >
@@ -428,7 +428,7 @@ export const recruitmentHtmlSection = `
                 Haz clic para seleccionar tu fotografía
               </p>
               <p class="text-[11px] text-slate-400">
-                Formatos permitidos: JPG, PNG, WEBP · Tamaño máximo: 5 MB
+                Formatos permitidos: JPG, PNG, WEBP, HEIC/HEIF de iPhone · Tamaño máximo: 5 MB
               </p>
             </div>
           </div>
@@ -440,9 +440,9 @@ export const recruitmentHtmlSection = `
                 <img id="foto-preview-img" src="" alt="Vista previa de la foto" class="w-full h-full object-cover">
               </div>
               <div class="text-left overflow-hidden">
-                <span class="text-[10px] font-bold uppercase tracking-wider text-tour-blue block">Fotografía seleccionada</span>
+                <span class="text-[10px] font-bold uppercase tracking-wider text-tour-blue block">Fotografía optimizada</span>
                 <p id="foto-filename" class="text-xs font-bold text-tour-navy truncate max-w-[200px] sm:max-w-xs">archivo.jpg</p>
-                <p id="foto-filesize" class="text-[11px] text-slate-500">1.2 MB</p>
+                <p id="foto-filesize" class="text-[11px] text-emerald-700 font-bold">-- KB (comprimida)</p>
               </div>
             </div>
 
@@ -826,8 +826,8 @@ export const recruitmentClientCode = `
       
       // Límite de tamaño de foto para postulaciones (5 MB)
       maxPhotoSizeBytes: 5 * 1024 * 1024,
-      allowedPhotoMimes: ["image/jpeg", "image/png", "image/webp"],
-      allowedPhotoExtensions: [".jpg", ".jpeg", ".png", ".webp"]
+      allowedPhotoMimes: ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"],
+      allowedPhotoExtensions: [".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif"]
     };
     window.APP_CONFIG = APP_CONFIG;
 
@@ -1043,9 +1043,150 @@ export const recruitmentClientCode = `
     window.updateRecruitmentProgress = updateRecruitmentProgress;
 
     /**
-     * Manejador de selección de fotografía (máx. 5 MB, formatos permitidos)
+     * Asegura la disponibilidad de heic2any para convertir imágenes HEIC/HEIF de iPhone
      */
-    function handlePhotoSelect(event) {
+    async function getHeicConverter() {
+      if (typeof window !== "undefined" && window.heic2any) {
+        return window.heic2any;
+      }
+      return new Promise(resolve => {
+        const script = document.createElement("script");
+        script.src = "https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js";
+        script.onload = () => resolve(window.heic2any || null);
+        script.onerror = () => resolve(null);
+        document.head.appendChild(script);
+      });
+    }
+
+    /**
+     * Comprime la foto en el navegador antes de enviarla:
+     * - Cárgala en un canvas, reduce el lado más largo a máximo 800 px
+     * - Expórtala como JPEG con calidad 0.6
+     * - Si el resultado pesa más de 400 KB, vuelve a comprimir bajando la calidad (0.5, 0.4...) hasta que baje de 400 KB
+     * - Funciona con fotos HEIC/HEIF de iPhone y respeta la orientación EXIF de la foto
+     */
+    async function compressImage(file) {
+      if (!file) throw new Error("No se proporcionó ningún archivo de imagen.");
+
+      let blobToProcess = file;
+      const fileNameLower = (file.name || "").toLowerCase();
+      const isHeic = file.type === "image/heic" || file.type === "image/heif" ||
+                     fileNameLower.endsWith(".heic") || fileNameLower.endsWith(".heif");
+
+      if (isHeic) {
+        try {
+          const heic2any = await getHeicConverter();
+          if (heic2any) {
+            const converted = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.8 });
+            blobToProcess = Array.isArray(converted) ? converted[0] : converted;
+          }
+        } catch (heicErr) {
+          console.warn("Aviso al convertir formato HEIC de iPhone con heic2any:", heicErr);
+        }
+      }
+
+      // Obtener elemento dibujable respetando la orientación EXIF
+      let drawable = null;
+      let naturalWidth = 0;
+      let naturalHeight = 0;
+      let isBitmap = false;
+      let tempObjectUrl = null;
+
+      if (typeof createImageBitmap === "function") {
+        try {
+          // 'from-image' orienta automáticamente la imagen según EXIF (incluyendo fotos de iPhone/Safari)
+          drawable = await createImageBitmap(blobToProcess, { imageOrientation: "from-image" });
+          naturalWidth = drawable.width;
+          naturalHeight = drawable.height;
+          isBitmap = true;
+        } catch (_) {
+          drawable = null;
+        }
+      }
+
+      if (!drawable) {
+        drawable = await new Promise((resolve, reject) => {
+          const img = new Image();
+          tempObjectUrl = URL.createObjectURL(blobToProcess);
+          img.onload = () => {
+            naturalWidth = img.naturalWidth || img.width;
+            naturalHeight = img.naturalHeight || img.height;
+            resolve(img);
+          };
+          img.onerror = () => {
+            if (tempObjectUrl) URL.revokeObjectURL(tempObjectUrl);
+            reject(new Error("No se pudo decodificar la imagen seleccionada."));
+          };
+          img.src = tempObjectUrl;
+        });
+      }
+
+      // Reducir el lado más largo a máximo 800 px
+      const maxLado = 800;
+      let targetWidth = naturalWidth;
+      let targetHeight = naturalHeight;
+
+      if (targetWidth > maxLado || targetHeight > maxLado) {
+        if (targetWidth >= targetHeight) {
+          targetHeight = Math.round((targetHeight * maxLado) / targetWidth);
+          targetWidth = maxLado;
+        } else {
+          targetWidth = Math.round((targetWidth * maxLado) / targetHeight);
+          targetHeight = maxLado;
+        }
+      }
+
+      const canvas = document.createElement("canvas");
+      canvas.width = targetWidth;
+      canvas.height = targetHeight;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("No se pudo inicializar el lienzo de compresión 2D.");
+
+      // Limpiar y dibujar con suavizado
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
+      ctx.drawImage(drawable, 0, 0, targetWidth, targetHeight);
+
+      if (isBitmap && typeof drawable.close === "function") {
+        drawable.close();
+      }
+      if (tempObjectUrl) {
+        URL.revokeObjectURL(tempObjectUrl);
+      }
+
+      // Helper para calcular peso en KB de un DataURL Base64
+      function calcSizeKB(dataUrl) {
+        const idx = dataUrl.indexOf(",");
+        const raw = idx >= 0 ? dataUrl.slice(idx + 1) : dataUrl;
+        return (raw.length * 3 / 4) / 1024;
+      }
+
+      // Calidad inicial: 0.6. Si pesa más de 400 KB, bajar progresivamente (0.5, 0.4, 0.35, 0.25)
+      const qualities = [0.6, 0.5, 0.4, 0.35, 0.25];
+      let bestDataUrl = "";
+      let bestSizeKB = 0;
+
+      for (const q of qualities) {
+        bestDataUrl = canvas.toDataURL("image/jpeg", q);
+        bestSizeKB = calcSizeKB(bestDataUrl);
+        if (bestSizeKB <= 400) {
+          break;
+        }
+      }
+
+      return {
+        dataUrl: bestDataUrl,
+        sizeKB: bestSizeKB,
+        width: targetWidth,
+        height: targetHeight
+      };
+    }
+    window.compressImage = compressImage;
+
+    /**
+     * Manejador de selección de fotografía (máx. 5 MB, formatos permitidos, muestra vista previa comprimida y peso)
+     */
+    async function handlePhotoSelect(event) {
       const file = event.target.files && event.target.files[0];
       const errorEl = document.getElementById("error-foto");
       const errorText = document.getElementById("error-foto-text");
@@ -1060,12 +1201,12 @@ export const recruitmentClientCode = `
       if (!file) return;
 
       const ext = "." + file.name.split(".").pop().toLowerCase();
-      const isValidExt = APP_CONFIG.allowedPhotoExtensions.includes(ext);
-      const isValidMime = APP_CONFIG.allowedPhotoMimes.includes(file.type);
+      const isValidExt = APP_CONFIG.allowedPhotoExtensions.includes(ext) || file.type.startsWith("image/");
+      const isValidMime = APP_CONFIG.allowedPhotoMimes.includes(file.type) || file.type.startsWith("image/");
 
       if (!isValidExt && !isValidMime) {
         if (errorEl && errorText) {
-          errorText.textContent = "Formato no válido. Por favor selecciona una imagen JPG, JPEG, PNG o WEBP.";
+          errorText.textContent = "Formato no válido. Por favor selecciona una imagen JPG, JPEG, PNG, WEBP o HEIC/HEIF.";
           errorEl.classList.remove("hidden");
         }
         event.target.value = "";
@@ -1083,67 +1224,35 @@ export const recruitmentClientCode = `
 
       recruitmentState.selectedPhotoFile = file;
 
-      // Compresión en el navegador (máximo 800 px de ancho, JPEG calidad 0.7)
-      compressImage(file, 800, 0.7).then(compressedDataUrl => {
-        recruitmentState.selectedPhotoBase64 = compressedDataUrl;
-      }).catch(() => {
+      // Mostrar caja de previsualización con estado de carga
+      if (dropzone) dropzone.classList.add("hidden");
+      if (previewBox) previewBox.classList.remove("hidden");
+      if (filenameEl) filenameEl.textContent = file.name;
+      if (filesizeEl) filesizeEl.textContent = "Optimizando y comprimiendo...";
+
+      try {
+        // Comprimir la foto en el navegador antes de enviar
+        const result = await compressImage(file);
+        recruitmentState.selectedPhotoBase64 = result.dataUrl;
+        recruitmentState.selectedPhotoCompressedSizeKB = result.sizeKB;
+
+        // Muestra una vista previa de la foto ya comprimida y su peso en KB antes de enviar
+        if (previewImg) previewImg.src = result.dataUrl;
+        if (filesizeEl) filesizeEl.textContent = result.sizeKB.toFixed(1) + " KB (comprimida)";
+      } catch (errFoto) {
+        console.warn("Aviso al comprimir fotografía, intentando fallback:", errFoto);
         const reader = new FileReader();
         reader.onload = function(e) {
           recruitmentState.selectedPhotoBase64 = e.target.result;
+          if (previewImg) previewImg.src = e.target.result;
+          if (filesizeEl) filesizeEl.textContent = (file.size / 1024).toFixed(1) + " KB";
         };
         reader.readAsDataURL(file);
-      });
-
-      if (recruitmentState.selectedPhotoPreviewUrl) {
-        URL.revokeObjectURL(recruitmentState.selectedPhotoPreviewUrl);
       }
-      recruitmentState.selectedPhotoPreviewUrl = URL.createObjectURL(file);
 
-      if (previewImg) previewImg.src = recruitmentState.selectedPhotoPreviewUrl;
-      if (filenameEl) filenameEl.textContent = file.name;
-      if (filesizeEl) filesizeEl.textContent = (file.size / (1024 * 1024)).toFixed(2) + " MB";
-
-      if (dropzone) dropzone.classList.add("hidden");
-      if (previewBox) previewBox.classList.remove("hidden");
-      
       if (window.lucide) lucide.createIcons();
     }
     window.handlePhotoSelect = handlePhotoSelect;
-
-    /**
-     * Comprime la foto en el navegador antes de enviarla (máximo 800 px de ancho, JPEG calidad 0.7)
-     */
-    function compressImage(file, maxWidth = 800, quality = 0.7) {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-          const img = new Image();
-          img.onload = function() {
-            let width = img.width;
-            let height = img.height;
-            if (width > maxWidth) {
-              height = Math.round((height * maxWidth) / width);
-              width = maxWidth;
-            }
-            const canvas = document.createElement("canvas");
-            canvas.width = width;
-            canvas.height = height;
-            const ctx = canvas.getContext("2d");
-            if (!ctx) {
-              return resolve(e.target.result);
-            }
-            ctx.drawImage(img, 0, 0, width, height);
-            resolve(canvas.toDataURL("image/jpeg", quality));
-          };
-          img.onerror = function(err) {
-            reject(err);
-          };
-          img.src = e.target.result;
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
-    }
 
     /**
      * Quita la fotografía seleccionada y restablece la caja
@@ -1162,6 +1271,7 @@ export const recruitmentClientCode = `
       recruitmentState.selectedPhotoFile = null;
       recruitmentState.selectedPhotoPreviewUrl = null;
       recruitmentState.selectedPhotoBase64 = null;
+      recruitmentState.selectedPhotoCompressedSizeKB = null;
 
       if (previewImg) previewImg.src = "";
       if (dropzone) dropzone.classList.remove("hidden");
@@ -1273,14 +1383,15 @@ export const recruitmentClientCode = `
         ? crypto.randomUUID()
         : ("POST-" + Date.now() + "-" + Math.random().toString(36).substring(2, 9));
 
-      // 3. Comprimir la foto en el navegador antes de enviarla (máximo 800 px de ancho, JPEG calidad 0.7)
+      // 3. Comprimir la foto en el navegador si aún no se había comprimido
       let fotoFinal = recruitmentState.selectedPhotoBase64;
-      if (recruitmentState.selectedPhotoFile) {
+      if (recruitmentState.selectedPhotoFile && !fotoFinal) {
         try {
-          fotoFinal = await compressImage(recruitmentState.selectedPhotoFile, 800, 0.7);
+          const compResult = await compressImage(recruitmentState.selectedPhotoFile);
+          fotoFinal = compResult.dataUrl;
           recruitmentState.selectedPhotoBase64 = fotoFinal;
         } catch (errFoto) {
-          console.warn("Aviso al comprimir fotografía:", errFoto);
+          console.warn("Aviso al comprimir fotografía antes de enviar:", errFoto);
         }
       }
 
@@ -1290,10 +1401,11 @@ export const recruitmentClientCode = `
                          (window.__TOUR_AZUL_WEBHOOK_URL) ||
                          DEFAULT_SHEETS_WEBHOOK;
 
+      // El body es JSON.stringify({accion:"candidato", codigo, id, ...campos, foto: base64Comprimido})
       const postPayload = {
         accion: "candidato",
-        id: docId,
         codigo: docId,
+        id: docId,
         nombre: nombre,
         nombreCompleto: nombre,
         edad: edad || 24,
@@ -1306,20 +1418,20 @@ export const recruitmentClientCode = `
         talento: talento || "No especificado",
         foto: fotoFinal || "No adjunta",
         fotoBase64: fotoFinal || null,
-        tieneFoto: Boolean(fotoFinal),
+        tieneFoto: Boolean(fotoFinal && fotoFinal !== "No adjunta"),
         estado: "Recibida",
         fecha: new Date().toLocaleString("es-VE")
       };
 
-      // 5. Enviar el POST una sola vez, sin reintentos automáticos
+      // 5. Envía el POST con Content-Type: text/plain y sin ningún otro header
       let isSuccess = false;
       let responsePayload = null;
-      let errorMessage = "No se pudo conectar con el servidor.";
+      let errorDetalle = "";
 
       try {
         const response = await fetch(webhookUrl, {
           method: "POST",
-          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          headers: { "Content-Type": "text/plain" },
           body: JSON.stringify(postPayload)
         });
 
@@ -1327,22 +1439,60 @@ export const recruitmentClientCode = `
           try {
             const rawText = await response.text();
             responsePayload = JSON.parse(rawText);
+            if (responsePayload && (responsePayload.status === "success" || responsePayload.ok === true)) {
+              isSuccess = true;
+            } else {
+              const errMsg = responsePayload && (responsePayload.error || responsePayload.mensaje);
+              errorDetalle = errMsg || ("Status " + response.status + ": " + rawText.slice(0, 200));
+            }
           } catch (_) {
-            // Si el servidor respondió HTTP 200 pero la respuesta no fue JSON estricto
-            responsePayload = { ok: true, status: "success" };
+            // Si el servidor respondió HTTP 200 pero no era JSON estricto (redirección exitosa de Apps Script)
+            isSuccess = true;
           }
         } else {
-          errorMessage = "Error del servidor (HTTP " + response.status + ")";
+          let snippet = "";
+          try {
+            const t = await response.text();
+            snippet = t.slice(0, 200);
+          } catch (_) {}
+          errorDetalle = "Status " + response.status + ": " + snippet;
         }
+      } catch (err) {
+        // Muestra el error real en el catch: err.name, err.message, y si hubo respuesta, status y snippet
+        errorDetalle = "[" + (err.name || "Error") + "]: " + (err.message || String(err));
+        console.warn("Fallo capturado en fetch POST:", err);
+      }
 
-        if (responsePayload && (responsePayload.status === "success" || responsePayload.ok === true)) {
-          isSuccess = true;
-        } else if (responsePayload && (responsePayload.error || responsePayload.mensaje)) {
-          errorMessage = responsePayload.error || responsePayload.mensaje;
+      // 6. Verifica antes de dar error. Si el fetch falla, espera 3 segundos y consulta con GET la lista de candidatos (?accion=candidatos). Si el código de esta postulación ya existe, trátalo como éxito.
+      if (!isSuccess) {
+        if (submitText) submitText.textContent = "Verificando registro...";
+        try {
+          await new Promise(resolve => setTimeout(resolve, 3000));
+          const sep = webhookUrl.includes("?") ? "&" : "?";
+          const checkUrl = webhookUrl + sep + "accion=candidatos&_t=" + Date.now();
+          const checkResp = await fetch(checkUrl, { cache: "no-store" });
+          if (checkResp.ok) {
+            const checkText = await checkResp.text();
+            let checkJson = null;
+            try { checkJson = JSON.parse(checkText); } catch (_) {}
+            let lista = [];
+            if (checkJson && checkJson.status === "success" && Array.isArray(checkJson.data)) lista = checkJson.data;
+            else if (Array.isArray(checkJson)) lista = checkJson;
+            else if (checkJson && Array.isArray(checkJson.candidatos)) lista = checkJson.candidatos;
+
+            const existe = lista.some(item => {
+              const cod = String(item.Código || item.codigo || item.id || "").trim();
+              return cod === docId;
+            });
+
+            if (existe) {
+              isSuccess = true;
+              errorDetalle = "";
+            }
+          }
+        } catch (errCheck) {
+          console.warn("Fallo durante verificación secundaria GET:", errCheck);
         }
-      } catch (gasErr) {
-        console.warn("Fallo en la comunicación con Apps Script:", gasErr);
-        errorMessage = gasErr.message || "Error de conexión al enviar la postulación.";
       }
 
       // Procesar resultado según éxito o fallo
@@ -1380,7 +1530,7 @@ export const recruitmentClientCode = `
         const modalTelEl = document.getElementById("modal-exito-telefono");
         const modalFotoEl = document.getElementById("modal-exito-foto");
 
-        const tieneFotoAdjunta = Boolean(fotoFinal);
+        const tieneFotoAdjunta = Boolean(fotoFinal && fotoFinal !== "No adjunta");
         const fotoNombre = recruitmentState.selectedPhotoFile ? recruitmentState.selectedPhotoFile.name : (tieneFotoAdjunta ? "Adjunta" : "No adjunta");
 
         if (modalIdEl) modalIdEl.textContent = candidateCode;
@@ -1421,9 +1571,9 @@ export const recruitmentClientCode = `
           showToastNotification("¡Postulación enviada con éxito! Código: " + candidateCode, "success");
         }
 
-        // (4) Después de enviar, el botón no se rehabilita hasta que el usuario empiece a llenar un formulario nuevo
+        // Estados del botón: mientras envía deshabilitado. Si es éxito, muestra "Postulación enviada con éxito"
         if (submitBtn) submitBtn.disabled = true;
-        if (submitText) submitText.textContent = "Postulación enviada";
+        if (submitText) submitText.textContent = "Postulación enviada con éxito";
 
         function enableOnNewFormFill() {
           const bannerExito = document.getElementById("postulacion-banner-exito");
@@ -1454,14 +1604,14 @@ export const recruitmentClientCode = `
         if (bannerError) {
           const errTxt = document.getElementById("postulacion-error-texto");
           if (errTxt) {
-            errTxt.textContent = errorMessage || "No fue posible registrar la postulación en Google Sheets. Revisa la conexión.";
+            errTxt.textContent = errorDetalle || "No fue posible registrar la postulación en Google Sheets. Revisa la conexión.";
           }
           bannerError.classList.remove("hidden");
           bannerError.scrollIntoView({ behavior: "smooth", block: "center" });
         }
 
         if (typeof showToastNotification === "function") {
-          showToastNotification("Error al enviar postulación: " + errorMessage, "error");
+          showToastNotification("Error al enviar postulación: " + errorDetalle, "error");
         }
         if (window.lucide) lucide.createIcons();
         return false;
