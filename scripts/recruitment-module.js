@@ -1273,59 +1273,72 @@ export const recruitmentClientCode = `
         console.warn("Aviso al enviar a Apps Script:", gasErr);
       }
 
-      // Restablecer botón de envío tras finalizar el proceso
-      if (submitBtn) submitBtn.disabled = false;
-      if (submitText) submitText.textContent = "Enviar mi postulación";
+      try {
+        // Restablecer botón de envío tras finalizar el proceso
+        if (submitBtn) submitBtn.disabled = false;
+        if (submitText) submitText.textContent = "Enviar mi postulación";
 
-      const modalIdEl = document.getElementById("modal-exito-id");
-      const modalNombreEl = document.getElementById("modal-exito-nombre");
-      const modalTelEl = document.getElementById("modal-exito-telefono");
-      const modalFotoEl = document.getElementById("modal-exito-foto");
+        const modalIdEl = document.getElementById("modal-exito-id");
+        const modalNombreEl = document.getElementById("modal-exito-nombre");
+        const modalTelEl = document.getElementById("modal-exito-telefono");
+        const modalFotoEl = document.getElementById("modal-exito-foto");
 
-      if (modalIdEl) modalIdEl.textContent = assignedId;
-      if (modalNombreEl) modalNombreEl.textContent = nombre;
-      if (modalTelEl) modalTelEl.textContent = telefono;
-      if (modalFotoEl) modalFotoEl.textContent = candidateData.tieneFoto ? ("Sí (" + (candidateData.fotoNombre || "Adjunta") + ")") : "No adjunta";
+        const tieneFotoAdjunta = Boolean(fotoFinal);
+        const fotoNombre = recruitmentState.selectedPhotoFile ? recruitmentState.selectedPhotoFile.name : (tieneFotoAdjunta ? "Adjunta" : "No adjunta");
 
-      // Mensaje estructurado para WhatsApp oficial
-      const msgWa = [
-        "¡Hola Tour Azul! 👋 Deseo postularme a la convocatoria de tripulación:",
-        "",
-        "📄 Código de postulación: *" + assignedId + "*",
-        "👤 Nombre: " + nombre,
-        "🎂 Edad: " + edad + " años",
-        "📱 Teléfono/WhatsApp: " + telefono,
-        "📍 Zona de residencia: " + zona,
-        "💼 Experiencia: " + (expChecked ? expChecked.value : "Con disposición de aprender"),
-        "⏰ Disponibilidad: " + (dispChecked ? dispChecked.value : "Fines de semana y feriados"),
-        "🚌 Punto de llegada: " + (puntoChecked ? puntoChecked.value : "Sí, sin inconvenientes."),
-        "✨ Motivación: " + motivacion,
-        (talento ? "🤭 Talento curioso: " + talento : ""),
-        (candidateData.tieneFoto ? "📷 Foto: Adjunta en mi postulación" : "📷 Foto: No adjunta")
-      ].filter(Boolean).join(String.fromCharCode(10));
+        if (modalIdEl) modalIdEl.textContent = docId;
+        if (modalNombreEl) modalNombreEl.textContent = nombre;
+        if (modalTelEl) modalTelEl.textContent = telefono;
+        if (modalFotoEl) modalFotoEl.textContent = tieneFotoAdjunta ? ("Sí (" + fotoNombre + ")") : "No adjunta";
 
-      const waExitoBtn = document.getElementById("btn-modal-exito-wa");
-      if (waExitoBtn) {
-        waExitoBtn.href = "https://wa.me/" + APP_CONFIG.whatsappNumero + "?text=" + encodeURIComponent(msgWa);
+        // Mensaje estructurado para WhatsApp oficial
+        const msgWa = [
+          "¡Hola Tour Azul! 👋 Deseo postularme a la convocatoria de tripulación:",
+          "",
+          "📄 Código de postulación: *" + docId + "*",
+          "👤 Nombre: " + nombre,
+          "🎂 Edad: " + edad + " años",
+          "📱 Teléfono/WhatsApp: " + telefono,
+          "📍 Zona de residencia: " + zona,
+          "💼 Experiencia: " + (expChecked ? expChecked.value : "Con disposición de aprender"),
+          "⏰ Disponibilidad: " + (dispChecked ? dispChecked.value : "Fines de semana y feriados"),
+          "🚌 Punto de llegada: " + (puntoChecked ? puntoChecked.value : "Sí, sin inconvenientes."),
+          "✨ Motivación: " + motivacion,
+          (talento ? "🤭 Talento curioso: " + talento : ""),
+          (tieneFotoAdjunta ? "📷 Foto: Adjunta en mi postulación" : "📷 Foto: No adjunta")
+        ].filter(Boolean).join(String.fromCharCode(10));
+
+        const waExitoBtn = document.getElementById("btn-modal-exito-wa");
+        if (waExitoBtn) {
+          waExitoBtn.href = "https://wa.me/" + APP_CONFIG.whatsappNumero + "?text=" + encodeURIComponent(msgWa);
+        }
+
+        const modalExito = document.getElementById("modal-postulacion-exitosa");
+        if (modalExito) {
+          modalExito.classList.remove("hidden");
+          modalExito.classList.add("flex");
+        }
+
+        // Limpiar formulario y foto tras confirmación
+        const formEl = document.getElementById("form-postulacion");
+        if (formEl) formEl.reset();
+        removeSelectedPhoto();
+        updateRecruitmentProgress();
+
+        if (window.lucide) lucide.createIcons();
+        if (typeof showToastNotification === "function") {
+          showToastNotification("¡Postulación enviada y registrada con éxito!", "success");
+        }
+        return true;
+      } catch (errSubmit) {
+        console.error("Error al procesar la confirmación:", errSubmit);
+        if (submitBtn) submitBtn.disabled = false;
+        if (submitText) submitText.textContent = "Enviar mi postulación";
+        if (typeof showToastNotification === "function") {
+          showToastNotification("Hubo un inconveniente al procesar el envío: " + errSubmit.message, "error");
+        }
+        return false;
       }
-
-      const modalExito = document.getElementById("modal-postulacion-exitosa");
-      if (modalExito) {
-        modalExito.classList.remove("hidden");
-        modalExito.classList.add("flex");
-      }
-
-      // Limpiar formulario y foto tras confirmación
-      const formEl = document.getElementById("form-postulacion");
-      if (formEl) formEl.reset();
-      removeSelectedPhoto();
-      updateRecruitmentProgress();
-
-      if (window.lucide) lucide.createIcons();
-      if (typeof showToastNotification === "function") {
-        showToastNotification("¡Postulación enviada y registrada con éxito!", "success");
-      }
-      return true;
     }
     window.handleRecruitmentSubmit = handleRecruitmentSubmit;
 
