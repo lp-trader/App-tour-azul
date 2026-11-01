@@ -491,6 +491,50 @@ export const recruitmentHtmlSection = `
           >
         </div>
 
+        <!-- MENSAJE DE ÉXITO VISIBLE EN PANTALLA -->
+        <div id="postulacion-banner-exito" class="hidden p-6 rounded-3xl bg-emerald-50 border-2 border-emerald-400 text-emerald-950 shadow-lg space-y-3 transition-all">
+          <div class="flex items-start gap-3.5">
+            <div class="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center flex-shrink-0 shadow-md">
+              <i data-lucide="check-circle-2" class="w-6 h-6 stroke-[2.5]"></i>
+            </div>
+            <div class="flex-1">
+              <h4 class="font-title font-black text-lg md:text-xl text-emerald-900 tracking-tight leading-snug">
+                ¡Postulación enviada con éxito!
+              </h4>
+              <p class="text-xs md:text-sm text-emerald-800 mt-1">
+                Tus datos y documentación han sido registrados correctamente en nuestro sistema central.
+              </p>
+              <div class="mt-3 inline-flex items-center gap-2 bg-white px-3.5 py-1.5 rounded-xl border border-emerald-300 shadow-sm text-xs md:text-sm">
+                <span class="text-slate-600 font-medium">Código del candidato:</span>
+                <strong id="postulacion-exito-codigo-banner" class="font-mono font-black text-tour-blue tracking-wide select-all"></strong>
+              </div>
+            </div>
+          </div>
+          <p class="text-[11px] text-emerald-700 font-medium italic border-t border-emerald-200/80 pt-2">
+            El botón de envío se mantendrá bloqueado hasta que comiences a diligenciar un formulario nuevo.
+          </p>
+        </div>
+
+        <!-- MENSAJE DE ERROR VISIBLE EN PANTALLA -->
+        <div id="postulacion-banner-error" class="hidden p-5 rounded-3xl bg-rose-50 border-2 border-rose-400 text-rose-950 shadow-lg space-y-2 transition-all">
+          <div class="flex items-start gap-3">
+            <div class="w-9 h-9 rounded-2xl bg-rose-600 text-white flex items-center justify-center flex-shrink-0 shadow-md">
+              <i data-lucide="alert-octagon" class="w-5 h-5 stroke-[2.5]"></i>
+            </div>
+            <div class="flex-1">
+              <h4 class="font-title font-black text-sm md:text-base text-rose-950">
+                Error al procesar la postulación
+              </h4>
+              <p id="postulacion-error-texto" class="text-xs text-rose-800 mt-0.5 font-medium leading-relaxed">
+                No se pudo conectar con el servidor.
+              </p>
+              <p class="text-[11px] text-rose-600 mt-1 font-semibold">
+                Tus datos no se han perdido. Por favor verifica tu conexión y presiona el botón para reintentar.
+              </p>
+            </div>
+          </div>
+        </div>
+
         <!-- BOTONES DE ACCIÓN DEL FORMULARIO -->
         <div class="pt-4 pb-12 flex flex-col sm:flex-row items-center justify-between gap-4">
           <button 
@@ -1211,12 +1255,18 @@ export const recruitmentClientCode = `
         return false;
       }
 
-      // Preparar estado de botón de envío
-      // 1. Deshabilitar botón de enviar mientras se procesa
+      // Preparar estado de botón de envío y banners
+      // (3) Mientras se envía, deshabilita el botón y cambia su texto a "Enviando..."
       const submitBtn = document.getElementById("btn-submit-postulacion");
       const submitText = document.getElementById("btn-submit-text");
       if (submitBtn) submitBtn.disabled = true;
-      if (submitText) submitText.textContent = "Enviando postulación...";
+      if (submitText) submitText.textContent = "Enviando...";
+
+      // Ocultar banners anteriores al iniciar nuevo intento
+      const bannerError = document.getElementById("postulacion-banner-error");
+      const bannerExito = document.getElementById("postulacion-banner-exito");
+      if (bannerError) bannerError.classList.add("hidden");
+      if (bannerExito) bannerExito.classList.add("hidden");
 
       // 2. Generar ID único usando crypto.randomUUID()
       const docId = typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
@@ -1262,21 +1312,68 @@ export const recruitmentClientCode = `
       };
 
       // 5. Enviar el POST una sola vez, sin reintentos automáticos
+      let isSuccess = false;
+      let responsePayload = null;
+      let errorMessage = "No se pudo conectar con el servidor.";
+
       try {
-        await fetch(webhookUrl, {
+        const response = await fetch(webhookUrl, {
           method: "POST",
-          mode: "no-cors",
           headers: { "Content-Type": "text/plain;charset=utf-8" },
           body: JSON.stringify(postPayload)
         });
+
+        if (response.ok) {
+          try {
+            const rawText = await response.text();
+            responsePayload = JSON.parse(rawText);
+          } catch (_) {
+            // Si el servidor respondió HTTP 200 pero la respuesta no fue JSON estricto
+            responsePayload = { ok: true, status: "success" };
+          }
+        } else {
+          errorMessage = "Error del servidor (HTTP " + response.status + ")";
+        }
+
+        if (responsePayload && (responsePayload.status === "success" || responsePayload.ok === true)) {
+          isSuccess = true;
+        } else if (responsePayload && (responsePayload.error || responsePayload.mensaje)) {
+          errorMessage = responsePayload.error || responsePayload.mensaje;
+        }
       } catch (gasErr) {
-        console.warn("Aviso al enviar a Apps Script:", gasErr);
+        console.warn("Fallo en la comunicación con Apps Script:", gasErr);
+        errorMessage = gasErr.message || "Error de conexión al enviar la postulación.";
       }
 
-      try {
-        // Restablecer botón de envío tras finalizar el proceso
-        if (submitBtn) submitBtn.disabled = false;
-        if (submitText) submitText.textContent = "Enviar mi postulación";
+      // Procesar resultado según éxito o fallo
+      if (isSuccess) {
+        // (1) Limpia TODOS los campos del formulario, incluida la foto y su vista previa
+        const formEl = document.getElementById("form-postulacion");
+        if (formEl) formEl.reset();
+        removeSelectedPhoto();
+
+        if (formEl) {
+          const textInputs = formEl.querySelectorAll('input[type="text"], input[type="number"], input[type="tel"], textarea');
+          textInputs.forEach(input => { input.value = ""; });
+          const radioInputs = formEl.querySelectorAll('input[type="radio"]');
+          radioInputs.forEach(radio => { radio.checked = false; });
+
+          const cards = formEl.querySelectorAll('[id^="q-card-"]');
+          cards.forEach(card => card.classList.remove("border-rose-400", "ring-2", "ring-rose-100"));
+          const errorMsgs = formEl.querySelectorAll('[id^="error-"]');
+          errorMsgs.forEach(err => err.classList.add("hidden"));
+        }
+        updateRecruitmentProgress();
+
+        // (2) Muestra un mensaje bien visible de "Postulación enviada con éxito" con el código del candidato
+        const candidateCode = (responsePayload && (responsePayload.codigo || responsePayload.id)) || docId;
+
+        if (bannerExito) {
+          const codeBanner = document.getElementById("postulacion-exito-codigo-banner");
+          if (codeBanner) codeBanner.textContent = candidateCode;
+          bannerExito.classList.remove("hidden");
+          bannerExito.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
 
         const modalIdEl = document.getElementById("modal-exito-id");
         const modalNombreEl = document.getElementById("modal-exito-nombre");
@@ -1286,7 +1383,7 @@ export const recruitmentClientCode = `
         const tieneFotoAdjunta = Boolean(fotoFinal);
         const fotoNombre = recruitmentState.selectedPhotoFile ? recruitmentState.selectedPhotoFile.name : (tieneFotoAdjunta ? "Adjunta" : "No adjunta");
 
-        if (modalIdEl) modalIdEl.textContent = docId;
+        if (modalIdEl) modalIdEl.textContent = candidateCode;
         if (modalNombreEl) modalNombreEl.textContent = nombre;
         if (modalTelEl) modalTelEl.textContent = telefono;
         if (modalFotoEl) modalFotoEl.textContent = tieneFotoAdjunta ? ("Sí (" + fotoNombre + ")") : "No adjunta";
@@ -1295,7 +1392,7 @@ export const recruitmentClientCode = `
         const msgWa = [
           "¡Hola Tour Azul! 👋 Deseo postularme a la convocatoria de tripulación:",
           "",
-          "📄 Código de postulación: *" + docId + "*",
+          "📄 Código de postulación: *" + candidateCode + "*",
           "👤 Nombre: " + nombre,
           "🎂 Edad: " + edad + " años",
           "📱 Teléfono/WhatsApp: " + telefono,
@@ -1319,24 +1416,54 @@ export const recruitmentClientCode = `
           modalExito.classList.add("flex");
         }
 
-        // Limpiar formulario y foto tras confirmación
-        const formEl = document.getElementById("form-postulacion");
-        if (formEl) formEl.reset();
-        removeSelectedPhoto();
-        updateRecruitmentProgress();
-
         if (window.lucide) lucide.createIcons();
         if (typeof showToastNotification === "function") {
-          showToastNotification("¡Postulación enviada y registrada con éxito!", "success");
+          showToastNotification("¡Postulación enviada con éxito! Código: " + candidateCode, "success");
         }
+
+        // (4) Después de enviar, el botón no se rehabilita hasta que el usuario empiece a llenar un formulario nuevo
+        if (submitBtn) submitBtn.disabled = true;
+        if (submitText) submitText.textContent = "Postulación enviada";
+
+        function enableOnNewFormFill() {
+          const bannerExito = document.getElementById("postulacion-banner-exito");
+          if (bannerExito) bannerExito.classList.add("hidden");
+
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            if (submitText) submitText.textContent = "Enviar mi postulación";
+          }
+
+          if (formEl) {
+            formEl.removeEventListener("input", enableOnNewFormFill);
+            formEl.removeEventListener("change", enableOnNewFormFill);
+          }
+        }
+
+        if (formEl) {
+          formEl.addEventListener("input", enableOnNewFormFill, { once: true });
+          formEl.addEventListener("change", enableOnNewFormFill, { once: true });
+        }
+
         return true;
-      } catch (errSubmit) {
-        console.error("Error al procesar la confirmación:", errSubmit);
+      } else {
+        // (5) Si falla, NO limpies los campos, muestra el error en pantalla y rehabilita el botón para reintentar
         if (submitBtn) submitBtn.disabled = false;
-        if (submitText) submitText.textContent = "Enviar mi postulación";
-        if (typeof showToastNotification === "function") {
-          showToastNotification("Hubo un inconveniente al procesar el envío: " + errSubmit.message, "error");
+        if (submitText) submitText.textContent = "Reintentar postulación";
+
+        if (bannerError) {
+          const errTxt = document.getElementById("postulacion-error-texto");
+          if (errTxt) {
+            errTxt.textContent = errorMessage || "No fue posible registrar la postulación en Google Sheets. Revisa la conexión.";
+          }
+          bannerError.classList.remove("hidden");
+          bannerError.scrollIntoView({ behavior: "smooth", block: "center" });
         }
+
+        if (typeof showToastNotification === "function") {
+          showToastNotification("Error al enviar postulación: " + errorMessage, "error");
+        }
+        if (window.lucide) lucide.createIcons();
         return false;
       }
     }
