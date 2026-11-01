@@ -191,12 +191,21 @@ export default function App() {
       setIsAdminView(true);
       window.history.pushState(null, '', '#/admin-candidatos');
       setValidandoLogin(false);
-      // Notificar al servidor en segundo plano si está disponible
+      // Notificar al servidor en segundo plano y registrar sesión en el backend
       fetch('/api/admin/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ password: pwd })
-      }).catch(() => {});
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data && data.token) {
+            sessionStorage.setItem('tour_azul_admin_token', data.token);
+            if (recordarSesion) localStorage.setItem('tour_azul_admin_token', data.token);
+            setAuthToken(data.token);
+          }
+        })
+        .catch(() => {});
       return;
     }
 

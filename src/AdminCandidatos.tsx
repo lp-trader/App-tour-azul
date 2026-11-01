@@ -208,18 +208,44 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack, onLogo
     try {
       const sep = targetUrl.includes('?') ? '&' : '?';
       const remoteUrl = `${targetUrl}${sep}accion=candidatos&_t=${Date.now()}`;
-      const respSheets = await fetch(remoteUrl);
-      if (!respSheets.ok) {
-        throw new Error(`Error de conexión HTTP ${respSheets.status}`);
+      let remotos: any[] = [];
+      let exitoDirecto = false;
+
+      try {
+        const respSheets = await fetch(remoteUrl);
+        if (respSheets.ok) {
+          const textSheets = await respSheets.text();
+          let json: any = null;
+          try { json = JSON.parse(textSheets); } catch (_) {}
+          if (json && json.status === 'success' && Array.isArray(json.data)) {
+            remotos = json.data;
+            exitoDirecto = true;
+          } else if (Array.isArray(json)) {
+            remotos = json;
+            exitoDirecto = true;
+          } else if (json && Array.isArray(json.candidatos)) {
+            remotos = json.candidatos;
+            exitoDirecto = true;
+          }
+        }
+      } catch (errDirect) {
+        console.warn("Aviso consultando Google Sheets directamente, intentando /api/candidatos:", errDirect);
       }
 
-      const textSheets = await respSheets.text();
-      let json: any = null;
-      try { json = JSON.parse(textSheets); } catch (_) {}
-      let remotos: any[] = [];
-      if (json && json.status === 'success' && Array.isArray(json.data)) remotos = json.data;
-      else if (Array.isArray(json)) remotos = json;
-      else if (json && Array.isArray(json.candidatos)) remotos = json.candidatos;
+      // Si la consulta directa al Apps Script no arrojó datos (por CORS, bloqueo de navegador o error), consultar vía backend
+      if (!exitoDirecto || remotos.length === 0) {
+        try {
+          const respApi = await fetch('/api/candidatos');
+          if (respApi.ok) {
+            const jsonApi = await respApi.json();
+            if (jsonApi && Array.isArray(jsonApi.candidatos)) {
+              remotos = jsonApi.candidatos;
+            }
+          }
+        } catch (errApi) {
+          console.warn("Aviso consultando /api/candidatos:", errApi);
+        }
+      }
 
       const listadoFinal: Candidato[] = remotos.map((r, idx) => {
         const cod = String(r.Código || r.codigo || r.id || `POST-${idx}`).trim();
@@ -268,8 +294,8 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack, onLogo
         // No hay registros aún en la hoja
       }
     } catch (errSheets) {
-      console.warn("Aviso consultando Google Sheets directamente:", errSheets);
-      setError('No se pudieron recuperar las postulaciones desde Google Apps Script. Verifica la conexión a internet o que el Webhook esté implementado con acceso "Cualquier usuario" (Anyone).');
+      console.warn("Aviso consultando candidatos:", errSheets);
+      setError('No se pudieron recuperar las postulaciones. Verifica la conexión a internet o que el Webhook esté implementado con acceso "Cualquier usuario" (Anyone).');
     } finally {
       if (!silencioso) setCargando(false);
       setActualizandoSilencioso(false);

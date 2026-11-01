@@ -44,6 +44,20 @@ function doGet(e) {
     // Asegurar estructura de las hojas requeridas
     inicializarHojasSiNoExisten(ss);
 
+    // 0. TEST DE CONECTIVIDAD (Para pruebas en vivo desde el panel admin)
+    if (accion === "test" || accion === "ping") {
+      const candidatos = obtenerCandidatosPostulaciones(ss);
+      return jsonResponse({
+        ok: true,
+        status: "success",
+        servicio: "Tour Azul Webhook Activo",
+        documento: ss.getName(),
+        pestana: "Postulaciones",
+        totalPostulaciones: candidatos.length,
+        timestamp: new Date().toISOString()
+      });
+    }
+
     // 1. OBTENER CANDIDATOS / POSTULACIONES (Para el panel de administración)
     // Soportado explícitamente con accion=candidatos o accion=postulaciones, o por defecto si no se indica accion
     if (accion === "candidatos" || accion === "postulaciones" || accion === "") {
