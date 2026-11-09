@@ -58,9 +58,8 @@ function doGet(e) {
       });
     }
 
-    // 1. OBTENER CANDIDATOS / POSTULACIONES (Para el panel de administración)
-    // Soportado explícitamente con accion=candidatos o accion=postulaciones, o por defecto si no se indica accion
-    if (accion === "candidatos" || accion === "postulaciones" || accion === "") {
+    // 1. OBTENER CANDIDATOS / POSTULACIONES
+    if (accion === "candidatos" || accion === "postulaciones") {
       const candidatos = obtenerCandidatosPostulaciones(ss);
       return jsonResponse({
         status: "success",
@@ -68,6 +67,30 @@ function doGet(e) {
         data: candidatos,
         postulaciones: candidatos,
         total: candidatos.length
+      });
+    }
+
+    // 1.1 OBTENER RESERVAS REGISTRADAS (Para el panel de administración)
+    if (accion === "reservas" || accion === "obtener_reservas") {
+      const reservas = obtenerReservasSheet(ss);
+      return jsonResponse({
+        status: "success",
+        ok: true,
+        data: reservas,
+        reservas: reservas,
+        total: reservas.length
+      });
+    }
+
+    // 1.2 OBTENER CLIENTES CONSOLIDADOS (Base General)
+    if (accion === "clientes" || accion === "base_general") {
+      const clientes = obtenerClientesBaseGeneral(ss);
+      return jsonResponse({
+        status: "success",
+        ok: true,
+        data: clientes,
+        clientes: clientes,
+        total: clientes.length
       });
     }
 
@@ -1431,6 +1454,133 @@ function obtenerParticipantesSorteoMes(ss) {
 }
 
 /**
+ * Obtiene todas las reservas registradas desde la hoja "Reservas"
+ */
+function obtenerReservasSheet(ss) {
+  const sheet = ss.getSheetByName("Reservas");
+  if (!sheet) return [];
+  const rows = sheet.getDataRange().getValues();
+  if (rows.length <= 1) return [];
+
+  const lista = [];
+  for (let i = 1; i < rows.length; i++) {
+    const r = rows[i];
+    const id = String(r[0] || ("RES-" + i)).trim();
+    const fechaReg = r[1] ? (r[1] instanceof Date ? Utilities.formatDate(r[1], Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm:ss") : String(r[1])) : "";
+    const nombre = String(r[2] || "").trim();
+    const cedula = String(r[3] || "").trim();
+    if (!id && !nombre) continue;
+
+    lista.push({
+      id: id,
+      idReserva: id,
+      fechaRegistro: fechaReg,
+      fecha: fechaReg,
+      nombre: nombre,
+      nombreTitular: nombre,
+      cedula: cedula,
+      edad: r[4] !== undefined ? r[4] : "",
+      telefono: String(r[5] || "").trim(),
+      recogida: String(r[6] || "").trim(),
+      puntoPartida: String(r[6] || "").trim(),
+      acompanantes: String(r[7] || "").trim(),
+      asientos: String(r[8] || "").trim(),
+      bus: String(r[9] || "Bus 1").trim(),
+      totalPersonas: Number(r[10]) || 1,
+      tipoPago: String(r[11] || "Pago Móvil").trim(),
+      abono: Number(r[12]) || 0,
+      abonoEur: Number(r[12]) || 0,
+      pendiente: Number(r[13]) || 0,
+      pendienteEur: Number(r[13]) || 0,
+      referencia: String(r[14] || "").trim(),
+      referenciaPagoMovil: String(r[14] || "").trim(),
+      destino: String(r[15] || "").trim(),
+      fechaViaje: r[16] ? (r[16] instanceof Date ? Utilities.formatDate(r[16], Session.getScriptTimeZone(), "yyyy-MM-dd") : String(r[16])) : "",
+      tasaBCV: Number(r[17]) || 0,
+      montoPagadoBs: Number(r[18]) || 0,
+      montoPagadoUsd: Number(r[19]) || 0,
+      estadoPago: String(r[20] || "Pendiente").trim()
+    });
+  }
+  return lista.reverse();
+}
+
+/**
+ * Obtiene lista general de clientes registrados o que han viajado desde la hoja "Base_General" o "Reservas"
+ */
+function obtenerClientesBaseGeneral(ss) {
+  const sheetBase = ss.getSheetByName("Base_General");
+  const clientesMap = {};
+
+  if (sheetBase && sheetBase.getLastRow() > 1) {
+    const rows = sheetBase.getDataRange().getValues();
+    for (let i = 1; i < rows.length; i++) {
+      const r = rows[i];
+      const cedula = String(r[3] || "").trim();
+      const nombre = String(r[2] || "").trim();
+      const telefono = String(r[4] || "").trim();
+      const destino = String(r[5] || "").trim();
+      const fechaViaje = String(r[6] || "").trim();
+      const estado = String(r[12] || "").trim();
+
+      const key = cedula ? cedula.toLowerCase() : (nombre.toLowerCase() + "_" + telefono);
+      if (!key) continue;
+
+      if (!clientesMap[key]) {
+        clientesMap[key] = {
+          cedula: cedula || "Sin cédula",
+          nombre: nombre,
+          telefono: telefono,
+          viajes: [],
+          totalViajes: 0,
+          ultimoDestino: destino,
+          ultimaFecha: fechaViaje,
+          estado: estado
+        };
+      }
+      if (destino) {
+        clientesMap[key].viajes.push({ destino: destino, fecha: fechaViaje, estado: estado });
+        clientesMap[key].totalViajes++;
+      }
+    }
+  }
+
+  // Complementar con hoja Reservas para garantizar clientes únicos
+  const sheetReservas = ss.getSheetByName("Reservas");
+  if (sheetReservas && sheetReservas.getLastRow() > 1) {
+    const rRows = sheetReservas.getDataRange().getValues();
+    for (let j = 1; j < rRows.length; j++) {
+      const row = rRows[j];
+      const cedula = String(row[3] || "").trim();
+      const nombre = String(row[2] || "").trim();
+      const telefono = String(row[5] || "").trim();
+      const destino = String(row[15] || "").trim();
+      const fechaViaje = String(row[16] || "").trim();
+      const estado = String(row[20] || "Confirmado").trim();
+
+      const key = cedula ? cedula.toLowerCase() : (nombre.toLowerCase() + "_" + telefono);
+      if (!key) continue;
+
+      if (!clientesMap[key]) {
+        clientesMap[key] = {
+          cedula: cedula || "Sin cédula",
+          nombre: nombre,
+          telefono: telefono,
+          viajes: [{ destino: destino, fecha: fechaViaje, estado: estado }],
+          totalViajes: 1,
+          ultimoDestino: destino,
+          ultimaFecha: fechaViaje,
+          estado: estado
+        };
+      }
+    }
+  }
+
+  const clientesList = Object.keys(clientesMap).map(k => clientesMap[k]);
+  return clientesList;
+}
+
+/**
  * Función auxiliar para responder JSON
  */
 function jsonResponse(data) {
@@ -1446,3 +1596,4 @@ function pad(num, size) {
   while (s.length < size) s = "0" + s;
   return s;
 }
+

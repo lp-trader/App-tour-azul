@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import AdminCandidatos from './AdminCandidatos';
+import AdminPanel from './AdminPanel';
 
 export default function App() {
   const [isAdminView, setIsAdminView] = useState<boolean>(() => {
@@ -109,6 +109,9 @@ export default function App() {
     window.addEventListener('open-admin-candidatos', handleCustomOpen);
 
     // Exponer globalmente para botones en HTML vanilla
+    (window as any).openAdminPanel = () => {
+      requestAdminAccess();
+    };
     (window as any).openAdminCandidatos = () => {
       requestAdminAccess();
     };
@@ -189,7 +192,7 @@ export default function App() {
       setIsAuthenticated(true);
       setShowPasswordModal(false);
       setIsAdminView(true);
-      window.history.pushState(null, '', '#/admin-candidatos');
+      window.history.pushState(null, '', '#/admin');
       setValidandoLogin(false);
       // Notificar al servidor en segundo plano y registrar sesión en el backend
       fetch('/api/admin/login', {
@@ -210,7 +213,6 @@ export default function App() {
     }
 
     try {
-      // Para otras claves o servidores personalizados, verificar con backend
       const res = await fetch('/api/admin/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -227,7 +229,7 @@ export default function App() {
         setIsAuthenticated(true);
         setShowPasswordModal(false);
         setIsAdminView(true);
-        window.history.pushState(null, '', '#/admin-candidatos');
+        window.history.pushState(null, '', '#/admin');
       } else {
         setPasswordError((data && data.error) || 'Clave incorrecta. Solo el administrador tiene acceso a este panel.');
       }
@@ -241,7 +243,7 @@ export default function App() {
   // Si está autenticado y en vista admin, renderizar panel
   if (isAdminView && isAuthenticated) {
     return (
-      <AdminCandidatos 
+      <AdminPanel 
         onBack={handleCloseAdmin} 
         onLogout={handleLogout} 
         authToken={authToken} 
@@ -255,15 +257,15 @@ export default function App() {
       <div className="fixed bottom-5 left-5 z-50">
         <button
           type="button"
-          id="btn-flotante-admin-candidatos"
+          id="btn-flotante-admin-panel"
           onClick={requestAdminAccess}
-          className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-2xl bg-gradient-to-r from-blue-700 to-sky-600 hover:from-blue-800 hover:to-sky-700 text-white font-bold text-xs sm:text-sm shadow-xl hover:shadow-2xl border-2 border-white/60 backdrop-blur-md transition-all active:scale-95 cursor-pointer group"
-          title="Abrir Panel de Administración (Requiere clave de admin validada en servidor)"
+          className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-2xl bg-gradient-to-r from-blue-700 via-sky-600 to-blue-800 hover:from-blue-800 hover:to-sky-700 text-white font-bold text-xs sm:text-sm shadow-xl hover:shadow-2xl border-2 border-white/60 backdrop-blur-md transition-all active:scale-95 cursor-pointer group"
+          title="Abrir Panel de Administración Tour Azul (Noviembre & Clientes)"
         >
           <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 group-hover:scale-125 transition-transform animate-pulse"></span>
           <span className="text-sm">🛡️</span>
-          <span>Panel Candidatos</span>
-          <span className="text-[10px] bg-white/20 px-1.5 py-0.5 rounded-md font-mono hidden sm:inline">Admin</span>
+          <span>Panel Admin</span>
+          <span className="text-[10px] bg-white/20 px-1.5 py-0.5 rounded-md font-mono hidden sm:inline">Viajes & Clientes</span>
         </button>
       </div>
 

@@ -1,372 +1,395 @@
-// Data for Tour Azul trips with actual user uploaded images, descriptions, and full item inclusions
+// Data for Tour Azul November trips with updated destinations, prices in REF, inclusions and images
 export const TRIPS = [
   {
-    id: "cayo-muerto",
-    destino: "Cayo Muerto",
-    precio: 23,
-    tipo: "FULL DAY",
-    imagenUrl: "/cayo-muerto.jpg",
-    descripcion: "¡El cayo con más vida y palmeras de la zona! Es súper cerquita del malecón, así que en pocos minutos estarás con los pies en el agua cristalina como una piscina natural gigante ✨.",
-    salidas: [
-      { fecha: "2026-10-18", fechaTexto: "Domingo 18 de octubre", buses: ["Bus 1"] }
-    ],
-    detalles: [
-      "🚍 Traslado ida y vuelta en bus con aire acondicionado",
-      "🚤 Traslado rápido en lancha",
-      "🌴 Sombra natural y uso de su vegetación y palmeras",
-      "🧊 Logística: Cava con hielo",
-      "🤳🏽 Registro fotográfico",
-      "⛑️ Kit de primeros auxilios",
-      "🥨 Snack",
-      "🎁 Sorpresas en el bus",
-      "🎟️ Brazalete identificativo",
-      "🏐 Juegos playeros (balones y raquetas de playa)"
-    ]
-  },
-  {
-    id: "varadero",
-    destino: "Varadero",
-    precio: 25,
-    tipo: "FULL DAY",
-    imagenUrl: "/varadero.jpg",
-    descripcion: "Una de las mejores elecciones en Falcón, destacando porque sus aguas tienen olas suaves, bajitas y de un azul increíble.",
-    salidas: [
-      { fecha: "2026-10-18", fechaTexto: "Domingo 18 de octubre", buses: ["Bus 1"] }
-    ],
-    detalles: [
-      "🚍 Traslado en bus con aire acondicionado",
-      "⛵ Traslado en lancha (saliendo desde el malecón de Chichiriviche)",
-      "🏖️ Día de playa premium con guías turísticos",
-      "🥤 Hidratación: Cava con hielo",
-      "🥨 Snack",
-      "🤳🏽 Registro fotográfico",
-      "🏓 Juegos playeros (balones y raquetas de playa)",
-      "🎟️ Brazalete identificativo",
-      "🎁 Sorpresas en el bus"
-    ]
-  },
-  {
-    id: "cayo-azul-360",
-    destino: "Cayo Azul + 360",
-    precio: 27,
-    tipo: "FULL DAY",
-    imagenUrl: "/cayo-azul.jpg",
-    descripcion: "Uno de los destinos favoritos porque es mucho más tranquilo y exclusivo, con aguas tan turquesas y arena tan blanca que te vas a sentir en una postal ideal para huir de las multitudes, sumando la experiencia de estar en medio del océano en Bajo 360.",
-    salidas: [
-      { fecha: "2026-10-25", fechaTexto: "Domingo 25 de octubre", buses: ["Bus 1"] }
-    ],
-    detalles: [
-      "🚍 Traslado en bus con aire acondicionado",
-      "🛥️ Traslado marítimo en lancha rápida hacia el cayo",
-      "🏝️ Estadía en Cayo Azul (zona más cristalina)",
-      "🌊 Paseo y parada especial en Bajo 360",
-      "📸 Registro fotográfico",
-      "🧊 Cava full equipo (hidratación y hielo)",
-      "🎟️ Brazalete identificador",
-      "🥨 Snack",
-      "🏐 Juegos playeros (balones y raquetas de playa)",
-      "⛑️ Kit de primeros auxilios",
-      "🎁 Sorpresas en el bus"
-    ]
-  },
-  {
-    id: "colonia-tovar",
-    destino: "Colonia Tovar Oktoberfest",
-    precio: 30,
-    tipo: "FULL DAY",
-    imagenUrl: "/colonia-tovar.jpg",
-    descripcion: "El viaje perfecto para cambiar el calor por el clima fresquito de nuestra “Alemania del Caribe” para comer rico, caminar entre flores y traerse las mejores fresas con crema.",
-    salidas: [
-      { fecha: "2026-10-10", fechaTexto: "Sábado 10 de octubre", buses: ["Bus 1"] },
-      { fecha: "2026-10-11", fechaTexto: "Domingo 11 de octubre", buses: ["Bus 1"] }
-    ],
-    detalles: [
-      "📸 Vistas increíbles en paradas de miradores",
-      "🛍️ Tiempo de compras (pan artesanal, artesanías, salsas, mermeladas y frutas)",
-      "🙋‍♀️ Guía y logística",
-      "💦 Agua para llenar el termo",
-      "🥨 Snack",
-      "🤳🏽 Registro fotográfico",
-      "🎁 Sorpresas en el bus",
-      "🚍 Autobús con aire, asientos reclinables y wifi"
-    ]
-  },
-  {
-    id: "cayo-sombrero-juanes",
-    destino: "Cayo Sombrero + Juanes",
-    precio: 30,
-    tipo: "FULL DAY",
-    destacado: true,
-    imagenUrl: "/cayo-sombrero.jpg",
-    descripcion: "Es el cayo más icónico de todo el parque nacional, famoso por sus aguas color turquesa y ese bosque de palmeras gigante que te da la sombra perfecta. Si quieres vivir la experiencia completa de Morrocoy, ¡este es el lugar! 🏝️✨",
-    salidas: [
-      { fecha: "2026-10-10", fechaTexto: "Sábado 10 de octubre", buses: ["Bus 1"] }
-    ],
-    detalles: [
-      "🚍 Traslado en bus con aire acondicionado",
-      "⛵ Traslado en lancha (saliendo desde el malecón de Chichiriviche)",
-      "🏖️ Día de playa premium con atención de guías turísticos",
-      "🥤 Hidratación: Cava con hielo para mantener las bebidas frías",
-      "🥨 Snack",
-      "🤳🏽 Registro fotográfico",
-      "🏓 Juegos playeros (balones y raquetas de playa)",
-      "🎟️ Brazalete identificativo",
-      "🎁 Sorpresas en el bus",
-      "🚤 30 minutos en Los Juanes"
-    ]
-  },
-  {
-    id: "cayo-sal",
+    id: "cayo-sal-7-nov",
     destino: "Cayo Sal",
     precio: 24,
     tipo: "FULL DAY",
     imagenUrl: "/cayo-sal.jpg",
-    descripcion: "Uno de los cayos más emblemáticos de Chichiriviche por su agua cristalina y esa brisa increíble que te hace olvidar el estrés, incluyendo una visita a la famosa salina que está justo detrás.",
+    descripcion: "Uno de los cayos más emblemáticos de Chichiriviche por su agua cristalina, suave oleaje y la icónica salina en la parte posterior para relajarte y tomar fotos increíbles.",
     salidas: [
-      { fecha: "2026-10-11", fechaTexto: "Domingo 11 de octubre", buses: ["Bus 1"] },
-      { fecha: "2026-10-31", fechaTexto: "Sábado 31 de octubre", buses: ["Bus 1"] }
+      { fecha: "2026-11-07", fechaTexto: "Sábado 7 de noviembre", buses: ["Bus 1"] }
     ],
     detalles: [
-      "🚍 Transporte ida y vuelta con aire acondicionado",
-      "🚤 Traslado en lancha (salida rápida desde el malecón de Chichiriviche)",
-      "📸 Visita a la Salina y exfoliación con arcilla",
-      "🧊 Atención VIP: Cava con hielo, agua y guías a disposición",
-      "🤳🏽 Registro fotográfico",
-      "🥨 Snack",
+      "🚍 Traslado ida y vuelta en unidad con aire acondicionado",
+      "🚤 Traslado marítimo en lancha rápida",
+      "🏖️ Día de playa en Cayo Sal con guías turísticos",
+      "📸 Visita a la Salina natural para fotos espectaculares",
+      "🧊 Cava con hielo e hidratación continua",
+      "🥨 Snack a bordo",
+      "🎟️ Brazalete identificativo Tour Azul",
+      "🏓 Juegos playeros y dinámicas",
+      "🎁 Sorpresas y rifas durante el viaje",
+      "⛑️ Botiquín de primeros auxilios"
+    ]
+  },
+  {
+    id: "varadero-7-nov",
+    destino: "Varadero",
+    precio: 25,
+    tipo: "FULL DAY",
+    imagenUrl: "/varadero.jpg",
+    descripcion: "Una de las playas más hermosas de Falcón, famosa por sus aguas turquesas poco profundas, olas suaves y un ambiente caribeño ideal para toda la familia.",
+    salidas: [
+      { fecha: "2026-11-07", fechaTexto: "Sábado 7 de noviembre", buses: ["Bus 1"] }
+    ],
+    detalles: [
+      "🚍 Traslado en bus con aire acondicionado ida y vuelta",
+      "⛵ Traslado en lancha saliendo desde el malecón",
+      "🏖️ Día de playa premium en Varadero",
+      "🥤 Hidratación continua: Cava con hielo",
+      "🥨 Snack viajero",
+      "🤳🏽 Registro fotográfico con nuestros guías",
+      "🏓 Juegos playeros (balones y raquetas)",
       "🎟️ Brazalete identificativo",
-      "🏐 Juegos playeros (balones y raquetas de playa)",
       "🎁 Sorpresas en el bus"
     ]
   },
   {
-    id: "cayo-azul",
-    destino: "Cayo Azul",
+    id: "cayo-azul-360-8-nov",
+    destino: "Cayo Azul + 360",
     precio: 27,
     tipo: "FULL DAY",
-    etiquetaEspecial: "FERIADO",
+    destacado: true,
     imagenUrl: "/cayo-azul.jpg",
-    descripcion: "Uno de los destinos favoritos porque es mucho más tranquilo y exclusivo, con aguas tan turquesas y arena tan blanca que te vas a sentir en una postal ideal para huir de las multitudes.",
+    descripcion: "Uno de los destinos más cotizados por su exclusividad, aguas súper turquesas y la inigualable experiencia de caminar en medio del océano en Bajo 360.",
     salidas: [
-      { fecha: "2026-10-12", fechaTexto: "Lunes 12 de octubre (FERIADO)", buses: ["Bus 1"] },
-      { fecha: "2026-11-01", fechaTexto: "Domingo 1 de noviembre", buses: ["Bus 1"] }
+      { fecha: "2026-11-08", fechaTexto: "Domingo 8 de noviembre", buses: ["Bus 1"] }
     ],
     detalles: [
       "🚍 Traslado en bus con aire acondicionado",
-      "🛥️ Traslado privado: Navegación en peñero hacia el cayo",
-      "🏝️ Estadía en Cayo Sur (zona más cristalina)",
-      "📸 Registro fotográfico",
-      "🧊 Cava full equipo (hidratación y hielo)",
-      "🎟️ Brazalete identificador",
-      "🥨 Snack",
-      "🏐 Juegos playeros (balones y raquetas de playa)",
-      "⛑️ Kit de primeros auxilios",
-      "🎁 Sorpresas en el bus"
-    ]
-  },
-  {
-    id: "isla-larga",
-    destino: "Isla Larga + Tour Pto. Cabello",
-    precio: 31,
-    tipo: "FULL DAY",
-    imagenUrl: "/isla-larga.jpg",
-    descripcion: "Un destino fascinante no solo por su agua cristalina y arena blanca, sino porque es el lugar perfecto para los amantes del snorkel gracias a sus famosos barcos hundidos.",
-    salidas: [
-      { fecha: "2026-10-17", fechaTexto: "Sábado 17 de octubre", buses: ["Bus 1"] }
-    ],
-    detalles: [
-      "🚍 Traslado en bus con aire acondicionado",
-      "🛥️ Traslado en peñero (salida desde Puerto Cabello)",
-      "🤿 Snorkel adventure para explorar arrecifes y barcos hundidos",
-      "🤳🏽 Registro fotográfico",
-      "🎟️ Brazalete identificativo",
-      "⛴️ Expedición al barco hundido",
-      "🎁 Sorpresas en el bus",
-      "🏐 Juegos playeros (balones y raquetas de playa)",
-      "🧊 Logística completa (cava con hielo, agua y atención personalizada)",
-      "🥨 Snack",
+      "🛥️ Navegación en lancha rápida hacia el cayo",
+      "🏝️ Estadía en Cayo Azul (aguas cristalinas y arena blanca)",
+      "🌊 Parada especial y chapuzón en Bajo 360",
+      "📸 Registro fotográfico profesional",
+      "🧊 Cava con hielo y agua purificada",
+      "🎟️ Brazalete identificador Tour Azul",
+      "🥨 Snack a bordo",
+      "🏐 Juegos playeros y actividades grupales",
       "⛑️ Kit de primeros auxilios"
     ]
   },
   {
-    id: "cepe-chuao",
-    destino: "Cepe + Chuao Full Day",
-    precio: 45,
+    id: "cayo-sombrero-8-nov",
+    destino: "Cayo Sombrero",
+    precio: 30,
     tipo: "FULL DAY",
-    imagenUrl: "/cepe.jpg",
-    descripcion: "Un Full Day repotenciado, lleno de aventura, cultura, playa y mucha diversión para conocer 3 joyas en un solo viaje: Chuao, Cepe y Puerto Escondido.",
+    destacado: true,
+    imagenUrl: "/cayo-sombrero.jpg",
+    descripcion: "El cayo más icónico de todo Morrocoy con su inmenso bosque de palmeras, arena blanquísima y piscinas naturales turquesas. ¡La postal perfecta del Caribe venezolano!",
     salidas: [
-      { fecha: "2026-10-17", fechaTexto: "Sábado 17 de octubre", buses: ["Bus 1"] }
+      { fecha: "2026-11-08", fechaTexto: "Domingo 8 de noviembre", buses: ["Bus 1"] }
     ],
     detalles: [
-      "🚌 Traslado ida y vuelta en autobús con aire y Wi-Fi",
-      "🚤 Traslados en lancha hacia Chuao, Cepe y Puerto Escondido",
-      "🍫 Ruta & Charla del Cacao en Chuao (con paseo en camión)",
-      "🥽 Paseo y tiempo de playa en Cepe y Puerto Escondido",
-      "🥤 Hidratación continua y hielo durante todo el viaje",
-      "🚿 Acceso a duchas para un retorno cómodo",
+      "🚍 Autobús ejecutivo con aire acondicionado",
+      "⛵ Traslado náutico ida y vuelta",
+      "🌴 Sombra natural entre las palmeras de Cayo Sombrero",
+      "🏖️ Atención personalizada de guías de Tour Azul",
+      "🧊 Cava con abundante hielo",
+      "🥨 Snack viajero",
+      "🤳🏽 Cobertura y fotografías del viaje",
+      "🏓 Raquetas y balones playeros",
+      "🎟️ Brazalete de identificación",
+      "🎁 Rifas y sorpresas en el bus"
+    ]
+  },
+  {
+    id: "choroni-fd-14-nov",
+    destino: "Full Day Choroní",
+    precio: 35,
+    tipo: "FULL DAY",
+    imagenUrl: "/choroni.jpg",
+    descripcion: "Cruza la selva nublada de Henri Pittier para llegar al pintoresco pueblo de Puerto Colombia y relajarte en las cálidas olas y cocoteros de Playa Grande.",
+    salidas: [
+      { fecha: "2026-11-14", fechaTexto: "Sábado 14 de noviembre", buses: ["Bus 1"] }
+    ],
+    detalles: [
+      "🚍 Transporte ida y vuelta con aire acondicionado",
+      "🌴 Día completo en Playa Grande Choroní",
+      "🏘️ Paseo por el malecón de Puerto Colombia",
+      "🧊 Cava con hielo durante el viaje",
+      "🥨 Snack de bienvenida",
       "📸 Registro fotográfico",
-      "🎁 Rifas, sorpresas y dinámicas a bordo",
-      "🙋‍♂️ Guías turísticos",
-      "🎟️ Brazalete identificativo"
+      "🙋‍♂️ Guías coordinadores de Tour Azul",
+      "🎟️ Brazalete identificativo",
+      "⛑️ Botiquín de primeros auxilios"
     ]
   },
   {
-    id: "oktoberfest-yaracuy",
-    destino: "Oktoberfest en Yaracuy",
-    precio: 16,
+    id: "cayo-muerto-14-nov",
+    destino: "Cayo Muerto",
+    precio: 23,
     tipo: "FULL DAY",
-    imagenUrl: "/oktoberfest-yaracuy.jpg",
-    descripcion: "Una súper fiesta al aire libre en Yaracuy donde la buena música, la mejor vibra, stands de cervezas, embutidos y salchichas tradicionales alemanas son los protagonistas.",
+    imagenUrl: "/cayo-muerto.jpg",
+    descripcion: "El cayo con más palmeras y vida marina a pocos minutos de Chichiriviche. Ideal para nadar en aguas tranquilas como una gigantesca piscina natural.",
     salidas: [
-      { fecha: "2026-10-24", fechaTexto: "Sábado 24 de octubre", buses: ["Bus 1"] }
-    ],
-    detalles: [
-      "🚌 Traslado cómodo ida y vuelta desde Barquisimeto",
-      "🎟️ Entrada al parque Antigua Misión",
-      "🎟️ Entrada oficial al Oktoberfest",
-      "💧 Hidratación continua (agua)",
-      "🧊 Hielo para las bebidas durante el viaje",
-      "🙋‍♂️ Acompañamiento, fotos y logística del equipo"
-    ]
-  },
-  {
-    id: "boca-seca-360",
-    destino: "Boca Seca + 360",
-    precio: 27,
-    tipo: "FULL DAY",
-    imagenUrl: "/boca-seca.jpg",
-    descripcion: "El combo perfecto para un día épico visitando Cayo Boca Seca (aguas tranquilas, arena blanca y ambiente caribeño) y Bajo 360 (estar en medio del océano con el agua a la cintura y vista de 360 grados).",
-    salidas: [
-      { fecha: "2026-10-24", fechaTexto: "Sábado 24 de octubre", buses: ["Bus 1"] }
+      { fecha: "2026-11-14", fechaTexto: "Sábado 14 de noviembre", buses: ["Bus 1"] }
     ],
     detalles: [
       "🚍 Traslado ida y vuelta en bus con aire acondicionado",
       "🚤 Traslado rápido en lancha",
-      "🌊 Parada en Bajo 360 con agua a la cintura",
-      "🌴 Sombra natural (vegetación y palmeras)",
+      "🌴 Amplia vegetación y sombra natural de palmeras",
       "🧊 Logística: Cava con hielo",
-      "🤳🏽 Registro fotográfico",
-      "⛑️ Kit de primeros auxilios",
       "🥨 Snack",
-      "🎁 Sorpresas en el bus",
+      "🤳🏽 Sesión de fotos grupales e individuales",
+      "🏓 Juegos playeros",
       "🎟️ Brazalete identificativo",
-      "🏐 Juegos playeros (balones y raquetas de playa)"
+      "🎁 Dinámicas y sorpresas a bordo"
     ]
   },
   {
-    id: "isnotu-virgen",
-    destino: "Isnotú + Virgen de La Paz",
-    precio: 26,
+    id: "preferia-chinita-15-nov",
+    destino: "Preferia de La Chinita",
+    precio: 38,
     tipo: "FULL DAY",
-    imagenUrl: "/isnotu.jpg",
-    descripcion: "Una experiencia espiritual y llena de paz visitando el Santuario del primer santo, el Dr. José Gregorio Hernández, en Isnotú, y el imponente Monumento a la Virgen de La Paz en Trujillo 🙏✨.",
+    destacado: true,
+    imagenUrl: "/la-chinita.jpg",
+    descripcion: "¡Vive el fervor y la alegría zuliana! Visita a la Basílica de Nuestra Señora de Chiquinquirá, encendido de luces en Bella Vista, gaitas en vivo, rica gastronomía maracucha y ambiente festivo inigualable.",
     salidas: [
-      { fecha: "2026-10-25", fechaTexto: "Domingo 25 de octubre", buses: ["Bus 1"] }
+      { fecha: "2026-11-15", fechaTexto: "Domingo 15 de noviembre", buses: ["Bus 1"] }
     ],
     detalles: [
-      "☕ Café y snack de cortesía en la mañana",
-      "🚌 Bus turístico con aire acondicionado",
-      "💧 Hidratación durante el recorrido",
-      "👩🏻‍💼 Guías turísticos",
-      "🎟️ Brazalete identificativo",
-      "🎁 Rifas en el camino"
+      "🚍 Traslado ejecutivo ida y vuelta con aire acondicionado",
+      "⛪ Visita y entrada a la Basílica de la Chiquinquirá",
+      "✨ Recorrido por el Encendido de Luces de la Feria",
+      "🪘 Ambiente de gaitas y fiesta zuliana tradicional",
+      "🥪 Snack y parada gastronómica marabina",
+      "🧊 Cava con hielo e hidratación continua",
+      "📸 Cobertura fotográfica en puntos emblemáticos",
+      "🙋‍♂️ Guías acompañantes y logística Tour Azul",
+      "🎟️ Brazalete de viajero"
     ]
   },
   {
-    id: "tour-choroni",
-    destino: "Tour Choroní (2 días)",
-    precio: 85,
-    tipo: "2 DÍAS",
-    imagenUrl: "/choroni.jpg",
-    descripcion: "Un recorrido por su colorido pueblo, playas magníficas, casitas de colores, pescadores amables y cultura única (incluyendo Playa Grande, Tinikijima, el malecón y el Mirador El Cristo).",
-    salidas: [
-      { fecha: "2026-10-24", fechaTexto: "Del 24 al 25 de octubre", buses: ["Bus 1", "Bus 2"] }
-    ],
-    detalles: [
-      "🚌 Transporte privado con aire acondicionado (ida y vuelta)",
-      "🛏️ Hospedaje 2 días y 1 noche",
-      "🏊 Piscina en el establecimiento de hospedaje",
-      "🧊 Cava con hielo",
-      "🍳 1 Desayuno (del día sábado)",
-      "📸 Registro fotográfico",
-      "📦 Caja con materiales de recreación",
-      "⛑️ Kit de primeros auxilios",
-      "🎁 Rifas",
-      "🙋‍♂️ Guiatura turística"
-    ]
-  },
-  {
-    id: "crazy-bus-halloween",
-    destino: "Crazy Bus Halloween 🎃",
-    precio: 19,
-    tipo: "FULL DAY",
-    etiquetaEspecial: "🎃 Halloween",
-    imagenUrl: "/halloween.jpg",
-    descripcion: "La noche más terroríficamente divertida del año con un recorrido temático por Barquisimeto y parada en 3 locales nocturnos emblemáticos de la ciudad 🍹🎉.",
-    salidas: [
-      { fecha: "2026-10-30", fechaTexto: "Viernes 30 de octubre", buses: ["Bus 1"] }
-    ],
-    detalles: [
-      "🍺 1 Cerveza de bienvenida en cada uno de los 3 sitios nocturnos",
-      "🚌 Rumba & fiesta continua a bordo",
-      "🎤 Karaoke en vivo y animación durante todo el recorrido",
-      "🎭 Hora loca temática + shows e interacción en vivo",
-      "🏆 Premios espectaculares a los mejores disfraces de la noche",
-      "🙋‍♂️ Guía y acompañamiento con el equipo",
-      "🔒 Seguridad y logística garantizada"
-    ]
-  },
-  {
-    id: "cayo-las-animas",
-    destino: "Cayo Las Animas",
+    id: "cayo-boca-seca-15-nov",
+    destino: "Cayo Boca Seca",
     precio: 27,
     tipo: "FULL DAY",
-    imagenUrl: "/cayo-las-animas.jpg",
-    descripcion: "Una escapada exclusiva hacia un cayo virgen, privado y casi secreto, ideal para quienes buscan tranquilidad, belleza natural y cero multitud.",
+    imagenUrl: "/boca-seca.jpg",
+    descripcion: "Un cayo espectacular con aguas apacibles, arena dorada, muelles de madera y una brisa caribeña insuperable. Perfecto para desconectarse y descansar.",
     salidas: [
-      { fecha: "2026-11-01", fechaTexto: "Domingo 1 de noviembre", buses: ["Bus 1"] }
+      { fecha: "2026-11-15", fechaTexto: "Domingo 15 de noviembre", buses: ["Bus 1"] }
     ],
     detalles: [
-      "🏝️ Exclusividad y privacidad total en cayo virgen",
-      "🥽 Snorkel",
-      "🚤 Lanchas con chaleco salvavidas",
-      "🙋‍♂️ Guías turísticos",
-      "📸 Paisajes de postal",
-      "🎁 Rifas",
-      "🛜 Traslado con aire y wifi",
-      "✨ Registro fotográfico",
-      "🎟️ Brazalete",
-      "💦 Hielo e hidratación",
-      "🏐 Pelotas y raquetas"
+      "🚍 Traslado ida y vuelta en autobús con aire acondicionado",
+      "🚤 Traslado en lancha hacia Cayo Boca Seca",
+      "🏖️ Día de playa completo con atención personalizada",
+      "🧊 Cava con hielo y agua fresca",
+      "🥨 Snack a bordo",
+      "🤳🏽 Fotos del viaje",
+      "🏓 Juegos y balones playeros",
+      "🎟️ Brazalete identificativo",
+      "⛑️ Primeros auxilios"
     ]
   },
   {
-    id: "tour-merida",
-    destino: "Tour Mérida Teleférico (2 días)",
-    precio: 85,
-    tipo: "2 DÍAS",
-    imagenUrl: "/merida.jpg",
-    descripcion: "Una experiencia inolvidable en la región andina combinando la ciudad de Mérida, el Sistema Teleférico Mukumbarí y la Ruta de Patrimonios (Capilla de Piedra, Pico El Águila, Laguna Mucubají, entre otros).",
+    id: "hacienda-santa-teresa-21-nov",
+    destino: "Hacienda Santa Teresa",
+    precio: 38,
+    tipo: "FULL DAY",
+    destacado: true,
+    imagenUrl: "/hacienda-santa-teresa.jpg",
+    descripcion: "Conoce la cuna del mejor ron de Venezuela en El Consejo, Aragua. Paseo en el tren colonial, callejón de chaguaramos centenarios, cata de ron, historia y la famosa bodega de añejamiento.",
     salidas: [
-      { fecha: "2026-10-31", fechaTexto: "Del 31 de octubre al 1 de noviembre", buses: ["Bus 1"] }
+      { fecha: "2026-11-21", fechaTexto: "Sábado 21 de noviembre", buses: ["Bus 1"] }
     ],
     detalles: [
-      "🚌 Transporte cómodo ida y vuelta",
-      "🛏️ Hospedaje en acogedora posada",
-      "🍴 Alimentación: 2 desayunos y 1 cena",
-      "🔰 Guiatura personalizada durante todo el recorrido",
-      "👩🏻‍⚕️ Paramédico acompañante",
-      "📸 Registro fotográfico",
-      "🎁 Rifas sorpresa para los viajeros"
+      "🚍 Autobús de turismo con aire acondicionado",
+      "🎟️ Acceso a la Hacienda Santa Teresa",
+      "🚂 Paseo en el tren histórico de la hacienda",
+      "🥃 Recorrido guiado por la destilería y bodegas de añejamiento",
+      "🌴 Caminata por el icónico callejón de Chaguaramos",
+      "📸 Sesión de fotos en los jardines y casona colonial",
+      "🧊 Hidratación y cava con hielo",
+      "🥨 Snack matutino",
+      "🙋‍♂️ Guías turísticos Tour Azul",
+      "🎟️ Brazalete identificativo"
+    ]
+  },
+  {
+    id: "viaje-belleza-21-22-nov",
+    destino: "Viaje de Belleza (Fin de Semana)",
+    precio: 60,
+    tipo: "2 DÍAS",
+    destacado: true,
+    imagenUrl: "/viaje-de-belleza.jpg",
+    descripcion: "Una experiencia renovadora de 2 días dedicada al bienestar, relajación, cuidado personal y paisajes de ensueño. Spa, piscina, yoga, talleres de cuidado facial y descanso absoluto.",
+    salidas: [
+      { fecha: "2026-11-21", fechaTexto: "Sábado 21 y Domingo 22 de noviembre", buses: ["Bus 1"] }
+    ],
+    detalles: [
+      "🚌 Traslado ida y vuelta en unidad ejecutiva de lujo",
+      "🛏️ 1 Noche de hospedaje en posada/resort de descanso",
+      "💆‍♀️ Actividades de relajación, bienestar y cuidado personal",
+      "🏊‍♀️ Acceso a piscinas e instalaciones recreativas",
+      "🥐 Desayuno incluido el día domingo",
+      "🧊 Hidratación continua y estaciones de té/frutas",
+      "📸 Sesión fotográfica profesional de recuerdo",
+      "🎁 Kit especial de obsequio de belleza",
+      "🙋‍♀️ Guías y coordinadoras de bienestar"
+    ]
+  },
+  {
+    id: "colonia-tovar-22-nov",
+    destino: "Colonia Tovar",
+    precio: 30,
+    tipo: "FULL DAY",
+    imagenUrl: "/colonia-tovar.jpg",
+    descripcion: "El rincón alemán del Caribe venezolano. Disfruta de un clima fresco de montaña, arquitectura de madera alpina, ricas fresas con crema, salchichas tradicionales y compras artesanales.",
+    salidas: [
+      { fecha: "2026-11-22", fechaTexto: "Domingo 22 de noviembre", buses: ["Bus 1"] }
+    ],
+    detalles: [
+      "🚍 Autobús con aire acondicionado, asientos reclinables y música",
+      "📸 Paradas en miradores panorámicos de la cordillera",
+      "🍓 Tiempo libre para fresas con crema y gastronomía típica",
+      "🛍️ Compras de pan artesanal, galletas, mermeladas y chocolates",
+      "🙋‍♀️ Guiatura y logística del equipo",
+      "🧊 Agua y hielo disponible",
+      "🥨 Snack a bordo",
+      "🤳🏽 Registro fotográfico",
+      "🎁 Dinámicas y rifas a bordo"
+    ]
+  },
+  {
+    id: "cayo-sal-28-nov",
+    destino: "Cayo Sal",
+    precio: 24,
+    tipo: "FULL DAY",
+    imagenUrl: "/cayo-sal.jpg",
+    descripcion: "Despide noviembre con una escapada revitalizante al mar. Aguas turquesas transparentes, visita a la salina y el mejor ambiente caribeño de Morrocoy.",
+    salidas: [
+      { fecha: "2026-11-28", fechaTexto: "Sábado 28 de noviembre", buses: ["Bus 1"] }
+    ],
+    detalles: [
+      "🚍 Traslado en bus con aire acondicionado",
+      "🚤 Lancha rápida hacia Cayo Sal",
+      "🏖️ Día completo de playa y descanso",
+      "📸 Exfoliación natural en la salina y fotos",
+      "🧊 Cava con hielo y agua",
+      "🥨 Snack",
+      "🎟️ Brazalete identificativo",
+      "🏐 Balones y raquetas de playa",
+      "🎁 Sorpresas en el bus"
+    ]
+  },
+  {
+    id: "adicora-medanos-28-nov",
+    destino: "Adícora + Médanos de Coro",
+    precio: 33,
+    tipo: "FULL DAY",
+    destacado: true,
+    imagenUrl: "/adicora-medanos.jpg",
+    descripcion: "La combinación perfecta entre las inmensas dunas doradas del Parque Nacional Médanos de Coro y las playas caribeñas de Adícora en la península de Paraguaná con su cálida brisa.",
+    salidas: [
+      { fecha: "2026-11-28", fechaTexto: "Sábado 28 de noviembre", buses: ["Bus 1"] }
+    ],
+    detalles: [
+      "🚍 Traslado ida y vuelta en autobús con aire acondicionado",
+      "🏜️ Parada especial y tiempo de fotos en los Médanos de Coro",
+      "🏖️ Tarde de playa y disfrute en Adícora",
+      "🧊 Cava con hielo e hidratación continua",
+      "🥨 Snack de viaje",
+      "📸 Fotos en las dunas y en la playa",
+      "🙋‍♂️ Guías coordinadores de Tour Azul",
+      "🎟️ Brazalete identificativo",
+      "🎁 Rifas y dinámicas durante el trayecto"
+    ]
+  },
+  {
+    id: "tour-merida-28-29-nov",
+    destino: "Tour Mérida",
+    precio: 85,
+    tipo: "2 DÍAS",
+    destacado: true,
+    imagenUrl: "/merida.jpg",
+    descripcion: "Escapada mágica a los Andes venezolanos. Visita al Sistema Teleférico Mukumbarí, páramos andinos, Capilla de Piedra de Juan Félix Sánchez, Laguna de Mucubají y el Pico El Águila.",
+    salidas: [
+      { fecha: "2026-11-28", fechaTexto: "Sábado 28 al Domingo 29 de noviembre", buses: ["Bus 1"] }
+    ],
+    detalles: [
+      "🚌 Transporte de turismo con aire, chofer profesional y cobijas",
+      "🛏️ 1 Noche de hospedaje en acogedora posada andina",
+      "🍴 2 Desayunos típicos andinos incluidos (arepas de trigo, queso y nata)",
+      "🚠 Visita a la estación del Teleférico de Mérida Mukumbarí",
+      "🏔️ Tour de páramos: Mucubají, Pico El Águila y San Rafael de Mucuchíes",
+      "📸 Cobertura fotográfica en los mejores miradores",
+      "👩‍⚕️ Botiquín especializado para altura",
+      "🙋‍♂️ Guía andino durante todo el recorrido"
+    ]
+  },
+  {
+    id: "choroni-estadia-28-29-nov",
+    destino: "Choroní (Estadía)",
+    precio: 85,
+    tipo: "2 DÍAS",
+    destacado: true,
+    imagenUrl: "/choroni.jpg",
+    descripcion: "2 Días y 1 Noche en el paraíso colonial de Choroní. Noche de tambores en el malecón de Puerto Colombia, amanecer frente a las olas de Playa Grande y relajación total.",
+    salidas: [
+      { fecha: "2026-11-28", fechaTexto: "Sábado 28 al Domingo 29 de noviembre", buses: ["Bus 1"] }
+    ],
+    detalles: [
+      "🚌 Traslado ida y vuelta en cómodo autobús con aire acondicionado",
+      "🛏️ 1 Noche de hospedaje en posada colonial seleccionada",
+      "🌴 2 Días completos de playa en Playa Grande",
+      "🥁 Noche libre en el malecón de Puerto Colombia con tambor costeño",
+      "☕ Desayuno incluido el día domingo",
+      "🧊 Cava con hielo disponible",
+      "📸 Registro de fotos del viaje",
+      "🙋‍♂️ Guías coordinadores atentos a tu grupo",
+      "🎟️ Brazalete identificativo"
+    ]
+  },
+  {
+    id: "isla-larga-29-nov",
+    destino: "Isla Larga",
+    precio: 30,
+    tipo: "FULL DAY",
+    imagenUrl: "/isla-larga.jpg",
+    descripcion: "Famosa por sus aguas cristalinas, arena fina y los impresionantes barcos hundidos que forman arrecifes llenos de peces coloridos. Ideal para snorkel y natación.",
+    salidas: [
+      { fecha: "2026-11-29", fechaTexto: "Domingo 29 de noviembre", buses: ["Bus 1"] }
+    ],
+    detalles: [
+      "🚍 Traslado terrestre ida y vuelta con aire acondicionado",
+      "🛥️ Traslado en peñero marítimo (salida desde Puerto Cabello)",
+      "🤿 Parada para avistamiento del barco hundido y snorkel",
+      "🏖️ Día de playa en aguas transparentes y calmas",
+      "🧊 Cava con hielo y agua para hidratarte",
+      "🥨 Snack",
+      "📸 Fotografías del viaje",
+      "🎟️ Brazalete identificativo",
+      "⛑️ Primeros auxilios"
+    ]
+  },
+  {
+    id: "cayo-azul-29-nov",
+    destino: "Cayo Azul",
+    precio: 27,
+    tipo: "FULL DAY",
+    imagenUrl: "/cayo-azul.jpg",
+    descripcion: "Cierra noviembre en el cayo más apacible y turquesa de Falcón. Arenales vírgenes, atmósfera tranquila y la calidez del equipo Tour Azul para que disfrutes al máximo.",
+    salidas: [
+      { fecha: "2026-11-29", fechaTexto: "Domingo 29 de noviembre", buses: ["Bus 1"] }
+    ],
+    detalles: [
+      "🚍 Traslado en bus con aire acondicionado",
+      "🛥️ Navegación en lancha rápida hacia el cayo",
+      "🏝️ Estadía en Cayo Azul (zona más cristalina)",
+      "📸 Registro fotográfico del grupo",
+      "🧊 Cava full equipo con hielo e hidratación",
+      "🎟️ Brazalete identificador",
+      "🥨 Snack",
+      "🏐 Raquetas y juegos playeros",
+      "⛑️ Botiquín de primeros auxilios",
+      "🎁 Rifas y sorpresas en el bus"
     ]
   }
 ];
 
 export const TOTAL_BUS_SEATS = 31;
 
-/**
- * Normaliza una cadena para claves de almacenamiento sin caracteres especiales ni acentos
- */
 export function normalizeTripKey(str) {
   if (!str) return "";
   return String(str)
@@ -377,19 +400,6 @@ export function normalizeTripKey(str) {
     .replace(/^_+|_+$/g, "");
 }
 
-/**
- * Genera la clave única y consistente de almacenamiento para una salida y autobús
- */
-export function getOccupiedSeatsStorageKey(destino, fecha, bus = "Bus 1") {
-  const normDest = normalizeTripKey(destino);
-  const normFecha = String(fecha || "").replace(/[^0-9]/g, "");
-  const normBus = normalizeTripKey(bus || "Bus 1");
-  return `tour_azul_occupied_${normDest}_${normFecha}_${normBus}`;
-}
-
-/**
- * Normaliza el nombre del destino para la hoja correspondiente (ej: "Cayo_Muerto_18-10")
- */
 export function formatDestinoSheetName(destino, fechaViaje) {
   if (!destino) return "General";
   if (destino.includes("_") && /\d{1,2}-\d{1,2}/.test(destino)) {
@@ -399,7 +409,7 @@ export function formatDestinoSheetName(destino, fechaViaje) {
   if (fechaViaje && typeof fechaViaje === "string" && fechaViaje.includes("-")) {
     const parts = fechaViaje.split("-");
     if (parts.length >= 3) {
-      dateTag = `_${parts[2]}-${parts[1]}`; // ej: _18-10
+      dateTag = `_${parts[2]}-${parts[1]}`;
     }
   }
   const cleanDestino = String(destino)

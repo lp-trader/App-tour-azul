@@ -27,9 +27,9 @@ const html = `<!DOCTYPE html>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Tour Azul | Tu escapada perfecta desde Barquisimeto, Cabudare y Yaracuy</title>
-  <meta name="description" content="Reserva tus viajes y excursiones con Tour Azul. Salidas desde Barquisimeto, Cabudare y Yaracuy a los mejores destinos de Venezuela con selección interactiva de asientos.">
-  <meta property="og:title" content="Tour Azul | Tu escapada perfecta">
-  <meta property="og:description" content="Salidas desde Barquisimeto, Cabudare y Yaracuy a los mejores destinos de Venezuela. Reserva con 5 € por persona.">
+  <meta name="description" content="Reserva tus viajes y excursiones de Noviembre con Tour Azul. Salidas desde Barquisimeto, Cabudare y Yaracuy a los mejores destinos de Venezuela con registro en línea.">
+  <meta property="og:title" content="Tour Azul | Tu escapada perfecta en Noviembre">
+  <meta property="og:description" content="Salidas desde Barquisimeto, Cabudare y Yaracuy a los mejores destinos de Venezuela. Reserva con 5 REF por persona.">
   <meta property="og:type" content="website">
   <link rel="icon" type="image/svg+xml" href="${logoBase64}">
 
@@ -131,16 +131,16 @@ ${retroPhotosCss}
       <!-- Acciones de Cabecera (Alineadas a la derecha, fijas sin moverse) -->
       <div class="flex items-center gap-2 shrink-0">
 ${prelaunchHeaderButtonHtml}
-        <!-- Botón de Acceso Directo al Panel de Candidatos (Admin) -->
+        <!-- Botón de Acceso al Panel de Administración Completo (Viajes de Noviembre, Clientes, Guías) -->
         <button 
           type="button" 
-          id="btn-nav-admin-candidatos" 
-          onclick="if(window.openAdminCandidatos){ window.openAdminCandidatos(); } else { window.location.hash = '#/admin-candidatos'; }" 
-          class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 hover:bg-blue-50 text-slate-700 hover:text-blue-700 text-xs font-bold transition-all cursor-pointer shrink-0 border border-slate-200 active:scale-95"
-          title="Ver Panel de Candidatos y Postulaciones (Google Sheets)"
+          id="btn-nav-admin" 
+          onclick="if(window.openAdminPanel){ window.openAdminPanel(); } else if(window.openAdminCandidatos){ window.openAdminCandidatos(); } else { window.location.hash = '#/admin'; }" 
+          class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 hover:bg-blue-50 text-slate-700 hover:text-blue-700 text-xs font-bold transition-all cursor-pointer shrink-0 border border-slate-200 active:scale-95 shadow-2xs"
+          title="Panel de Administración (Viajes de Noviembre, Clientes, Guías)"
         >
-          <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-          <span>🛡️ Panel Candidatos</span>
+          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span>🛡️ Panel Admin</span>
         </button>
         <!-- Eslogan Tour Azul: Tu escapada perfecta (Oculto en móviles para evitar colisiones y que no tape nada) -->
         <div id="header-slogan" class="hidden lg:flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full bg-sky-50/90 border border-sky-200/90 shadow-2xs shrink-0">
@@ -223,7 +223,7 @@ ${featuredSectionHtml}
           VIAJES DEL MES
         </h2>
         <p class="text-slate-600 text-sm">
-          Elige tu destino favorito y reserva tu asiento con solo 5 € por persona.
+          Elige tu destino de noviembre y asegura tu cupo reservando con solo 5 REF por persona.
         </p>
       </div>
 
@@ -232,7 +232,7 @@ ${featuredSectionHtml}
         <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
           <div class="flex items-center gap-2">
             <i data-lucide="calendar" class="w-5 h-5 text-tour-blue"></i>
-            <span class="font-title font-black uppercase text-tour-navy text-sm md:text-base" id="calendar-month-title">Octubre 2026</span>
+            <span class="font-title font-black uppercase text-tour-navy text-sm md:text-base" id="calendar-month-title">Noviembre 2026</span>
           </div>
           <div class="flex items-center gap-1.5">
             <button id="btn-month-prev" class="p-2 rounded-xl bg-slate-100 hover:bg-sky-100 text-slate-700 transition">
@@ -409,9 +409,9 @@ ${recruitmentHtmlSection}
           <span>Políticas de Reserva y Viaje 📜</span>
         </button>
 
-        <button type="button" onclick="if(window.openAdminCandidatos){window.openAdminCandidatos();}else{window.location.hash='#/admin-candidatos';}" class="inline-flex items-center gap-1.5 font-bold text-slate-600 hover:text-tour-navy bg-slate-100 hover:bg-sky-100 px-3.5 py-1.5 rounded-full border border-slate-200 shadow-2xs transition cursor-pointer text-xs" title="Panel Administrativo de Candidatos (Google Sheets)">
+        <button type="button" onclick="if(window.openAdminPanel){window.openAdminPanel();}else if(window.openAdminCandidatos){window.openAdminCandidatos();}else{window.location.hash='#/admin';}" class="inline-flex items-center gap-1.5 font-bold text-slate-600 hover:text-tour-navy bg-slate-100 hover:bg-sky-100 px-3.5 py-1.5 rounded-full border border-slate-200 shadow-2xs transition cursor-pointer text-xs" title="Panel de Administración (Viajes de Noviembre, Clientes, Guías)">
           <i data-lucide="shield-check" class="w-4 h-4 text-tour-blue"></i>
-          <span>Panel Candidatos (Admin)</span>
+          <span>🛡️ Panel Admin</span>
         </button>
 
         <span class="text-slate-300 hidden">·</span>
@@ -519,200 +519,202 @@ ${recruitmentHtmlSection}
     </div>
   </div>
 
-  <!-- ASISTENTE DE RESERVA -->
+  <!-- ASISTENTE DE REGISTRO Y RESERVA (SIN SELECCIÓN DE ASIENTOS) -->
   <div id="modal-wizard" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden flex-col justify-end md:justify-center items-center p-0 md:p-4">
     <div class="bg-white w-full max-w-2xl max-h-[92vh] md:max-h-[90vh] rounded-t-3xl md:rounded-3xl shadow-2xl flex flex-col overflow-hidden relative">
 
-      <div class="p-4 md:p-5 border-b border-slate-100 flex items-center justify-between bg-sky-50/60">
+      <!-- Cabecera del Asistente -->
+      <div class="p-4 md:p-5 border-b border-slate-100 flex items-center justify-between bg-sky-50/70">
         <div>
-          <span class="text-[11px] font-bold uppercase tracking-wider text-tour-blue block" id="wizard-trip-name">Reserva de Viaje</span>
-          <span class="text-xs text-slate-500" id="wizard-trip-date">Fecha</span>
+          <span class="text-[11px] font-bold uppercase tracking-wider text-tour-blue block" id="wizard-trip-name">Registro de Pasajeros</span>
+          <span class="text-xs text-slate-500 font-medium" id="wizard-trip-date">Fecha</span>
         </div>
         <button id="btn-close-wizard" class="p-2 rounded-full bg-white hover:bg-slate-100 text-slate-500 shadow-sm transition">
           <i data-lucide="x" class="w-5 h-5"></i>
         </button>
       </div>
 
-      <!-- Stepper Progress Bar -->
+      <!-- Stepper Progress Bar (3 Pasos) -->
       <div class="px-4 py-3 bg-white border-b border-slate-100">
         <div class="flex items-center justify-between relative max-w-md mx-auto">
           <div class="step-indicator flex flex-col items-center gap-1 z-10" data-step="1">
-            <div class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs bg-tour-blue text-white shadow-sm transition-all" id="step-icon-1">1</div>
-            <span class="text-[10px] font-medium text-tour-navy hidden sm:inline">Tour</span>
+            <div class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs bg-tour-blue text-white shadow-sm ring-4 ring-blue-100 transition-all" id="step-icon-1">1</div>
+            <span class="text-[10px] font-bold text-tour-navy">Pasajeros</span>
           </div>
-          <div class="flex-1 h-0.5 bg-slate-200 mx-1" id="step-line-1"></div>
+          <div class="flex-1 h-0.5 bg-slate-200 mx-2" id="step-line-1"></div>
           <div class="step-indicator flex flex-col items-center gap-1 z-10" data-step="2">
             <div class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs bg-slate-100 text-slate-500 transition-all" id="step-icon-2">2</div>
-            <span class="text-[10px] font-medium text-slate-500 hidden sm:inline">Asientos</span>
+            <span class="text-[10px] font-medium text-slate-500">Pago Reserva</span>
           </div>
-          <div class="flex-1 h-0.5 bg-slate-200 mx-1" id="step-line-2"></div>
+          <div class="flex-1 h-0.5 bg-slate-200 mx-2" id="step-line-2"></div>
           <div class="step-indicator flex flex-col items-center gap-1 z-10" data-step="3">
             <div class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs bg-slate-100 text-slate-500 transition-all" id="step-icon-3">3</div>
-            <span class="text-[10px] font-medium text-slate-500 hidden sm:inline">Grupo</span>
-          </div>
-          <div class="flex-1 h-0.5 bg-slate-200 mx-1" id="step-line-3"></div>
-          <div class="step-indicator flex flex-col items-center gap-1 z-10" data-step="4">
-            <div class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs bg-slate-100 text-slate-500 transition-all" id="step-icon-4">4</div>
-            <span class="text-[10px] font-medium text-slate-500 hidden sm:inline">Pago</span>
-          </div>
-          <div class="flex-1 h-0.5 bg-slate-200 mx-1" id="step-line-4"></div>
-          <div class="step-indicator flex flex-col items-center gap-1 z-10" data-step="5">
-            <div class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs bg-slate-100 text-slate-500 transition-all" id="step-icon-5">5</div>
-            <span class="text-[10px] font-medium text-slate-500 hidden sm:inline">Ticket</span>
+            <span class="text-[10px] font-medium text-slate-500">Confirmación</span>
           </div>
         </div>
       </div>
 
-      <!-- Stepper Content Container -->
-      <div class="p-4 md:p-6 overflow-y-auto flex-grow max-h-[62vh]">
+      <!-- Contenedor de Pasos -->
+      <div class="p-4 md:p-6 overflow-y-auto flex-grow max-h-[62vh] space-y-4">
 
-        <!-- PASO 1: CONFIRMAR TOUR Y FECHA -->
+        <!-- PASO 1: PASAJEROS, GRUPO Y PUNTO DE PARTIDA -->
         <div id="step-content-1" class="step-view space-y-4">
           <div class="text-center space-y-1">
-            <h3 class="font-title font-black text-lg text-tour-navy uppercase">Confirma tu viaje y fecha</h3>
-            <p class="text-xs text-slate-500">Selecciona la fecha disponible para esta excursión.</p>
+            <h3 class="font-title font-black text-lg text-tour-navy uppercase">Registro de Pasajeros y Salida</h3>
+            <p class="text-xs text-slate-500">Indica con cuántas personas viajas y desde dónde parten.</p>
           </div>
-          <div id="step-1-fechas" class="space-y-2 pt-2"></div>
+
+          <!-- Selector: Viajo Solo vs Con Acompañantes -->
+          <div class="space-y-1.5">
+            <label class="text-xs font-bold uppercase tracking-wider text-slate-500 block">¿Cómo vas a viajar?</label>
+            <div class="grid grid-cols-2 gap-2.5">
+              <button type="button" id="btn-opt-solo" onclick="setViajeModo('solo')" class="p-3.5 rounded-2xl border-2 text-left transition flex flex-col gap-1 border-tour-blue bg-blue-50/70 shadow-xs cursor-pointer">
+                <div class="flex items-center justify-between">
+                  <span class="text-lg">👤</span>
+                  <span id="check-solo" class="w-4 h-4 rounded-full bg-tour-blue text-white flex items-center justify-center text-[10px] font-bold">✓</span>
+                </div>
+                <span class="font-bold text-xs text-tour-navy">Viajo solo/a</span>
+                <span class="text-[11px] text-slate-500">1 sola persona</span>
+              </button>
+
+              <button type="button" id="btn-opt-grupo" onclick="setViajeModo('grupo')" class="p-3.5 rounded-2xl border-2 text-left transition flex flex-col gap-1 border-slate-200 hover:border-slate-300 bg-white cursor-pointer">
+                <div class="flex items-center justify-between">
+                  <span class="text-lg">👥</span>
+                  <span id="check-grupo" class="w-4 h-4 rounded-full border border-slate-300 hidden"></span>
+                </div>
+                <span class="font-bold text-xs text-slate-700">Con acompañantes</span>
+                <span class="text-[11px] text-slate-500">Pareja, amigos o familia</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Selector de cantidad de acompañantes (Visible si grupo) -->
+          <div id="box-stepper-acomp" class="hidden p-3.5 bg-sky-50/80 rounded-2xl border border-sky-200 space-y-2">
+            <div class="flex items-center justify-between">
+              <div>
+                <span class="text-xs font-bold text-tour-navy block">¿Cuántas personas van en total?</span>
+                <span class="text-[11px] text-slate-500">Incluyendo al titular responsable</span>
+              </div>
+              <div class="flex items-center gap-2 bg-white px-2 py-1 rounded-xl border border-sky-200 shadow-2xs">
+                <button type="button" onclick="cambiarTotalPersonas(-1)" class="w-7 h-7 rounded-lg bg-sky-50 hover:bg-sky-100 text-tour-blue font-black text-sm flex items-center justify-center transition active:scale-95 cursor-pointer">−</button>
+                <span id="count-total-personas" class="font-title font-black text-tour-navy text-sm px-2">2</span>
+                <button type="button" onclick="cambiarTotalPersonas(1)" class="w-7 h-7 rounded-lg bg-sky-50 hover:bg-sky-100 text-tour-blue font-black text-sm flex items-center justify-center transition active:scale-95 cursor-pointer">+</button>
+              </div>
+            </div>
+            <p class="text-[11px] text-slate-500 italic">Cada cupo se asegura con solo 5 REF (o pago completo) a tu elección en el siguiente paso.</p>
+          </div>
+
+          <!-- Formulario Pasajero Titular -->
+          <div class="p-4 bg-sky-50/50 rounded-2xl border border-sky-200/80 space-y-3">
+            <div class="flex items-center justify-between border-b border-sky-100 pb-2">
+              <span class="font-title font-bold text-xs uppercase text-tour-navy flex items-center gap-1.5">
+                <i data-lucide="user-check" class="w-4 h-4 text-tour-blue"></i>
+                <span>Titular de la Reserva (Responsable)</span>
+              </span>
+              <span class="text-[10px] bg-tour-blue text-white px-2 py-0.5 rounded-full font-bold">Principal</span>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+              <div>
+                <label class="block text-slate-600 font-medium mb-1">Nombre y Apellido *</label>
+                <input type="text" id="reg-lead-name" required placeholder="Ej. Carlos Pérez" class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-tour-blue focus:outline-none bg-white">
+              </div>
+              <div>
+                <label class="block text-slate-600 font-medium mb-1">Cédula de Identidad *</label>
+                <input type="text" id="reg-lead-cedula" required placeholder="Ej. V-19876543" class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-tour-blue focus:outline-none bg-white">
+              </div>
+              <div>
+                <label class="block text-slate-600 font-medium mb-1">Teléfono WhatsApp *</label>
+                <input type="tel" id="reg-lead-phone" required placeholder="Ej. 04121234567" class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-tour-blue focus:outline-none bg-white">
+              </div>
+              <div>
+                <label class="block text-slate-600 font-medium mb-1">Edad (opcional)</label>
+                <input type="number" id="reg-lead-age" placeholder="Ej. 28" min="1" max="100" class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-tour-blue focus:outline-none bg-white">
+              </div>
+              <div class="md:col-span-2">
+                <label class="block text-slate-600 font-medium mb-1">Punto de Salida / Partida *</label>
+                <input type="text" id="reg-lead-pickup" required placeholder="Selecciona abajo o escribe tu punto de partida" class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-tour-blue focus:outline-none bg-white text-xs">
+                <div class="flex flex-wrap gap-1.5 pt-2">
+                  <button type="button" onclick="setRegPickup('Barquisimeto: C.C. Metrópolis / Monumental')" class="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-white text-tour-blue border border-sky-200 hover:bg-sky-50 shadow-2xs transition cursor-pointer">📍 Metrópolis (Bqto)</button>
+                  <button type="button" onclick="setRegPickup('Barquisimeto: C.C. Las Trinitarias')" class="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-white text-tour-blue border border-sky-200 hover:bg-sky-50 shadow-2xs transition cursor-pointer">📍 Las Trinitarias (Bqto)</button>
+                  <button type="button" onclick="setRegPickup('Cabudare: Redoma de Agua Viva')" class="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-white text-tour-blue border border-sky-200 hover:bg-sky-50 shadow-2xs transition cursor-pointer">📍 Redoma Cabudare</button>
+                  <button type="button" onclick="setRegPickup('Yaracuy: Chivacoa (Pasarela / Peaje)')" class="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-white text-tour-blue border border-sky-200 hover:bg-sky-50 shadow-2xs transition cursor-pointer">📍 Chivacoa (Yaracuy)</button>
+                  <button type="button" onclick="setRegPickup('Yaracuy: San Felipe (Redoma)')" class="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-white text-tour-blue border border-sky-200 hover:bg-sky-50 shadow-2xs transition cursor-pointer">📍 San Felipe (Yaracuy)</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Contenedor dinámico de campos para acompañantes -->
+          <div id="reg-acomp-container" class="space-y-3"></div>
+
         </div>
 
-        <!-- PASO 2: BUS Y ASIENTOS -->
+        <!-- PASO 2: MODALIDAD Y PAGO DE RESERVA -->
         <div id="step-content-2" class="step-view space-y-4 hidden">
           <div class="text-center space-y-1">
-            <h3 class="font-title font-black text-lg text-tour-navy uppercase">Elige tus asientos</h3>
-            <p class="text-xs text-slate-500">Toca las sillas disponibles para tu grupo (31 puestos por unidad).</p>
+            <h3 class="font-title font-black text-lg text-tour-navy uppercase">Modalidad y Pago de Reserva</h3>
+            <p class="text-xs text-slate-500">Asegura hoy con solo 5 REF por persona o cancela el total.</p>
           </div>
 
-          <div id="bus-tabs-container" class="flex justify-center gap-2 pt-1 hidden"></div>
-
-          <div id="seat-timer-box" class="bg-amber-50 border border-amber-200 rounded-xl p-2.5 flex items-center justify-between text-xs text-amber-900 hidden">
-            <div class="flex items-center gap-2">
-              <i data-lucide="clock" class="w-4 h-4 text-amber-600"></i>
-              <span>Asientos apartados temporalmente:</span>
-            </div>
-            <span id="seat-timer-countdown" class="font-bold font-mono text-amber-700">10:00</span>
-          </div>
-
-          <div class="flex flex-wrap items-center justify-center gap-3 text-[11px] py-1">
-            <div class="flex items-center gap-1.5">
-              <span class="w-3.5 h-3.5 rounded-md bg-emerald-500 shadow-sm"></span>
-              <span class="text-slate-600">Disponible</span>
-            </div>
-            <div class="flex items-center gap-1.5">
-              <span class="w-3.5 h-3.5 rounded-md bg-tour-blue shadow-sm"></span>
-              <span class="text-slate-600">Seleccionado</span>
-            </div>
-            <div class="flex items-center gap-1.5">
-              <span class="w-3.5 h-3.5 rounded-md bg-amber-400 shadow-sm"></span>
-              <span class="text-slate-600">En proceso</span>
-            </div>
-            <div class="flex items-center gap-1.5">
-              <span class="w-3.5 h-3.5 rounded-md bg-slate-300 shadow-sm"></span>
-              <span class="text-slate-400">Ocupado</span>
-            </div>
-          </div>
-
-          <div class="max-w-xs mx-auto bg-slate-50 border-2 border-slate-300 rounded-[36px] p-4 shadow-inner relative">
-            <div class="w-full h-8 border-b-2 border-dashed border-slate-300 mb-3 flex items-center justify-between px-3 text-[10px] font-bold text-slate-400 uppercase">
-              <div class="flex items-center gap-1">
-                <i data-lucide="circle-dot" class="w-4 h-4 text-slate-500"></i>
-                <span>Piloto</span>
-              </div>
-              <div class="text-center text-[9px] bg-slate-200 px-2 py-0.5 rounded text-slate-600">
-                Frente
-              </div>
-              <div class="flex items-center gap-1 text-emerald-600">
-                <span>Puerta</span>
-                <i data-lucide="log-in" class="w-3.5 h-3.5"></i>
-              </div>
-            </div>
-
-            <div id="bus-seat-grid" class="space-y-2"></div>
-
-            <div class="mt-4 pt-2 border-t-2 border-slate-200 text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-              Parte trasera / Motor
-            </div>
-          </div>
-        </div>
-
-        <!-- PASO 3: PASAJEROS Y PUNTO DE RECOGIDA -->
-        <div id="step-content-3" class="step-view space-y-4 hidden">
-          <div class="text-center space-y-1">
-            <h3 class="font-title font-black text-lg text-tour-navy uppercase">Datos de los pasajeros</h3>
-            <p class="text-xs text-slate-500">Completa los datos del titular y acompañantes.</p>
-          </div>
-
-          <div id="passengers-forms" class="space-y-4"></div>
-
-          <div id="toggle-separate-pickup-box" class="p-3.5 bg-sky-50 rounded-2xl border border-sky-100 flex items-center justify-between">
-            <div class="text-xs pr-2">
-              <span class="font-bold text-tour-navy block">¿Algún acompañante se recoge en otro punto?</span>
-              <span class="text-[11px] text-slate-500">Activa si las personas del grupo abordan en paradas distintas.</span>
-            </div>
-            <label class="relative inline-flex items-center cursor-pointer">
-              <input type="checkbox" id="toggle-separate-pickup" class="sr-only peer">
-              <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-tour-blue"></div>
-            </label>
-          </div>
-        </div>
-
-        <!-- PASO 4: PAGO -->
-        <div id="step-content-4" class="step-view space-y-4 hidden">
-          <div class="text-center space-y-1">
-            <h3 class="font-title font-black text-lg text-tour-navy uppercase">Opciones de pago</h3>
-            <p class="text-xs text-slate-500">Paga el total o asegura hoy con el abono mínimo de 5 € por persona.</p>
-          </div>
-
+          <!-- Selector Abono vs Pago Completo -->
           <div class="grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-2xl">
-            <button type="button" id="pay-opt-full" class="py-2.5 px-3 rounded-xl font-bold text-xs transition bg-white text-tour-navy shadow-sm">
+            <button type="button" id="pay-opt-deposit" onclick="setRegPagoTipo('abono')" class="py-2.5 px-3 rounded-xl font-bold text-xs transition bg-white text-tour-navy shadow-sm cursor-pointer">
+              Abonar Reserva (5 REF p/p)
+            </button>
+            <button type="button" id="pay-opt-full" onclick="setRegPagoTipo('full')" class="py-2.5 px-3 rounded-xl font-bold text-xs transition text-slate-600 hover:text-tour-navy cursor-pointer">
               Pago Completo
             </button>
-            <button type="button" id="pay-opt-deposit" class="py-2.5 px-3 rounded-xl font-bold text-xs transition text-slate-600 hover:text-tour-navy">
-              Abonar Reserva (5 € p/p)
-            </button>
           </div>
 
-          <div class="bg-sky-50/70 border border-sky-100 rounded-2xl p-4 space-y-2 text-xs">
-            <div class="flex justify-between items-center text-slate-600">
+          <!-- Desglose de Montos -->
+          <div class="bg-sky-50/80 border border-sky-200 rounded-2xl p-4 space-y-2 text-xs">
+            <div class="flex justify-between items-center text-slate-700">
               <span>Monto a pagar hoy:</span>
-              <span id="pay-amount-today" class="font-bold text-tour-blue text-sm">-- €</span>
+              <span id="pay-amount-today" class="font-title font-black text-tour-blue text-base">-- REF</span>
             </div>
             <div class="flex justify-between items-center text-slate-600">
-              <span>Saldo pendiente al abordar:</span>
-              <span id="pay-amount-balance" class="font-bold text-slate-700">-- €</span>
+              <span>Saldo restante al abordar:</span>
+              <span id="pay-amount-balance" class="font-bold text-slate-800">-- REF</span>
+            </div>
+            <div class="pt-1 border-t border-sky-100 text-[11px] text-slate-500 flex justify-between">
+              <span>Total excursión (<span id="pay-people-summary">1 persona</span>):</span>
+              <span id="pay-total-summary" class="font-bold text-tour-navy">-- REF</span>
             </div>
           </div>
 
+          <!-- Método de Pago -->
           <div class="space-y-2 pt-1">
-            <label class="text-xs font-bold uppercase tracking-wider text-slate-400 block">Método de pago</label>
+            <label class="text-xs font-bold uppercase tracking-wider text-slate-500 block">Forma de Pago</label>
             <div class="grid grid-cols-2 gap-3">
               <!-- Pago Móvil -->
               <label class="relative flex flex-col p-3.5 border-2 rounded-2xl cursor-pointer transition border-tour-blue bg-blue-50/50" id="label-method-pagomovil">
-                <input type="radio" name="paymentMethod" value="Pago Móvil" checked class="sr-only">
+                <input type="radio" name="regPaymentMethod" value="Pago Móvil" checked onchange="setRegMetodoPago('Pago Móvil')" class="sr-only">
                 <span class="font-bold text-xs text-tour-navy flex items-center gap-1.5">
                   <i data-lucide="smartphone" class="w-4 h-4 text-tour-blue"></i>
-                  Pago Móvil
+                  Pago Móvil (Bs)
                 </span>
-                <span class="text-[10px] text-slate-500 mt-1">En Bolívares (Tasa BCV)</span>
+                <span class="text-[10px] text-slate-500 mt-1">Tasa oficial BCV Euro</span>
               </label>
 
               <!-- Efectivo -->
               <label class="relative flex flex-col p-3.5 border-2 rounded-2xl cursor-pointer transition border-slate-200 hover:border-slate-300" id="label-method-efectivo">
-                <input type="radio" name="paymentMethod" value="Efectivo" class="sr-only">
+                <input type="radio" name="regPaymentMethod" value="Efectivo" onchange="setRegMetodoPago('Efectivo')" class="sr-only">
                 <span class="font-bold text-xs text-tour-navy flex items-center gap-1.5">
                   <i data-lucide="banknote" class="w-4 h-4 text-emerald-600"></i>
-                  Efectivo ($)
+                  Efectivo ($/€)
                 </span>
-                <span class="text-[10px] text-slate-500 mt-1">Pago directo al abordar</span>
+                <span class="text-[10px] text-slate-500 mt-1">Al abordar la unidad</span>
               </label>
             </div>
           </div>
 
-          <!-- DETALLES SEGÚN MÉTODO -->
+          <!-- Datos Pago Móvil -->
           <div id="method-box-pagomovil" class="space-y-3 bg-white border border-sky-100 rounded-2xl p-4 text-xs">
             <div class="bg-blue-50 rounded-xl p-3 text-center border border-blue-100">
               <span class="text-[11px] text-slate-500 block">Monto exacto a transferir:</span>
               <span id="pagomovil-monto-bs" class="font-title font-black text-2xl text-tour-blue block my-1">-- Bs</span>
-              <button type="button" id="btn-copy-bs" class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-white text-tour-blue border border-sky-200 text-[11px] font-bold hover:bg-sky-50 transition shadow-sm">
+              <button type="button" id="btn-copy-bs" class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-white text-tour-blue border border-sky-200 text-[11px] font-bold hover:bg-sky-50 transition shadow-sm cursor-pointer">
                 <i data-lucide="copy" class="w-3 h-3"></i>
                 <span id="copy-bs-text">Copiar monto</span>
               </button>
@@ -734,33 +736,30 @@ ${recruitmentHtmlSection}
             </div>
 
             <div>
-              <label class="block text-slate-600 font-medium mb-1">Número de referencia (obligatorio):</label>
-              <input type="text" id="pagomovil-ref" placeholder="Ej. 123456" class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-tour-blue text-xs">
-            </div>
-
-            <div>
-              <label class="block text-slate-600 font-medium mb-1">Comprobante de pago (opcional):</label>
-              <input type="file" id="pagomovil-file" accept="image/*" class="w-full text-xs text-slate-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-sky-50 file:text-tour-blue hover:file:bg-sky-100">
+              <label class="block text-slate-700 font-bold mb-1">Número de Referencia de Pago Móvil *</label>
+              <input type="text" id="pagomovil-ref" placeholder="Ej. 123456 (últimos 4 dígitos o completa)" class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-tour-blue text-xs font-mono">
+              <span class="text-[10px] text-slate-400">Requerido para validar tu comprobante bancario.</span>
             </div>
           </div>
 
+          <!-- Datos Efectivo -->
           <div id="method-box-efectivo" class="space-y-3 bg-emerald-50/60 border border-emerald-200 rounded-2xl p-4 text-xs hidden">
             <div class="text-center">
-              <span class="text-[11px] text-emerald-800 block">Monto a pagar en dólares en efectivo:</span>
+              <span class="text-[11px] text-emerald-800 block">Monto a pagar en efectivo:</span>
               <span id="efectivo-monto-usd" class="font-title font-black text-2xl text-emerald-700 block my-1">-- $</span>
             </div>
             <div class="p-3 bg-white rounded-xl border border-emerald-100 text-slate-600 text-[11px] leading-relaxed">
               <i data-lucide="info" class="w-3.5 h-3.5 text-emerald-600 inline mr-1"></i>
-              <span id="efectivo-instrucciones">Entrega el monto en efectivo al abordar la unidad el día del viaje. Tus asientos quedarán asegurados con estado "Pendiente de pago".</span>
+              <span>Entrega el monto en efectivo al abordar la unidad de transporte el día del viaje. Tu cupo quedará registrado en estado <strong>Pendiente de pago</strong>.</span>
             </div>
           </div>
         </div>
 
-        <!-- PASO 5: RESUMEN -->
-        <div id="step-content-5" class="step-view space-y-4 hidden">
+        <!-- PASO 3: RESUMEN Y CONFIRMACIÓN -->
+        <div id="step-content-3" class="step-view space-y-4 hidden">
           <div class="text-center space-y-1">
-            <h3 class="font-title font-black text-lg text-tour-navy uppercase">Resumen de tu reserva</h3>
-            <p class="text-xs text-slate-500">Revisa los datos antes de confirmar.</p>
+            <h3 class="font-title font-black text-lg text-tour-navy uppercase">Resumen de tu Reserva</h3>
+            <p class="text-xs text-slate-500">Revisa los datos de tus pasajeros y pago antes de enviar.</p>
           </div>
 
           <div id="summary-card" class="bg-sky-50/70 border border-sky-100 rounded-2xl p-4 space-y-3 text-xs"></div>
@@ -776,13 +775,13 @@ ${recruitmentHtmlSection}
               </button>
             </div>
             <ul class="text-[11px] text-slate-700 space-y-1 list-disc list-inside">
-              <li><strong>Tolerancia:</strong> 15 min en punto de salida (No Show sin reembolso).</li>
+              <li><strong>Tolerancia puntual:</strong> 15 min en punto de salida (No Show sin reembolso).</li>
               <li><strong>Reembolsos directos:</strong> Mínimo 4 días antes (mismo monto en Bs recibido).</li>
               <li><strong>Saldo a favor:</strong> Mínimo 72 hrs antes (vigencia de 60 días continuos).</li>
               <li><strong>Cesión de cupo:</strong> Mínimo 48 hrs con datos del nuevo pasajero.</li>
             </ul>
             <div class="pt-1 border-t border-amber-200/60 text-[10.5px] text-amber-900 font-bold flex items-center gap-1">
-              <span>Al estar reservando con nosotros acepta automáticamente las políticas y condiciones de reserva ✅</span>
+              <span>Al reservar acepta automáticamente las políticas y condiciones de Tour Azul ✅</span>
             </div>
           </div>
         </div>
@@ -794,16 +793,16 @@ ${recruitmentHtmlSection}
         <div>
           <span class="text-[11px] text-slate-400 block">Total reserva</span>
           <div class="flex items-baseline gap-1.5">
-            <span id="wizard-bottom-total-eur" class="text-xl font-title font-black text-tour-navy">0 €</span>
+            <span id="wizard-bottom-total-eur" class="text-xl font-title font-black text-tour-navy">0 REF</span>
             <span id="wizard-bottom-total-bs" class="text-xs text-slate-500"></span>
           </div>
         </div>
 
         <div class="flex items-center gap-2">
-          <button type="button" id="btn-wizard-prev" class="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-50 transition hidden">
+          <button type="button" id="btn-wizard-prev" class="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-50 transition hidden cursor-pointer">
             Atrás
           </button>
-          <button type="button" id="btn-wizard-next" class="px-6 py-2.5 rounded-xl bg-tour-blue hover:bg-blue-700 text-white font-title font-black uppercase text-xs tracking-wider shadow-lg hover:shadow-xl transition flex items-center gap-1.5">
+          <button type="button" id="btn-wizard-next" class="px-6 py-2.5 rounded-xl bg-tour-blue hover:bg-blue-700 text-white font-title font-black uppercase text-xs tracking-wider shadow-lg hover:shadow-xl transition flex items-center gap-1.5 cursor-pointer">
             <span id="btn-wizard-next-text">Continuar</span>
             <i data-lucide="chevron-right" class="w-4 h-4"></i>
           </button>
@@ -850,8 +849,8 @@ ${recruitmentHtmlSection}
             <span id="ticket-fecha" class="font-bold text-slate-800">--</span>
           </div>
           <div class="flex justify-between items-center">
-            <span class="text-slate-500">Unidad y Asientos:</span>
-            <span id="ticket-asientos" class="font-bold text-tour-blue font-mono">--</span>
+            <span class="text-slate-500">Pasajeros a bordo:</span>
+            <span id="ticket-asientos" class="font-bold text-tour-blue font-title">--</span>
           </div>
         </div>
 
@@ -1396,26 +1395,22 @@ ${retroPhotosClientCode}
       tasaDisponible: false,
       fechaTasa: "Hoy",
       fuenteTasa: "",
-      mesCalendario: 9,
+      mesCalendario: 10, // Noviembre (0-indexed: 10)
       anioCalendario: 2026,
       filtroDestino: "todos",
       filtroFecha: null,
       selectedTrip: null,
       selectedSalida: null,
       selectedBus: "Bus 1",
-      busesDisponibles: ["Bus 1"],
-      asientosOcupados: [],
-      asientosBloqueados: [],
-      asientosSeleccionados: [],
-      asientosOcupadosCache: {},
-      passengers: [],
-      otroPunto: false,
+      viajeModo: "solo", // 'solo' o 'grupo'
+      totalPersonas: 1,
+      passengers: [{ nombre: "", cedula: "", edad: "", telefono: "", recogida: "" }],
       get titular() {
-        return this.passengers[0] || { nombre: "", cedula: "", edad: "", telefono: "", correo: "", recogida: "" };
+        return this.passengers[0] || { nombre: "", cedula: "", edad: "", telefono: "", recogida: "" };
       },
       set titular(val) {
         if (!this.passengers[0]) {
-          this.passengers[0] = { nombre: "", cedula: "", edad: "", telefono: "", correo: "", recogida: "" };
+          this.passengers[0] = { nombre: "", cedula: "", edad: "", telefono: "", recogida: "" };
         }
         Object.assign(this.passengers[0], val);
       },
@@ -1423,13 +1418,12 @@ ${retroPhotosClientCode}
         return this.passengers.slice(1);
       },
       set acompanantes(val) {
-        const lead = this.passengers[0] || { nombre: "", cedula: "", edad: "", telefono: "", correo: "", recogida: "" };
+        const lead = this.passengers[0] || { nombre: "", cedula: "", edad: "", telefono: "", recogida: "" };
         this.passengers = [lead, ...val];
       },
-      timerBloqueo: null,
-      segundosRestantesTimer: MINUTOS_BLOQUEO_ASIENTO * 60,
-      tipoAbono: "full",
+      tipoAbono: "abono", // 'abono' (5 REF p/p) o 'full'
       metodoPago: "Pago Móvil",
+      referenciaPago: "",
       reservaFinal: null
     };
 
@@ -2055,7 +2049,6 @@ ${opinionsClientCode}
       const todayIso = (typeof getCaracasTodayStr === 'function') ? getCaracasTodayStr() : new Date().toISOString().split('T')[0];
       let candidateSalida = trip.salidas[salidaIndex] || trip.salidas[0];
 
-      // Si la salida solicitada ya pasó, buscar automáticamente la primera salida futura disponible
       if (candidateSalida.fecha < todayIso) {
         const nextAvailable = trip.salidas.find(s => s.fecha >= todayIso);
         if (nextAvailable) {
@@ -2068,447 +2061,108 @@ ${opinionsClientCode}
 
       state.selectedTrip = trip;
       state.selectedSalida = candidateSalida;
-      state.selectedBus = state.selectedSalida.buses[0] || "Bus 1";
-      state.busesDisponibles = state.selectedSalida.buses || ["Bus 1"];
-      state.asientosSeleccionados = [];
-      state.passengers = [];
-      state.otroPunto = false;
-      state.tipoAbono = "full";
-      state.metodoPago = state.tasaDisponible ? "Pago Móvil" : "Efectivo";
+      state.viajeModo = "solo";
+      state.totalPersonas = 1;
+      state.tipoAbono = "abono";
+      state.metodoPago = "Pago Móvil";
 
-      // Cargar inmediatamente los asientos ocupados guardados en la sesión para este bus
-      state.asientosOcupados = getStoredOccupiedSeats(trip.destino, candidateSalida.fecha, state.selectedBus);
-      state.asientosBloqueados = [];
+      if (!state.passengers || state.passengers.length === 0) {
+        state.passengers = [{ nombre: "", cedula: "", edad: "", telefono: "", recogida: "" }];
+      }
 
-      document.getElementById("wizard-trip-name").textContent = trip.destino;
-      document.getElementById("wizard-trip-date").textContent = state.selectedSalida.fechaTexto;
+      const tripNameEl = document.getElementById("wizard-trip-name");
+      const tripDateEl = document.getElementById("wizard-trip-date");
+      if (tripNameEl) tripNameEl.textContent = trip.destino;
+      if (tripDateEl) tripDateEl.textContent = state.selectedSalida.fechaTexto;
 
-      goToStep(2);
-      loadBusSeats();
+      setViajeModo("solo");
+      const nameInput = document.getElementById("reg-lead-name");
+      const ciInput = document.getElementById("reg-lead-cedula");
+      const telfInput = document.getElementById("reg-lead-phone");
+      const ageInput = document.getElementById("reg-lead-age");
+      const pickupInput = document.getElementById("reg-lead-pickup");
+      if (nameInput) nameInput.value = state.passengers[0]?.nombre || "";
+      if (ciInput) ciInput.value = state.passengers[0]?.cedula || "";
+      if (telfInput) telfInput.value = state.passengers[0]?.telefono || "";
+      if (ageInput) ageInput.value = state.passengers[0]?.edad || "";
+      if (pickupInput) pickupInput.value = state.passengers[0]?.recogida || "";
 
-      if (state.seatPollingInterval) clearInterval(state.seatPollingInterval);
-      state.seatPollingInterval = setInterval(() => {
-        if (currentStep === 2 && document.getElementById("modal-wizard") && !document.getElementById("modal-wizard").classList.contains("hidden")) {
-          loadBusSeats();
-        }
-      }, 20000);
+      goToStep(1);
 
-      document.getElementById("modal-wizard").classList.remove("hidden");
-      document.getElementById("modal-wizard").classList.add("flex");
+      const modal = document.getElementById("modal-wizard");
+      if (modal) {
+        modal.classList.remove("hidden");
+        modal.classList.add("flex");
+      }
     };
 
     function closeWizard() {
-      if (state.timerBloqueo) clearInterval(state.timerBloqueo);
-      if (state.seatPollingInterval) clearInterval(state.seatPollingInterval);
-      document.getElementById("modal-wizard").classList.add("hidden");
-      document.getElementById("modal-wizard").classList.remove("flex");
+      const modal = document.getElementById("modal-wizard");
+      if (modal) {
+        modal.classList.add("hidden");
+        modal.classList.remove("flex");
+      }
     }
 
-    function goToStep(step) {
-      currentStep = step;
+    window.setViajeModo = function(modo) {
+      state.viajeModo = modo;
+      const btnSolo = document.getElementById("btn-opt-solo");
+      const btnGrupo = document.getElementById("btn-opt-grupo");
+      const checkSolo = document.getElementById("check-solo");
+      const checkGrupo = document.getElementById("check-grupo");
+      const boxStepper = document.getElementById("box-stepper-acomp");
 
-      for (let s = 1; s <= 5; s++) {
-        const icon = document.getElementById(\`step-icon-\${s}\`);
-        const line = document.getElementById(\`step-line-\${s}\`);
-        if (s < step) {
-          icon.className = "w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs bg-emerald-500 text-white shadow-sm transition-all";
-          icon.innerHTML = '<i data-lucide="check" class="w-4 h-4"></i>';
-          if (line) line.className = "flex-1 h-0.5 bg-emerald-500 mx-1";
-        } else if (s === step) {
-          icon.className = "w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs bg-tour-blue text-white shadow-sm ring-4 ring-blue-100 transition-all";
-          icon.textContent = s;
-          if (line) line.className = "flex-1 h-0.5 bg-slate-200 mx-1";
-        } else {
-          icon.className = "w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs bg-slate-100 text-slate-500 transition-all";
-          icon.textContent = s;
-          if (line) line.className = "flex-1 h-0.5 bg-slate-200 mx-1";
+      if (modo === "solo") {
+        state.totalPersonas = 1;
+        state.passengers = [state.passengers[0] || { nombre: "", cedula: "", edad: "", telefono: "", recogida: "" }];
+        if (btnSolo) btnSolo.className = "p-3.5 rounded-2xl border-2 text-left transition flex flex-col gap-1 border-tour-blue bg-blue-50/70 shadow-xs cursor-pointer";
+        if (btnGrupo) btnGrupo.className = "p-3.5 rounded-2xl border-2 text-left transition flex flex-col gap-1 border-slate-200 hover:border-slate-300 bg-white cursor-pointer";
+        if (checkSolo) {
+          checkSolo.className = "w-4 h-4 rounded-full bg-tour-blue text-white flex items-center justify-center text-[10px] font-bold";
+          checkSolo.innerHTML = "✓";
         }
-      }
-
-      document.querySelectorAll(".step-view").forEach(el => el.classList.add("hidden"));
-      document.getElementById(\`step-content-\${step}\`).classList.remove("hidden");
-
-      const btnPrev = document.getElementById("btn-wizard-prev");
-      const btnNextText = document.getElementById("btn-wizard-next-text");
-      if (step > 1) {
-        btnPrev.classList.remove("hidden");
+        if (checkGrupo) {
+          checkGrupo.className = "w-4 h-4 rounded-full border border-slate-300 hidden";
+          checkGrupo.innerHTML = "";
+        }
+        if (boxStepper) boxStepper.classList.add("hidden");
       } else {
-        btnPrev.classList.add("hidden");
+        if (state.totalPersonas < 2) state.totalPersonas = 2;
+        if (btnGrupo) btnGrupo.className = "p-3.5 rounded-2xl border-2 text-left transition flex flex-col gap-1 border-tour-blue bg-blue-50/70 shadow-xs cursor-pointer";
+        if (btnSolo) btnSolo.className = "p-3.5 rounded-2xl border-2 text-left transition flex flex-col gap-1 border-slate-200 hover:border-slate-300 bg-white cursor-pointer";
+        if (checkGrupo) {
+          checkGrupo.className = "w-4 h-4 rounded-full bg-tour-blue text-white flex items-center justify-center text-[10px] font-bold";
+          checkGrupo.innerHTML = "✓";
+        }
+        if (checkSolo) {
+          checkSolo.className = "w-4 h-4 rounded-full border border-slate-300 hidden";
+          checkSolo.innerHTML = "";
+        }
+        if (boxStepper) boxStepper.classList.remove("hidden");
       }
-
-      if (step === 5) {
-        btnNextText.textContent = "Confirmar Reserva";
-      } else {
-        btnNextText.textContent = "Continuar";
-      }
-
-      if (step === 1) renderStep1();
-      if (step === 2) renderBusSeatsUI();
-      if (step === 3) renderStep3();
-      if (step === 4) renderStep4();
-      if (step === 5) renderStep5();
-
+      const countEl = document.getElementById("count-total-personas");
+      if (countEl) countEl.textContent = state.totalPersonas;
+      renderRegAcompForms();
       updateWizardBottomTotal();
-      lucide.createIcons();
-    }
-
-    function renderStep1() {
-      const todayIso = (typeof getCaracasTodayStr === 'function') ? getCaracasTodayStr() : new Date().toISOString().split('T')[0];
-      const container = document.getElementById("step-1-fechas");
-      container.innerHTML = state.selectedTrip.salidas.map((s, idx) => {
-        const isPast = s.fecha < todayIso;
-        if (isPast) {
-          return \`
-            <div class="w-full p-4 rounded-2xl border-2 border-slate-200 bg-slate-50 opacity-45 cursor-not-allowed flex items-center justify-between">
-              <div>
-                <span class="font-bold text-sm text-slate-500 line-through block">\${s.fechaTexto}</span>
-                <span class="text-xs text-rose-500 font-semibold">Salida culminada (No disponible)</span>
-              </div>
-              <span class="px-2.5 py-1 rounded-md bg-slate-200 text-slate-600 text-[10px] font-bold uppercase">Pasada</span>
-            </div>
-          \`;
-        }
-        const isSelected = state.selectedSalida.fecha === s.fecha;
-        return \`
-          <button type="button" onclick="selectSalidaDate(\${idx})" class="w-full p-4 rounded-2xl border-2 text-left transition flex items-center justify-between \${isSelected ? 'border-tour-blue bg-blue-50/50' : 'border-slate-200 hover:border-slate-300'} cursor-pointer">
-            <div>
-              <span class="font-bold text-sm text-tour-navy block">\${s.fechaTexto}</span>
-              <span class="text-xs text-slate-500">\${s.buses.length} unidad(es) de transporte</span>
-            </div>
-            \${isSelected ? '<i data-lucide="check-circle" class="w-5 h-5 text-tour-blue"></i>' : ''}
-          </button>
-        \`;
-      }).join("");
-      lucide.createIcons();
-    }
-
-    window.selectSalidaDate = function(index) {
-      const target = state.selectedTrip.salidas[index];
-      if (!target) return;
-      const todayIso = (typeof getCaracasTodayStr === 'function') ? getCaracasTodayStr() : new Date().toISOString().split('T')[0];
-      if (target.fecha < todayIso) {
-        alert("Esta salida ya ocurrió y no puede ser seleccionada.");
-        return;
-      }
-      state.selectedSalida = target;
-      state.selectedBus = state.selectedSalida.buses[0] || "Bus 1";
-      state.busesDisponibles = state.selectedSalida.buses || ["Bus 1"];
-      state.asientosSeleccionados = [];
-      state.asientosOcupados = getStoredOccupiedSeats(state.selectedTrip.destino, target.fecha, state.selectedBus);
-      state.asientosBloqueados = [];
-      document.getElementById("wizard-trip-date").textContent = state.selectedSalida.fechaTexto;
-      renderStep1();
-      renderBusSeatsUI();
-      loadBusSeats();
     };
 
-    async function loadBusSeats() {
-      if (!state.selectedTrip || !state.selectedSalida) return;
-
-      const destino = state.selectedTrip.destino;
-      const fecha = state.selectedSalida.fecha;
-      const bus = state.selectedBus || "Bus 1";
-
-      // 1. CARGA INMEDIATA DESDE LA SESIÓN LOCAL (UI instantánea, sin parpadeo)
-      const localOcupados = getStoredOccupiedSeats(destino, fecha, bus);
-      state.asientosOcupados = [...localOcupados];
-      renderBusSeatsUI();
-
-      // 2. CONSULTAR A GOOGLE SHEETS / WEBHOOK SI ESTÁ CONFIGURADO
-      if (!WEBHOOK_URL) {
-        return;
-      }
-
-      try {
-        const destinoHoja = (typeof formatDestinoSheetName === "function") 
-          ? formatDestinoSheetName(destino, fecha) 
-          : destino;
-
-        // Petición al Webhook: Enviar correctamente accion: "asientos" y el nombre exacto del destino
-        const payload = {
-          accion: "asientos",
-          destino: destino,
-          destinoHoja: destinoHoja,
-          fecha: fecha,
-          bus: bus
-        };
-
-        let data = null;
-
-        // Petición POST al Webhook (Google Apps Script)
-        try {
-          const res = await fetch(WEBHOOK_URL, {
-            method: "POST",
-            headers: { "Content-Type": "text/plain;charset=utf-8" },
-            body: JSON.stringify(payload),
-            redirect: "follow"
-          });
-          if (res.ok) {
-            data = await res.json();
-            console.log("Respuesta recibida del Apps Script (POST accion asientos):", data);
-          }
-        } catch (postErr) {
-          console.warn("Aviso al realizar POST a Webhook para asientos, probando fallback GET:", postErr);
-        }
-
-        // Si la petición POST no obtuvo asientos, intentar por GET como fallback
-        if (!data || (!data.asientos && !data.ocupados)) {
-          try {
-            const params = new URLSearchParams({
-              accion: "asientos",
-              destino: destino,
-              destinoHoja: destinoHoja,
-              fecha: fecha,
-              bus: bus,
-              _t: Date.now().toString()
-            });
-            const url = WEBHOOK_URL + "?" + params.toString();
-            const resGet = await fetch(url, { redirect: "follow" });
-            if (resGet.ok) {
-              const dataGet = await resGet.json();
-              if (dataGet && (dataGet.asientos || dataGet.ocupados)) {
-                data = dataGet;
-                console.log("Respuesta recibida del Apps Script (GET accion asientos):", data);
-              }
-            }
-          } catch (_) {}
-        }
-
-        // 3. Procesar la respuesta del Apps Script leyendo la propiedad data.asientos
-        if (data) {
-          let listaAsientos = null;
-          if (Array.isArray(data.asientos)) {
-            listaAsientos = data.asientos;
-          } else if (Array.isArray(data.ocupados)) {
-            listaAsientos = data.ocupados;
-          }
-
-          if (Array.isArray(listaAsientos)) {
-            // Convertir asientos a formato numérico (soportando ["1", "2"] o [1, 2])
-            const serverOcupados = listaAsientos
-              .map(n => Number(n))
-              .filter(n => !isNaN(n) && n >= 1 && n <= 31);
-
-            console.log("Asientos ocupados actualizados para " + destino + " (" + bus + "):", serverOcupados);
-
-            // Inyectar de inmediato en el estado local de los asientos ocupados
-            state.asientosOcupados = [...serverOcupados];
-
-            // Guardar en almacenamiento de sesión y local de forma autoritativa
-            saveStoredOccupiedSeats(destino, fecha, bus, serverOcupados, true);
-
-            // Manejo de asientos bloqueados si vienen en la respuesta
-            const serverBloqueados = Array.isArray(data.bloqueados) ? data.bloqueados.map(Number) : [];
-            state.asientosBloqueados = serverBloqueados.filter(s => !state.asientosOcupados.includes(s));
-
-            // Actualizar la interfaz del mapa de asientos y las tarjetas de viaje
-            renderBusSeatsUI();
-            if (typeof renderTrips === "function") renderTrips();
-          }
-        }
-      } catch (e) {
-        console.warn("Aviso al consultar asientos de Google Sheets (usando caché de sesión):", e);
-        state.asientosOcupados = getStoredOccupiedSeats(destino, fecha, bus);
-        renderBusSeatsUI();
-      }
-    }
-
-    function renderBusSeatsUI() {
-      const tabsContainer = document.getElementById("bus-tabs-container");
-      if (state.busesDisponibles.length > 1) {
-        tabsContainer.classList.remove("hidden");
-        tabsContainer.innerHTML = state.busesDisponibles.map(b => {
-          const isSelected = state.selectedBus === b;
-          return \`
-            <button type="button" onclick="selectBus('\${b}')" class="px-4 py-1.5 rounded-xl font-bold text-xs transition shadow-sm \${isSelected ? 'bg-tour-blue text-white shadow' : 'bg-white text-slate-600 border border-slate-200'}">
-              \${b}
-            </button>
-          \`;
-        }).join("");
-      } else {
-        tabsContainer.classList.add("hidden");
-      }
-
-      const container = document.getElementById("bus-seat-grid");
-      let html = "";
-
-      for (let f = 0; f < 6; f++) {
-        const s1 = f * 4 + 1;
-        const s2 = f * 4 + 2;
-        const s3 = f * 4 + 3;
-        const s4 = f * 4 + 4;
-
-        html += \`
-          <div class="flex items-center justify-between gap-1">
-            <div class="flex gap-1.5">
-              \${renderSingleSeat(s1)}
-              \${renderSingleSeat(s2)}
-            </div>
-            <div class="w-8 text-center text-[10px] text-slate-300 font-mono">·</div>
-            <div class="flex gap-1.5">
-              \${renderSingleSeat(s3)}
-              \${renderSingleSeat(s4)}
-            </div>
-          </div>
-        \`;
-      }
-
-      html += \`
-        <div class="flex items-center justify-between gap-1">
-          <div class="flex gap-1.5">
-            \${renderSingleSeat(25)}
-            \${renderSingleSeat(26)}
-          </div>
-          <div class="w-8 text-center text-[10px] text-slate-300 font-mono">·</div>
-          <div class="flex gap-1.5 opacity-30 pointer-events-none">
-            <div class="w-9 h-9 rounded-xl border border-dashed border-slate-300 flex items-center justify-center text-[10px] text-slate-400">Pta</div>
-            <div class="w-9 h-9"></div>
-          </div>
-        </div>
-      \`;
-
-      html += \`
-        <div class="flex items-center justify-between gap-1 pt-1">
-          \${renderSingleSeat(27)}
-          \${renderSingleSeat(28)}
-          \${renderSingleSeat(29)}
-          \${renderSingleSeat(30)}
-          \${renderSingleSeat(31)}
-        </div>
-      \`;
-
-      container.innerHTML = html;
-    }
-
-    window.selectBus = function(busName) {
-      state.selectedBus = busName;
-      state.asientosSeleccionados = [];
-      state.asientosOcupados = getStoredOccupiedSeats(state.selectedTrip.destino, state.selectedSalida.fecha, busName);
-      renderBusSeatsUI();
-      loadBusSeats();
-    };
-
-    function renderSingleSeat(num) {
-      const isOcupado = state.asientosOcupados.includes(num) || state.asientosOcupados.some(s => Number(s) === num || String(s) === String(num));
-      const isBloqueado = state.asientosBloqueados.includes(num);
-      const isSeleccionado = state.asientosSeleccionados.includes(num);
-
-      let styleClass = "bg-emerald-500 text-white shadow-sm border border-emerald-400 cursor-pointer hover:bg-emerald-600";
-      let titleAttr = \`Asiento \${num} disponible\`;
-      if (isOcupado) {
-        styleClass = "bg-slate-300 text-slate-500 cursor-not-allowed border border-slate-300 opacity-80 select-none shadow-none";
-        titleAttr = \`Asiento \${num} ocupado (reservado)\`;
-      } else if (isBloqueado) {
-        styleClass = "bg-amber-400 text-amber-950 cursor-not-allowed border border-amber-300 select-none shadow-none";
-        titleAttr = \`Asiento \${num} apartado temporalmente\`;
-      } else if (isSeleccionado) {
-        styleClass = "bg-tour-blue text-white ring-4 ring-blue-300 ring-offset-1 font-bold shadow-md scale-105";
-        titleAttr = \`Asiento \${num} seleccionado por ti\`;
-      }
-
-      return \`
-        <button type="button" onclick="toggleSeat(\${num})" title="\${titleAttr}" class="w-9 h-10 rounded-xl relative flex flex-col items-center justify-center text-xs font-bold seat-bounce transition \${styleClass}" \${isOcupado || isBloqueado ? 'disabled' : ''}>
-          <span class="w-5 h-1.5 rounded-full bg-white/30 mb-0.5 pointer-events-none"></span>
-          <span>\${num}</span>
-        </button>
-      \`;
-    }
-
-    function syncPassengersWithSeats() {
-      const numNeeded = state.asientosSeleccionados.length;
-      if (numNeeded === 0) return;
-
-      // Asegurar que exista al menos el pasajero titular
-      if (state.passengers.length === 0) {
-        state.passengers.push({
-          seat: state.asientosSeleccionados[0],
-          nombre: "",
-          cedula: "",
-          edad: "",
-          telefono: "",
-          correo: "",
-          recogida: ""
-        });
-      }
-
-      // Si se agregaron asientos, añadir acompañantes vacíos conservando los ya escritos
-      while (state.passengers.length < numNeeded) {
-        const nextSeat = state.asientosSeleccionados[state.passengers.length];
-        const defaultPickup = (state.passengers[0] && state.passengers[0].recogida) ? state.passengers[0].recogida : "";
-        state.passengers.push({
-          seat: nextSeat,
-          nombre: "",
-          edad: "",
-          cedula: "",
-          recogida: defaultPickup
-        });
-      }
-
-      // Si se redujeron asientos, quitar solo los que dejaron de existir
-      if (state.passengers.length > numNeeded) {
-        state.passengers = state.passengers.slice(0, numNeeded);
-      }
-
-      // Sincronizar número de asiento según el orden actual
-      state.asientosSeleccionados.forEach((seatNum, i) => {
-        if (state.passengers[i]) {
-          state.passengers[i].seat = seatNum;
-        }
-      });
-    }
-
-    window.toggleSeat = function(num) {
-      const currentOcupados = getStoredOccupiedSeats(state.selectedTrip.destino, state.selectedSalida.fecha, state.selectedBus);
-      const isOcupadoLocal = state.asientosOcupados.includes(num) || state.asientosOcupados.some(s => Number(s) === num || String(s) === String(num)) || currentOcupados.includes(num);
-      if (isOcupadoLocal || state.asientosBloqueados.includes(num)) {
-        if (!state.asientosOcupados.includes(num) && currentOcupados.includes(num)) {
-          state.asientosOcupados = [...currentOcupados];
-          renderBusSeatsUI();
-        }
-        return;
-      }
-      if (navigator.vibrate) navigator.vibrate(20);
-
-      const idx = state.asientosSeleccionados.indexOf(num);
-      if (idx > -1) {
-        state.asientosSeleccionados.splice(idx, 1);
-      } else {
-        state.asientosSeleccionados.push(num);
-      }
-
-      state.asientosSeleccionados.sort((a, b) => a - b);
-      syncPassengersWithSeats();
-      renderBusSeatsUI();
+    window.cambiarTotalPersonas = function(delta) {
+      const nuevo = Math.min(15, Math.max(2, state.totalPersonas + delta));
+      state.totalPersonas = nuevo;
+      const countEl = document.getElementById("count-total-personas");
+      if (countEl) countEl.textContent = nuevo;
+      renderRegAcompForms();
       updateWizardBottomTotal();
-
-      if (state.asientosSeleccionados.length > 0 && !state.timerBloqueo) {
-        startSeatCountdown();
-      }
     };
 
-    function startSeatCountdown() {
-      const box = document.getElementById("seat-timer-box");
-      const display = document.getElementById("seat-timer-countdown");
-      box.classList.remove("hidden");
-      state.segundosRestantesTimer = MINUTOS_BLOQUEO_ASIENTO * 60;
-
-      if (state.timerBloqueo) clearInterval(state.timerBloqueo);
-      state.timerBloqueo = setInterval(() => {
-        state.segundosRestantesTimer--;
-        const m = Math.floor(state.segundosRestantesTimer / 60);
-        const s = state.segundosRestantesTimer % 60;
-        display.textContent = \`\${String(m).padStart(2, '0')}:\${String(s).padStart(2, '0')}\`;
-
-        if (state.segundosRestantesTimer <= 0) {
-          clearInterval(state.timerBloqueo);
-          state.timerBloqueo = null;
-          alert("El tiempo para reservar tus asientos ha expirado. Vuelve a seleccionarlos.");
-          state.asientosSeleccionados = [];
-          box.classList.add("hidden");
-          goToStep(2);
-        }
-      }, 1000);
-    }
+    window.setRegPickup = function(text) {
+      const el = document.getElementById("reg-lead-pickup");
+      if (el) {
+        el.value = text;
+        if (!state.passengers[0]) state.passengers[0] = { nombre: "", cedula: "", edad: "", telefono: "", recogida: "" };
+        state.passengers[0].recogida = text;
+      }
+    };
 
     function escapeAttr(str) {
       if (str === null || str === undefined) return "";
@@ -2520,570 +2174,444 @@ ${opinionsClientCode}
         .replace(/'/g, "&#039;");
     }
 
-    function handleToggleSeparatePickup(isSeparate) {
-      state.otroPunto = Boolean(isSeparate);
-      const leadPickup = (state.passengers[0] && state.passengers[0].recogida) ? state.passengers[0].recogida : (document.getElementById("lead-pickup")?.value || "");
+    function renderRegAcompForms() {
+      const container = document.getElementById("reg-acomp-container");
+      if (!container) return;
+      if (state.viajeModo === "solo" || state.totalPersonas <= 1) {
+        container.innerHTML = "";
+        return;
+      }
 
-      const numComps = Math.max(0, state.asientosSeleccionados.length - 1);
-      for (let i = 0; i < numComps; i++) {
-        const wrap = document.getElementById(\`comp-pickup-wrap-\${i}\`);
-        const input = document.getElementById(\`comp-pickup-\${i}\`);
-        if (wrap) {
-          if (state.otroPunto) {
-            wrap.classList.remove("hidden");
-            // Al activar: aparece el campo prellenado con el punto del titular si está vacío y editable
-            if (input && (!input.value || !input.value.trim())) {
-              input.value = leadPickup;
-              if (state.passengers[i + 1]) {
-                state.passengers[i + 1].recogida = leadPickup;
-              }
-            }
-          } else {
-            // Al desactivar: se ocultan los campos y todos usan el punto del titular, pero se conserva lo que se escribió
-            wrap.classList.add("hidden");
-          }
-        }
+      const numAcomp = state.totalPersonas - 1;
+      let htmlStr = "";
+      for (let i = 0; i < numAcomp; i++) {
+        const comp = state.passengers[i + 1] || { nombre: "", cedula: "", edad: "", recogida: "" };
+        htmlStr += '<div class="p-3.5 bg-white rounded-2xl border border-slate-200 space-y-2.5 shadow-2xs">' +
+          '<div class="flex items-center justify-between border-b border-slate-100 pb-1.5">' +
+            '<span class="text-xs font-bold text-slate-700 flex items-center gap-1.5">' +
+              '<i data-lucide="user" class="w-3.5 h-3.5 text-tour-caribe"></i>' +
+              '<span>Acompañante ' + (i + 1) + '</span>' +
+            '</span>' +
+            '<span class="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-semibold">Cupo adicional</span>' +
+          '</div>' +
+          '<div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">' +
+            '<div class="sm:col-span-2">' +
+              '<label class="block text-slate-600 font-medium mb-1">Nombre y Apellido *</label>' +
+              '<input type="text" id="reg-comp-name-' + i + '" value="' + escapeAttr(comp.nombre) + '" placeholder="Ej. Mariana González" class="w-full px-3 py-1.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-tour-blue focus:outline-none">' +
+            '</div>' +
+            '<div>' +
+              '<label class="block text-slate-600 font-medium mb-1">Cédula o Edad *</label>' +
+              '<input type="text" id="reg-comp-cedula-' + i + '" value="' + escapeAttr(comp.cedula || comp.edad) + '" placeholder="Ej. V-25123456 o 12 años" class="w-full px-3 py-1.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-tour-blue focus:outline-none">' +
+            '</div>' +
+          '</div>' +
+        '</div>';
+      }
+      container.innerHTML = htmlStr;
+      if (window.lucide && typeof window.lucide.createIcons === "function") {
+        window.lucide.createIcons();
       }
     }
 
-    function bindPassengerRealtimeEvents() {
-      // Titular (index 0)
-      const leadName = document.getElementById("lead-name");
-      if (leadName) leadName.oninput = (e) => { state.passengers[0].nombre = e.target.value; };
-      const leadCedula = document.getElementById("lead-cedula");
-      if (leadCedula) leadCedula.oninput = (e) => { state.passengers[0].cedula = e.target.value; };
-      const leadAge = document.getElementById("lead-age");
-      if (leadAge) leadAge.oninput = (e) => { state.passengers[0].edad = e.target.value; };
-      const leadPhone = document.getElementById("lead-phone");
-      if (leadPhone) leadPhone.oninput = (e) => { state.passengers[0].telefono = e.target.value; };
-      const leadEmail = document.getElementById("lead-email");
-      if (leadEmail) leadEmail.oninput = (e) => { state.passengers[0].correo = e.target.value; };
-      const leadPickup = document.getElementById("lead-pickup");
-      if (leadPickup) {
-        leadPickup.oninput = (e) => {
-          state.passengers[0].recogida = e.target.value;
-          // Si el interruptor de otro punto no está activo, sincronizar los acompañantes
-          if (!state.otroPunto) {
-            for (let i = 1; i < state.passengers.length; i++) {
-              state.passengers[i].recogida = e.target.value;
-              const cInput = document.getElementById(\`comp-pickup-\${i - 1}\`);
-              if (cInput && (!cInput.value || !cInput.value.trim())) {
-                cInput.value = e.target.value;
-              }
-            }
-          }
-        };
+    window.setRegPagoTipo = function(tipo) {
+      state.tipoAbono = tipo;
+      const btnAbono = document.getElementById("pay-opt-deposit");
+      const btnFull = document.getElementById("pay-opt-full");
+      if (tipo === "abono") {
+        if (btnAbono) btnAbono.className = "py-2.5 px-3 rounded-xl font-bold text-xs transition bg-white text-tour-navy shadow-sm cursor-pointer";
+        if (btnFull) btnFull.className = "py-2.5 px-3 rounded-xl font-bold text-xs transition text-slate-600 hover:text-tour-navy cursor-pointer";
+      } else {
+        if (btnFull) btnFull.className = "py-2.5 px-3 rounded-xl font-bold text-xs transition bg-white text-tour-navy shadow-sm cursor-pointer";
+        if (btnAbono) btnAbono.className = "py-2.5 px-3 rounded-xl font-bold text-xs transition text-slate-600 hover:text-tour-navy cursor-pointer";
       }
+      renderStep2();
+      updateWizardBottomTotal();
+    };
 
-      // Acompañantes (index 1..N)
-      const numComps = Math.max(0, state.asientosSeleccionados.length - 1);
-      for (let i = 0; i < numComps; i++) {
-        const compIdx = i;
-        const pIdx = i + 1;
-        const cName = document.getElementById(\`comp-name-\${compIdx}\`);
-        if (cName) cName.oninput = (e) => {
-          if (state.passengers[pIdx]) state.passengers[pIdx].nombre = e.target.value;
-        };
-        const cAge = document.getElementById(\`comp-age-\${compIdx}\`);
-        if (cAge) cAge.oninput = (e) => {
-          if (state.passengers[pIdx]) state.passengers[pIdx].edad = e.target.value;
-        };
-        const cCed = document.getElementById(\`comp-cedula-\${compIdx}\`);
-        if (cCed) cCed.oninput = (e) => {
-          if (state.passengers[pIdx]) state.passengers[pIdx].cedula = e.target.value;
-        };
-        const cPick = document.getElementById(\`comp-pickup-\${compIdx}\`);
-        if (cPick) cPick.oninput = (e) => {
-          if (state.passengers[pIdx]) state.passengers[pIdx].recogida = e.target.value;
-        };
-      }
-    }
+    window.setRegMetodoPago = function(metodo) {
+      state.metodoPago = metodo;
+      const boxPm = document.getElementById("method-box-pagomovil");
+      const boxEf = document.getElementById("method-box-efectivo");
+      const lblPm = document.getElementById("label-method-pagomovil");
+      const lblEf = document.getElementById("label-method-efectivo");
 
-    window.selectLeadPickup = function(text) {
-      const el = document.getElementById("lead-pickup");
-      if (el) {
-        el.value = text;
-        state.passengers[0].recogida = text;
-        if (!state.otroPunto) {
-          for (let i = 1; i < state.passengers.length; i++) {
-            state.passengers[i].recogida = text;
-            const cInput = document.getElementById(\`comp-pickup-\${i - 1}\`);
-            if (cInput && (!cInput.value || !cInput.value.trim())) {
-              cInput.value = text;
-            }
-          }
-        }
+      if (metodo === "Pago Móvil") {
+        if (boxPm) boxPm.classList.remove("hidden");
+        if (boxEf) boxEf.classList.add("hidden");
+        if (lblPm) lblPm.className = "relative flex flex-col p-3.5 border-2 rounded-2xl cursor-pointer transition border-tour-blue bg-blue-50/50";
+        if (lblEf) lblEf.className = "relative flex flex-col p-3.5 border-2 rounded-2xl cursor-pointer transition border-slate-200 hover:border-slate-300";
+      } else {
+        if (boxPm) boxPm.classList.add("hidden");
+        if (boxEf) boxEf.classList.remove("hidden");
+        if (lblEf) lblEf.className = "relative flex flex-col p-3.5 border-2 rounded-2xl cursor-pointer transition border-emerald-500 bg-emerald-50/50";
+        if (lblPm) lblPm.className = "relative flex flex-col p-3.5 border-2 rounded-2xl cursor-pointer transition border-slate-200 hover:border-slate-300";
       }
     };
 
-    function renderStep3() {
-      syncPassengersWithSeats();
+    function goToStep(step) {
+      currentStep = step;
 
-      const container = document.getElementById("passengers-forms");
-      const togglePickupBox = document.getElementById("toggle-separate-pickup-box");
-      const togglePickup = document.getElementById("toggle-separate-pickup");
-
-      const numTotal = state.asientosSeleccionados.length;
-      const numComps = Math.max(0, numTotal - 1);
-
-      // Mostrar el interruptor solo si hay 2 o más pasajeros (titular + al menos 1 acompañante)
-      if (togglePickupBox) {
-        if (numComps > 0) {
-          togglePickupBox.classList.remove("hidden");
-        } else {
-          togglePickupBox.classList.add("hidden");
+      for (let s = 1; s <= 3; s++) {
+        const icon = document.getElementById("step-icon-" + s);
+        const line = document.getElementById("step-line-" + s);
+        if (icon) {
+          if (s < step) {
+            icon.className = "w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs bg-emerald-500 text-white shadow-sm transition-all";
+            icon.innerHTML = '<i data-lucide="check" class="w-4 h-4"></i>';
+            if (line) line.className = "flex-1 h-0.5 bg-emerald-500 mx-2";
+          } else if (s === step) {
+            icon.className = "w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs bg-tour-blue text-white shadow-sm ring-4 ring-blue-100 transition-all";
+            icon.textContent = String(s);
+            if (line) line.className = "flex-1 h-0.5 bg-slate-200 mx-2";
+          } else {
+            icon.className = "w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs bg-slate-100 text-slate-500 transition-all";
+            icon.textContent = String(s);
+            if (line) line.className = "flex-1 h-0.5 bg-slate-200 mx-2";
+          }
         }
       }
-      if (togglePickup) {
-        togglePickup.checked = Boolean(state.otroPunto);
+
+      document.querySelectorAll(".step-view").forEach(el => el.classList.add("hidden"));
+      const currentView = document.getElementById("step-content-" + step);
+      if (currentView) currentView.classList.remove("hidden");
+
+      const btnPrev = document.getElementById("btn-wizard-prev");
+      const btnNextText = document.getElementById("btn-wizard-next-text");
+      if (step > 1) {
+        if (btnPrev) btnPrev.classList.remove("hidden");
+      } else {
+        if (btnPrev) btnPrev.classList.add("hidden");
       }
 
-      // Si el contenedor ya tiene exactamente el número correcto de tarjetas, actualizamos asientos sin borrar el DOM
-      const existingCards = container.querySelectorAll(".passenger-card");
-      if (existingCards.length === numTotal && numTotal > 0) {
-        const leadBadge = document.getElementById("lead-seat-badge");
-        if (leadBadge) leadBadge.textContent = \`Asiento #\${state.asientosSeleccionados[0]}\`;
-        for (let i = 0; i < numComps; i++) {
-          const compBadge = document.getElementById(\`comp-seat-badge-\${i}\`);
-          if (compBadge) compBadge.textContent = \`Asiento #\${state.asientosSeleccionados[i + 1]}\`;
-        }
-        handleToggleSeparatePickup(state.otroPunto);
-        return;
+      if (step === 3) {
+        if (btnNextText) btnNextText.textContent = "Confirmar y Enviar Reserva";
+      } else {
+        if (btnNextText) btnNextText.textContent = "Continuar";
       }
 
-      // Construcción del formulario manteniendo los datos que viven en state.passengers
-      const leadSeat = state.asientosSeleccionados[0] || "--";
-      const leadData = state.passengers[0] || { nombre: "", cedula: "", edad: "", telefono: "", correo: "", recogida: "" };
+      if (step === 1) renderStep1();
+      if (step === 2) renderStep2();
+      if (step === 3) renderStep3();
 
-      let html = \`
-        <div class="passenger-card p-4 bg-sky-50/60 rounded-2xl border border-sky-200/80 space-y-3">
-          <div class="flex items-center justify-between border-b border-sky-100 pb-2">
-            <span class="font-title font-bold text-xs uppercase text-tour-navy flex items-center gap-1.5">
-              <i data-lucide="user-check" class="w-4 h-4 text-tour-blue"></i>
-              <span>Pasajero Titular (<span id="lead-seat-badge">Asiento #\${leadSeat}</span>)</span>
-            </span>
-            <span class="text-[10px] bg-tour-blue text-white px-2 py-0.5 rounded-full font-bold">Principal</span>
-          </div>
-
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-            <div>
-              <label class="block text-slate-600 font-medium mb-1">Nombre y Apellido *</label>
-              <input type="text" id="lead-name" value="\${escapeAttr(leadData.nombre)}" required placeholder="Ej. Carlos Pérez" class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-tour-blue focus:outline-none">
-            </div>
-            <div>
-              <label class="block text-slate-600 font-medium mb-1">Cédula o Pasaporte *</label>
-              <input type="text" id="lead-cedula" value="\${escapeAttr(leadData.cedula)}" required placeholder="Ej. V-19876543" class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-tour-blue focus:outline-none">
-            </div>
-            <div>
-              <label class="block text-slate-600 font-medium mb-1">Edad *</label>
-              <input type="number" id="lead-age" value="\${escapeAttr(leadData.edad)}" required placeholder="Ej. 28" min="1" max="100" class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-tour-blue focus:outline-none">
-            </div>
-            <div>
-              <label class="block text-slate-600 font-medium mb-1">Teléfono WhatsApp *</label>
-              <input type="tel" id="lead-phone" value="\${escapeAttr(leadData.telefono)}" required placeholder="Ej. 04121234567" class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-tour-blue focus:outline-none">
-            </div>
-            <div class="md:col-span-2">
-              <label class="block text-slate-600 font-medium mb-1">Correo Electrónico (opcional)</label>
-              <input type="email" id="lead-email" value="\${escapeAttr(leadData.correo)}" placeholder="ejemplo@correo.com" class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-tour-blue focus:outline-none">
-            </div>
-            <div class="md:col-span-2">
-              <label class="block text-slate-600 font-medium mb-1">Punto de Recogida *</label>
-              <textarea id="lead-pickup" rows="2" required placeholder="Ej. Barquisimeto (Monumental), Cabudare (Redoma) o Yaracuy (Chivacoa / San Felipe)" class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-tour-blue focus:outline-none text-xs">\${escapeAttr(leadData.recogida)}</textarea>
-              <span class="text-[10px] text-slate-400">Salidas desde Barquisimeto, Cabudare y Yaracuy. Puedes seleccionar un punto o escribirlo:</span>
-              <div class="flex flex-wrap gap-1.5 pt-1.5">
-                <button type="button" onclick="selectLeadPickup('Barquisimeto: C.C. Metrópolis / Monumental')" class="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-sky-50 text-tour-blue border border-sky-200 hover:bg-sky-100 transition cursor-pointer">📍 Barquisimeto</button>
-                <button type="button" onclick="selectLeadPickup('Cabudare: Redoma de Agua Viva')" class="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-sky-50 text-tour-blue border border-sky-200 hover:bg-sky-100 transition cursor-pointer">📍 Cabudare</button>
-                <button type="button" onclick="selectLeadPickup('Yaracuy: Pasarela / Peaje de Chivacoa')" class="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-sky-50 text-tour-blue border border-sky-200 hover:bg-sky-100 transition cursor-pointer">📍 Yaracuy (Chivacoa)</button>
-                <button type="button" onclick="selectLeadPickup('Yaracuy: San Felipe (Redoma / Autopista)')" class="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-sky-50 text-tour-blue border border-sky-200 hover:bg-sky-100 transition cursor-pointer">📍 Yaracuy (San Felipe)</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      \`;
-
-      for (let i = 0; i < numComps; i++) {
-        const compSeat = state.asientosSeleccionados[i + 1] || "--";
-        const compData = state.passengers[i + 1] || { nombre: "", edad: "", cedula: "", recogida: "" };
-        const compPickupVal = compData.recogida || "";
-
-        html += \`
-          <div class="passenger-card p-4 bg-white rounded-2xl border border-slate-200 space-y-3">
-            <div class="flex items-center justify-between border-b border-slate-100 pb-2">
-              <span class="font-title font-bold text-xs uppercase text-slate-700 flex items-center gap-1.5">
-                <i data-lucide="user" class="w-4 h-4 text-tour-caribe"></i>
-                <span>Acompañante \${i + 1} (<span id="comp-seat-badge-\${i}">Asiento #\${compSeat}</span>)</span>
-              </span>
-            </div>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
-              <div>
-                <label class="block text-slate-600 font-medium mb-1">Nombre y Apellido *</label>
-                <input type="text" id="comp-name-\${i}" value="\${escapeAttr(compData.nombre)}" required placeholder="Nombre completo" class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-tour-blue focus:outline-none">
-              </div>
-              <div>
-                <label class="block text-slate-600 font-medium mb-1">Edad *</label>
-                <input type="number" id="comp-age-\${i}" value="\${escapeAttr(compData.edad)}" required placeholder="Edad" class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-tour-blue focus:outline-none">
-              </div>
-              <div>
-                <label class="block text-slate-600 font-medium mb-1">Cédula (opcional para niños)</label>
-                <input type="text" id="comp-cedula-\${i}" value="\${escapeAttr(compData.cedula)}" placeholder="Cédula" class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-tour-blue focus:outline-none">
-              </div>
-              
-              <div id="comp-pickup-wrap-\${i}" class="comp-pickup-wrapper md:col-span-3 \${state.otroPunto ? '' : 'hidden'}">
-                <label class="block text-slate-600 font-medium mb-1">Punto de Recogida específico *</label>
-                <input type="text" id="comp-pickup-\${i}" value="\${escapeAttr(compPickupVal)}" placeholder="Dirección exacta de recogida" class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-tour-blue focus:outline-none text-xs">
-              </div>
-            </div>
-          </div>
-        \`;
+      updateWizardBottomTotal();
+      if (window.lucide && typeof window.lucide.createIcons === "function") {
+        window.lucide.createIcons();
       }
-
-      container.innerHTML = html;
-      bindPassengerRealtimeEvents();
-      lucide.createIcons();
     }
 
-    function renderStep4() {
-      const numPers = state.asientosSeleccionados.length;
-      const totalEur = state.selectedTrip.precio * numPers;
-      const totalAbono = ABONO_MINIMO * numPers;
+    function renderStep1() {
+      const lead = state.passengers[0] || {};
+      const nameInput = document.getElementById("reg-lead-name");
+      const ciInput = document.getElementById("reg-lead-cedula");
+      const telfInput = document.getElementById("reg-lead-phone");
+      const ageInput = document.getElementById("reg-lead-age");
+      const pickupInput = document.getElementById("reg-lead-pickup");
+      if (nameInput && lead.nombre) nameInput.value = lead.nombre;
+      if (ciInput && lead.cedula) ciInput.value = lead.cedula;
+      if (telfInput && lead.telefono) telfInput.value = lead.telefono;
+      if (ageInput && lead.edad) ageInput.value = lead.edad;
+      if (pickupInput && lead.recogida) pickupInput.value = lead.recogida;
+      renderRegAcompForms();
+    }
 
-      let amountEurToPay = totalEur;
-      let balanceEur = 0;
-      if (state.tipoAbono === "abono") {
-        amountEurToPay = totalAbono;
-        balanceEur = totalEur - totalAbono;
-      }
+    function renderStep2() {
+      if (!state.selectedTrip) return;
+      const numPers = state.totalPersonas || 1;
+      const totalEur = state.selectedTrip.precio * numPers;
+      const totalAbono = 5 * numPers;
+
+      let toPayTodayEur = (state.tipoAbono === "abono") ? totalAbono : totalEur;
+      let balanceEur = totalEur - toPayTodayEur;
+
+      const peopleText = (numPers === 1) ? "1 persona (Titular)" : (numPers + " personas (" + (state.viajeModo === 'grupo' ? 'Titular + ' + (numPers - 1) + ' acompañantes' : numPers + ' pasajeros') + ")");
+      const peopleSummaryEl = document.getElementById("pay-people-summary");
+      if (peopleSummaryEl) peopleSummaryEl.textContent = peopleText;
+
+      const totalSummaryEl = document.getElementById("pay-total-summary");
+      if (totalSummaryEl) totalSummaryEl.textContent = totalEur + " REF (" + totalEur + " €)";
+
+      const todayEl = document.getElementById("pay-amount-today");
+      const balanceEl = document.getElementById("pay-amount-balance");
 
       if (state.tasaDisponible && state.tasaBCV > 0) {
-        const amountBs = formatVzla(amountEurToPay * state.tasaBCV);
+        const amountBs = formatVzla(toPayTodayEur * state.tasaBCV);
         const balanceBs = formatVzla(balanceEur * state.tasaBCV);
-
-        document.getElementById("pay-amount-today").textContent = \`\${amountEurToPay} € (Bs. \${amountBs})\`;
-        document.getElementById("pay-amount-balance").textContent = \`\${balanceEur} € (Bs. \${balanceBs})\`;
-        document.getElementById("pagomovil-monto-bs").textContent = \`Bs. \${amountBs}\`;
+        if (todayEl) todayEl.textContent = toPayTodayEur + " REF (Bs. " + amountBs + ")";
+        if (balanceEl) balanceEl.textContent = balanceEur + " REF (Bs. " + balanceBs + ")";
+        const pmMontoEl = document.getElementById("pagomovil-monto-bs");
+        if (pmMontoEl) pmMontoEl.textContent = "Bs. " + amountBs;
       } else {
-        document.getElementById("pay-amount-today").textContent = \`\${amountEurToPay} €\`;
-        document.getElementById("pay-amount-balance").textContent = \`\${balanceEur} €\`;
-        document.getElementById("pagomovil-monto-bs").textContent = "Tasa no disponible";
+        if (todayEl) todayEl.textContent = toPayTodayEur + " REF (" + toPayTodayEur + " €)";
+        if (balanceEl) balanceEl.textContent = balanceEur + " REF (" + balanceEur + " €)";
+        const pmMontoEl = document.getElementById("pagomovil-monto-bs");
+        if (pmMontoEl) pmMontoEl.textContent = toPayTodayEur + " REF";
       }
 
-      document.getElementById("efectivo-monto-usd").textContent = \`\${amountEurToPay} $\`;
-      document.getElementById("pm-banco").textContent = DATOS_PAGO_MOVIL.banco;
-      document.getElementById("pm-rif").textContent = DATOS_PAGO_MOVIL.cedulaRif;
-      document.getElementById("pm-telf").textContent = DATOS_PAGO_MOVIL.telefono;
-      document.getElementById("efectivo-instrucciones").textContent = INSTRUCCIONES_EFECTIVO;
+      const efAmountEl = document.getElementById("efectivo-monto-usd");
+      if (efAmountEl) efAmountEl.textContent = toPayTodayEur + " $";
     }
 
-    function renderStep5() {
-      const numPers = state.asientosSeleccionados.length;
+    function renderStep3() {
+      if (!state.selectedTrip) return;
+      const numPers = state.totalPersonas || 1;
       const totalEur = state.selectedTrip.precio * numPers;
-      const totalAbono = ABONO_MINIMO * numPers;
+      const toPayToday = (state.tipoAbono === "abono") ? (5 * numPers) : totalEur;
+      const balanceEur = totalEur - toPayToday;
+      const titular = state.passengers[0] || {};
+      const acompList = state.passengers.slice(1);
 
-      let paidEur = totalEur;
-      let balanceEur = 0;
-      if (state.tipoAbono === "abono") {
-        paidEur = totalAbono;
-        balanceEur = totalEur - totalAbono;
+      let acompHtml = "";
+      if (acompList.length > 0) {
+        acompHtml = '<div class="border-t border-sky-100 pt-2 space-y-1">' +
+          '<span class="font-bold text-tour-navy block text-[11px]">Acompañantes registrados (' + acompList.length + '):</span>' +
+          '<ul class="text-[11px] text-slate-600 space-y-0.5 list-disc list-inside">' +
+            acompList.map(function(a) {
+              return '<li><strong>' + (a.nombre || 'Acompañante') + '</strong> (' + (a.cedula || a.edad || 'Acompañante') + ')</li>';
+            }).join("") +
+          '</ul>' +
+        '</div>';
       }
 
-      let totalBsStr = "";
-      let paidBsStr = "";
-      let balanceBsStr = "";
+      let bsRateText = "";
       if (state.tasaDisponible && state.tasaBCV > 0) {
-        totalBsStr = \` (Bs. \${formatVzla(totalEur * state.tasaBCV)})\`;
-        paidBsStr = \` (Bs. \${formatVzla(paidEur * state.tasaBCV)})\`;
-        balanceBsStr = \` (Bs. \${formatVzla(balanceEur * state.tasaBCV)})\`;
+        bsRateText = " ≈ Bs. " + formatVzla(toPayToday * state.tasaBCV);
       }
 
-      const separatePickup = state.otroPunto;
-      let pickupsHtml = "";
-      if (!separatePickup) {
-        pickupsHtml = \`<div class="text-[11px] text-slate-500"><strong>Punto de recogida:</strong> \${state.titular.recogida}</div>\`;
-      } else {
-        pickupsHtml = \`
-          <div class="text-[11px] text-slate-500 space-y-0.5">
-            <div><strong>\${state.titular.nombre} (Asiento \${state.asientosSeleccionados[0]}):</strong> \${state.titular.recogida}</div>
-            \${state.acompanantes.map((c, i) => \`<div><strong>\${c.nombre} (Asiento \${state.asientosSeleccionados[i + 1]}):</strong> \${c.recogida || state.titular.recogida}</div>\`).join("")}
-          </div>
-        \`;
+      const summaryCard = document.getElementById("summary-card");
+      if (summaryCard) {
+        let cardHtml = '<div class="border-b border-sky-100 pb-2.5 flex justify-between items-center">' +
+          '<div>' +
+            '<span class="font-title font-bold text-base text-tour-navy block">' + state.selectedTrip.destino + '</span>' +
+            '<span class="text-xs text-tour-blue font-semibold">' + state.selectedSalida.fechaTexto + '</span>' +
+          '</div>' +
+          '<span class="font-title font-black text-xs bg-tour-blue text-white px-3 py-1 rounded-full shadow-2xs">' +
+            numPers + ' cupo' + (numPers > 1 ? 's' : '') +
+          '</span>' +
+        '</div>' +
+
+        '<div class="space-y-1.5 text-xs text-slate-700">' +
+          '<div class="flex justify-between">' +
+            '<span class="text-slate-500">Titular Responsable:</span>' +
+            '<span class="font-bold text-slate-900">' + (titular.nombre || '') + ' (' + (titular.cedula || '') + ')</span>' +
+          '</div>' +
+          '<div class="flex justify-between">' +
+            '<span class="text-slate-500">Teléfono WhatsApp:</span>' +
+            '<span class="font-bold text-slate-900">' + (titular.telefono || '') + '</span>' +
+          '</div>' +
+          '<div class="flex justify-between">' +
+            '<span class="text-slate-500">Punto de Salida:</span>' +
+            '<span class="font-bold text-tour-blue text-right max-w-[60%]">' + (titular.recogida || '') + '</span>' +
+          '</div>' +
+          '<div class="flex justify-between">' +
+            '<span class="text-slate-500">Forma de Pago:</span>' +
+            '<span class="font-bold text-tour-navy">' + state.metodoPago + ' (' + (state.tipoAbono === 'abono' ? 'Abono 5 REF p/p' : 'Pago Completo') + ')</span>' +
+          '</div>';
+
+        if (state.metodoPago === 'Pago Móvil' && state.referenciaPago) {
+          cardHtml += '<div class="flex justify-between">' +
+            '<span class="text-slate-500">Referencia Pago Móvil:</span>' +
+            '<span class="font-mono font-bold text-tour-blue">' + state.referenciaPago + '</span>' +
+          '</div>';
+        }
+
+        cardHtml += '</div>' + acompHtml +
+        '<div class="border-t border-sky-100 pt-2.5 space-y-1 text-xs">' +
+          '<div class="flex justify-between">' +
+            '<span class="text-slate-500">Total excursión:</span>' +
+            '<span class="font-bold text-tour-navy">' + totalEur + ' REF</span>' +
+          '</div>' +
+          '<div class="flex justify-between text-tour-blue font-black text-sm">' +
+            '<span>Abono / Pago Hoy:</span>' +
+            '<span>' + toPayToday + ' REF' + bsRateText + '</span>' +
+          '</div>';
+
+        if (balanceEur > 0) {
+          cardHtml += '<div class="flex justify-between text-amber-800 font-bold">' +
+            '<span>Saldo pendiente al abordar:</span>' +
+            '<span>' + balanceEur + ' REF</span>' +
+          '</div>';
+        }
+
+        cardHtml += '</div>';
+        summaryCard.innerHTML = cardHtml;
       }
-
-      document.getElementById("summary-card").innerHTML = \`
-        <div class="border-b border-sky-100 pb-2 flex justify-between items-center">
-          <div>
-            <span class="font-title font-bold text-sm text-tour-navy block">\${state.selectedTrip.destino}</span>
-            <span class="text-xs text-tour-blue">\${state.selectedSalida.fechaTexto} · \${state.selectedBus}</span>
-          </div>
-          <span class="font-mono font-bold text-xs bg-sky-100 text-tour-blue px-2.5 py-1 rounded-full">
-            Asientos: \${state.asientosSeleccionados.join(", ")}
-          </span>
-        </div>
-
-        <div class="space-y-1 text-xs">
-          <div class="flex justify-between">
-            <span class="text-slate-500">Pasajeros:</span>
-            <span class="font-bold text-slate-800">\${numPers} persona(s)</span>
-          </div>
-          <div class="flex justify-between">
-            <span class="text-slate-500">Método de Pago:</span>
-            <span class="font-bold text-tour-navy">\${state.metodoPago}</span>
-          </div>
-          \${pickupsHtml}
-        </div>
-
-        <div class="border-t border-sky-100 pt-2 space-y-1 text-xs">
-          <div class="flex justify-between">
-            <span class="text-slate-500">Total de la reserva:</span>
-            <span class="font-bold text-tour-navy">\${totalEur} €\${totalBsStr}</span>
-          </div>
-          <div class="flex justify-between text-tour-blue font-bold">
-            <span>Monto pagado / abonado:</span>
-            <span>\${paidEur} €\${paidBsStr}</span>
-          </div>
-          \${balanceEur > 0 ? \`
-            <div class="flex justify-between text-amber-800 font-bold">
-              <span>Saldo pendiente al abordar:</span>
-              <span>\${balanceEur} €\${balanceBsStr}</span>
-            </div>
-          \` : ''}
-          \${state.tasaDisponible ? \`
-            <div class="text-[10px] text-slate-400 pt-1 text-right">
-              Tasa BCV congelada: 1 € = Bs. \${formatVzla(state.tasaBCV)}
-            </div>
-          \` : ''}
-        </div>
-      \`;
     }
 
     function updateWizardBottomTotal() {
-      const numPers = state.asientosSeleccionados.length;
-      if (!state.selectedTrip || numPers === 0) {
-        document.getElementById("wizard-bottom-total-eur").textContent = "0 €";
-        document.getElementById("wizard-bottom-total-bs").textContent = "";
+      if (!state.selectedTrip) {
+        const el = document.getElementById("wizard-bottom-total-eur");
+        if (el) el.textContent = "0 REF";
         return;
       }
-
+      const numPers = state.totalPersonas || 1;
       const totalEur = state.selectedTrip.precio * numPers;
-      document.getElementById("wizard-bottom-total-eur").textContent = \`\${totalEur} €\`;
+      const el = document.getElementById("wizard-bottom-total-eur");
+      if (el) el.textContent = totalEur + " REF";
 
-      if (state.tasaDisponible && state.tasaBCV > 0) {
-        const totalBs = formatVzla(totalEur * state.tasaBCV);
-        document.getElementById("wizard-bottom-total-bs").textContent = \`≈ Bs. \${totalBs}\`;
-      } else {
-        document.getElementById("wizard-bottom-total-bs").textContent = "";
+      const bsEl = document.getElementById("wizard-bottom-total-bs");
+      if (bsEl) {
+        if (state.tasaDisponible && state.tasaBCV > 0) {
+          bsEl.textContent = "≈ Bs. " + formatVzla(totalEur * state.tasaBCV);
+        } else {
+          bsEl.textContent = "";
+        }
       }
     }
 
     function validateStep(step) {
-      if (step === 2) {
-        if (state.asientosSeleccionados.length === 0) {
-          alert("Debes seleccionar al menos un asiento en el autobús.");
+      if (step === 1) {
+        const name = (document.getElementById("reg-lead-name")?.value || "").trim();
+        const ci = (document.getElementById("reg-lead-cedula")?.value || "").trim();
+        const telf = (document.getElementById("reg-lead-phone")?.value || "").trim();
+        const age = (document.getElementById("reg-lead-age")?.value || "").trim();
+        const pickup = (document.getElementById("reg-lead-pickup")?.value || "").trim();
+
+        if (!name || !ci || !telf) {
+          alert("Por favor completa los datos obligatorios del titular (Nombre, Cédula y Teléfono WhatsApp).");
           return false;
         }
-        return true;
-      }
-      if (step === 3) {
-        const leadNameEl = document.getElementById("lead-name");
-        const leadCedulaEl = document.getElementById("lead-cedula");
-        const leadAgeEl = document.getElementById("lead-age");
-        const leadPhoneEl = document.getElementById("lead-phone");
-        const leadEmailEl = document.getElementById("lead-email");
-        const leadPickupEl = document.getElementById("lead-pickup");
-
-        if (leadNameEl) state.passengers[0].nombre = leadNameEl.value.trim();
-        if (leadCedulaEl) state.passengers[0].cedula = leadCedulaEl.value.trim();
-        if (leadAgeEl) state.passengers[0].edad = leadAgeEl.value.trim();
-        if (leadPhoneEl) state.passengers[0].telefono = leadPhoneEl.value.trim();
-        if (leadEmailEl) state.passengers[0].correo = leadEmailEl.value.trim();
-        if (leadPickupEl) state.passengers[0].recogida = leadPickupEl.value.trim();
-
-        const lead = state.passengers[0];
-        if (!lead.nombre || !lead.cedula || !lead.edad || !lead.telefono) {
-          alert("Por favor completa los datos obligatorios del titular.");
-          return false;
-        }
-        if (!lead.recogida) {
-          alert("Por favor indica el punto de recogida del titular.");
+        if (!pickup) {
+          alert("Por favor indica el punto de salida o partida (ej. Metrópolis, Las Trinitarias, Cabudare o Yaracuy).");
           return false;
         }
 
-        const numAcomp = Math.max(0, state.asientosSeleccionados.length - 1);
-        for (let i = 0; i < numAcomp; i++) {
-          const compNameEl = document.getElementById(\`comp-name-\${i}\`);
-          const compAgeEl = document.getElementById(\`comp-age-\${i}\`);
-          const compCedEl = document.getElementById(\`comp-cedula-\${i}\`);
-          const compPickEl = document.getElementById(\`comp-pickup-\${i}\`);
+        state.passengers[0] = {
+          nombre: name,
+          cedula: ci,
+          telefono: telf,
+          edad: age,
+          recogida: pickup
+        };
 
-          if (!state.passengers[i + 1]) {
-            state.passengers[i + 1] = {
-              seat: state.asientosSeleccionados[i + 1],
-              nombre: "",
-              edad: "",
-              cedula: "",
-              recogida: lead.recogida
-            };
-          }
-
-          if (compNameEl) state.passengers[i + 1].nombre = compNameEl.value.trim();
-          if (compAgeEl) state.passengers[i + 1].edad = compAgeEl.value.trim();
-          if (compCedEl) state.passengers[i + 1].cedula = compCedEl.value.trim();
-          if (compPickEl && state.otroPunto) {
-            state.passengers[i + 1].recogida = compPickEl.value.trim();
-          }
-
-          const comp = state.passengers[i + 1];
-          if (!comp.nombre || !comp.edad) {
-            alert(\`Por favor completa el nombre y la edad del acompañante \${i + 1}.\`);
-            return false;
-          }
-
-          if (state.otroPunto) {
-            if (!comp.recogida) {
-              alert(\`Por favor indica el punto de recogida del acompañante \${i + 1}.\`);
+        if (state.viajeModo === "grupo" && state.totalPersonas > 1) {
+          const numAcomp = state.totalPersonas - 1;
+          for (let i = 0; i < numAcomp; i++) {
+            const compName = (document.getElementById("reg-comp-name-" + i)?.value || "").trim();
+            const compCi = (document.getElementById("reg-comp-cedula-" + i)?.value || "").trim();
+            if (!compName) {
+              alert("Por favor ingresa el nombre del acompañante " + (i + 1) + ".");
               return false;
             }
+            state.passengers[i + 1] = {
+              nombre: compName,
+              cedula: compCi,
+              edad: compCi,
+              recogida: pickup
+            };
           }
         }
         return true;
       }
-      if (step === 4) {
+
+      if (step === 2) {
         if (state.metodoPago === "Pago Móvil") {
-          if (!state.tasaDisponible) {
-            alert("El pago móvil no está disponible en este momento debido a que no hay tasa BCV disponible.");
-            return false;
-          }
-          const ref = document.getElementById("pagomovil-ref").value.trim();
+          const ref = (document.getElementById("pagomovil-ref")?.value || "").trim();
           if (!ref) {
-            alert("Por favor ingresa el número de referencia del Pago Móvil.");
+            alert("Por favor ingresa el número de referencia del Pago Móvil para verificar tu comprobante.");
             return false;
           }
+          state.referenciaPago = ref;
         }
         return true;
       }
+
       return true;
     }
 
     async function submitBooking() {
       const overlay = document.getElementById("loading-overlay");
-      overlay.classList.remove("hidden");
-      overlay.classList.add("flex");
-
-      const numPers = state.asientosSeleccionados.length;
-      const totalEur = state.selectedTrip.precio * numPers;
-      const totalAbono = ABONO_MINIMO * numPers;
-      let paidEur = totalEur;
-      let balanceEur = 0;
-      if (state.tipoAbono === "abono") {
-        paidEur = totalAbono;
-        balanceEur = totalEur - totalAbono;
+      if (overlay) {
+        overlay.classList.remove("hidden");
+        overlay.classList.add("flex");
       }
 
-      // Congelar la tasa usada y montos
+      const numPers = state.totalPersonas || 1;
+      const totalEur = state.selectedTrip.precio * numPers;
+      const toPayToday = (state.tipoAbono === "abono") ? (5 * numPers) : totalEur;
+      const balanceEur = totalEur - toPayToday;
       const frozenRate = state.tasaBCV || 0;
       const totalBs = frozenRate > 0 ? parseFloat((totalEur * frozenRate).toFixed(2)) : 0;
-      const paidBs = (state.metodoPago === "Pago Móvil" && frozenRate > 0) ? parseFloat((paidEur * frozenRate).toFixed(2)) : 0;
-      const paidUsd = state.metodoPago === "Efectivo" ? paidEur : 0;
+      const paidBs = (state.metodoPago === "Pago Móvil" && frozenRate > 0) ? parseFloat((toPayToday * frozenRate).toFixed(2)) : 0;
+      const paidUsd = state.metodoPago === "Efectivo" ? toPayToday : 0;
       const estadoPago = state.metodoPago === "Pago Móvil" ? "Pagado" : "Pendiente de pago";
 
-      const now = new Date();
-      const idReserva = \`TA-\${state.selectedSalida.fecha.replace(/-/g, "")}-\${String(Math.floor(Math.random() * 900) + 100)}\`;
+      const idReserva = "TA-" + (state.selectedSalida.fecha || "").replace(/-/g, "") + "-" + String(Math.floor(Math.random() * 900) + 100);
+      const titular = state.passengers[0] || {};
+      const acompanantes = state.passengers.slice(1);
 
       const payload = {
         accion: "reservar",
         idReserva: idReserva,
-        fechaRegistro: now.toISOString(),
+        fechaRegistro: new Date().toISOString(),
         destino: state.selectedTrip.destino,
         fechaViaje: state.selectedSalida.fecha,
-        bus: state.selectedBus,
-        asientos: state.asientosSeleccionados,
+        fechaTexto: state.selectedSalida.fechaTexto,
         totalPersonas: numPers,
+        viajeModo: state.viajeModo,
+        puntoPartida: titular.recogida || "",
+        tipoAbono: state.tipoAbono,
         tipoPago: state.metodoPago,
-        montoAbonadoEur: paidEur,
+        montoAbonadoEur: toPayToday,
         saldoPendienteEur: balanceEur,
         montoPagadoBs: paidBs,
         montoPagadoUsd: paidUsd,
         tasaBCV: frozenRate,
-        referenciaPagoMovil: state.metodoPago === "Pago Móvil" ? document.getElementById("pagomovil-ref").value.trim() : "",
+        referenciaPagoMovil: state.referenciaPago || "",
         estadoPago: estadoPago,
-        titular: { ...state.passengers[0] },
-        acompanantes: state.passengers.slice(1).map(c => ({
-          ...c,
-          recogida: (state.otroPunto && c.recogida) ? c.recogida : state.passengers[0].recogida
-        })),
-        passengers: state.passengers.map((p, idx) => ({
-          ...p,
-          recogida: (idx === 0 || (state.otroPunto && p.recogida)) ? p.recogida : state.passengers[0].recogida
-        }))
+        titular: Object.assign({}, titular),
+        acompanantes: acompanantes.map(function(a) { return Object.assign({}, a); }),
+        passengers: state.passengers.map(function(p) { return Object.assign({}, p); })
       };
 
       state.reservaFinal = payload;
 
-      // ============================================================
-      // 🔒 BLOQUEO INMEDIATO Y PERSISTENTE EN LA INTERFAZ Y SESIÓN
-      // ============================================================
-      const asientosConfirmados = [...state.asientosSeleccionados];
-      const destActual = state.selectedTrip.destino;
-      const fechaActual = state.selectedSalida.fecha;
-      const busActual = state.selectedBus;
-
-      // Guardar de inmediato en sessionStorage y localStorage
-      const asientosActualizados = saveStoredOccupiedSeats(destActual, fechaActual, busActual, asientosConfirmados);
-      saveConfirmedBookingToSession(payload);
-
-      // Actualizar el estado en memoria para reflejar inmediatamente el bloqueo
-      state.asientosOcupados = [...asientosActualizados];
-      state.asientosBloqueados = state.asientosBloqueados.filter(s => !asientosConfirmados.includes(s));
-      state.asientosSeleccionados = [];
-
-      // Cancelar el temporizador de bloqueo temporal si existía
-      if (state.timerBloqueo) {
-        clearInterval(state.timerBloqueo);
-        state.timerBloqueo = null;
-      }
-      const boxTimer = document.getElementById("seat-timer-box");
-      if (boxTimer) boxTimer.classList.add("hidden");
-
-      // Actualizar la interfaz de asientos y las tarjetas de viaje
-      renderBusSeatsUI();
-      if (typeof renderTrips === "function") renderTrips();
-
-      // Enviar la reserva a Google Sheets mediante enviarReservaAGoogleSheets
-      const datosParaSheets = {
-        nombre: state.passengers[0].nombre,
-        cedula: state.passengers[0].cedula,
-        telefono: state.passengers[0].telefono,
-        destino: state.selectedTrip.destino,
-        fechaViaje: state.selectedSalida.fecha,
-        abono: paidEur,
-        pendiente: balanceEur,
-        acompanantes: state.passengers.slice(1).map(c => c.nombre),
-        idReserva: idReserva,
-        bus: state.selectedBus,
-        asientos: asientosConfirmados,
-        totalPersonas: numPers,
-        tipoPago: state.metodoPago,
-        montoPagadoBs: paidBs,
-        montoPagadoUsd: paidUsd,
-        tasaBCV: frozenRate,
-        referenciaPagoMovil: state.metodoPago === "Pago Móvil" ? (document.getElementById("pagomovil-ref") ? document.getElementById("pagomovil-ref").value.trim() : "") : "",
-        estadoPago: estadoPago,
-        titular: { ...state.passengers[0] },
-        passengers: state.passengers
-      };
-
+      // 1. Guardar en el backend del servidor (/api/reservas)
       try {
-        await enviarReservaAGoogleSheets(datosParaSheets);
-      } catch (e) {
-        console.warn("Aviso al registrar en Google Sheets:", e);
+        await fetch("/api/reservas", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+      } catch (errApi) {
+        console.warn("Aviso al guardar en servidor local /api/reservas:", errApi);
       }
 
-      overlay.classList.add("hidden");
+      // 2. Enviar a Google Sheets mediante Apps Script Webhook
+      try {
+        await enviarReservaAGoogleSheets({
+          nombre: titular.nombre,
+          cedula: titular.cedula,
+          telefono: titular.telefono,
+          destino: state.selectedTrip.destino,
+          fechaViaje: state.selectedSalida.fecha,
+          abono: toPayToday,
+          pendiente: balanceEur,
+          acompanantes: acompanantes.map(function(a) { return a.nombre; }),
+          idReserva: idReserva,
+          totalPersonas: numPers,
+          tipoPago: state.metodoPago,
+          montoPagadoBs: paidBs,
+          montoPagadoUsd: paidUsd,
+          tasaBCV: frozenRate,
+          referenciaPagoMovil: state.referenciaPago || "",
+          estadoPago: estadoPago,
+          titular: Object.assign({}, titular, { recogida: titular.recogida })
+        });
+      } catch (errSheets) {
+        console.warn("Aviso al enviar a Google Sheets:", errSheets);
+      }
+
+      if (overlay) {
+        overlay.classList.add("hidden");
+        overlay.classList.remove("flex");
+      }
+
       closeWizard();
       showSuccessModal(payload);
     }
 
     function showSuccessModal(data) {
       const modal = document.getElementById("modal-success");
+      if (!modal) return;
       modal.classList.remove("hidden");
       modal.classList.add("flex");
 
@@ -3091,102 +2619,139 @@ ${opinionsClientCode}
         confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 } });
       }
 
-      document.getElementById("ticket-id").textContent = data.idReserva;
-      document.getElementById("ticket-destino").textContent = data.destino;
-      document.getElementById("ticket-fecha").textContent = state.selectedSalida.fechaTexto;
-      document.getElementById("ticket-asientos").textContent = \`\${data.bus} · Sillas: \${data.asientos.join(", ")}\`;
+      const idEl = document.getElementById("ticket-id");
+      const destEl = document.getElementById("ticket-destino");
+      const fechaEl = document.getElementById("ticket-fecha");
+      const asientosEl = document.getElementById("ticket-asientos");
+      const pasEl = document.getElementById("ticket-pasajeros");
+      const metodoEl = document.getElementById("ticket-metodo");
+      const pagoEl = document.getElementById("ticket-pago");
 
-      let pasList = \`<div><strong>\${data.titular.nombre}</strong> (Asiento \${data.asientos[0]}) - Recogida: \${data.titular.recogida}</div>\`;
-      data.acompanantes.forEach((c, i) => {
-        pasList += \`<div><strong>\${c.nombre}</strong> (Asiento \${data.asientos[i + 1]}) - Recogida: \${c.recogida}</div>\`;
-      });
-      document.getElementById("ticket-pasajeros").innerHTML = pasList;
+      if (idEl) idEl.textContent = data.idReserva;
+      if (destEl) destEl.textContent = data.destino;
+      if (fechaEl) fechaEl.textContent = (state.selectedSalida && state.selectedSalida.fechaTexto) || data.fechaViaje;
+      if (asientosEl) asientosEl.textContent = data.totalPersonas + " pasajero" + (data.totalPersonas > 1 ? "s" : "") + " (" + (data.viajeModo === "solo" ? "Viaja solo/a" : "Con acompañantes") + ")";
 
-      document.getElementById("ticket-metodo").textContent = data.tipoPago;
+      let pasList = "<div><strong>" + (data.titular.nombre || "") + "</strong> (" + (data.titular.cedula || "") + ") - Punto: " + (data.titular.recogida || "") + "</div>";
+      if (Array.isArray(data.acompanantes) && data.acompanantes.length > 0) {
+        data.acompanantes.forEach(function(c) {
+          pasList += "<div><strong>" + (c.nombre || "") + "</strong> (" + (c.cedula || c.edad || "Acompañante") + ")</div>";
+        });
+      }
+      if (pasEl) pasEl.innerHTML = pasList;
+      if (metodoEl) metodoEl.textContent = data.tipoPago + " (" + (data.tipoAbono === "abono" ? "Abono 5 REF p/p" : "Completo") + ")";
 
       if (data.tipoPago === "Pago Móvil" && data.tasaBCV > 0) {
-        document.getElementById("ticket-pago").textContent = \`\${data.montoAbonadoEur} € (Bs. \${formatVzla(data.montoPagadoBs)}) / Saldo: \${data.saldoPendienteEur} €\`;
+        if (pagoEl) pagoEl.textContent = data.montoAbonadoEur + " REF (Bs. " + formatVzla(data.montoPagadoBs) + ") / Saldo: " + data.saldoPendienteEur + " REF";
       } else {
-        document.getElementById("ticket-pago").textContent = \`\${data.montoAbonadoEur} € / Saldo: \${data.saldoPendienteEur} €\`;
+        if (pagoEl) pagoEl.textContent = data.montoAbonadoEur + " REF / Saldo: " + data.saldoPendienteEur + " REF";
       }
 
       const efBox = document.getElementById("ticket-efectivo-box");
       if (data.tipoPago === "Efectivo") {
-        efBox.classList.remove("hidden");
-        document.getElementById("ticket-saldo-efectivo").textContent = \`\${data.saldoPendienteEur > 0 ? data.saldoPendienteEur : data.montoAbonadoEur} $\`;
+        if (efBox) efBox.classList.remove("hidden");
+        const saldoEf = document.getElementById("ticket-saldo-efectivo");
+        if (saldoEf) saldoEf.textContent = (data.saldoPendienteEur > 0 ? data.saldoPendienteEur : data.montoAbonadoEur) + " $";
       } else {
-        efBox.classList.add("hidden");
+        if (efBox) efBox.classList.add("hidden");
       }
 
-      lucide.createIcons();
+      if (window.lucide && typeof window.lucide.createIcons === "function") {
+        window.lucide.createIcons();
+      }
     }
 
     function setupEventListeners() {
-      document.getElementById("btn-month-prev").onclick = () => {
-        if (state.mesCalendario > 0) {
-          state.mesCalendario--;
-        } else {
-          state.mesCalendario = 11;
-          state.anioCalendario--;
-        }
-        state.filtroFecha = null;
-        renderCalendar();
-        renderTrips();
-      };
-      document.getElementById("btn-month-next").onclick = () => {
-        if (state.mesCalendario < 11) {
-          state.mesCalendario++;
-        } else {
-          state.mesCalendario = 0;
-          state.anioCalendario++;
-        }
-        state.filtroFecha = null;
-        renderCalendar();
-        renderTrips();
-      };
+      const btnMonthPrev = document.getElementById("btn-month-prev");
+      if (btnMonthPrev) {
+        btnMonthPrev.onclick = () => {
+          if (state.mesCalendario > 0) {
+            state.mesCalendario--;
+          } else {
+            state.mesCalendario = 11;
+            state.anioCalendario--;
+          }
+          state.filtroFecha = null;
+          renderCalendar();
+          renderTrips();
+        };
+      }
+
+      const btnMonthNext = document.getElementById("btn-month-next");
+      if (btnMonthNext) {
+        btnMonthNext.onclick = () => {
+          if (state.mesCalendario < 11) {
+            state.mesCalendario++;
+          } else {
+            state.mesCalendario = 0;
+            state.anioCalendario++;
+          }
+          state.filtroFecha = null;
+          renderCalendar();
+          renderTrips();
+        };
+      }
+
       const clearBtn = document.getElementById("btn-clear-date-filter");
       if (clearBtn) {
         clearBtn.onclick = clearDateFilter;
       }
 
-      document.getElementById("btn-close-detalles").onclick = closeDetallesModal;
+      const btnCloseDet = document.getElementById("btn-close-detalles");
+      if (btnCloseDet) btnCloseDet.onclick = closeDetallesModal;
+
       const closePoliticasBtn = document.getElementById("btn-close-politicas");
       if (closePoliticasBtn) closePoliticasBtn.onclick = closePoliticasModal;
-      document.getElementById("btn-close-wizard").onclick = closeWizard;
-      document.getElementById("btn-close-success").onclick = () => {
-        document.getElementById("modal-success").classList.add("hidden");
-        document.getElementById("modal-success").classList.remove("flex");
-        renderTrips();
-      };
 
-      document.getElementById("btn-wizard-prev").onclick = () => {
-        if (currentStep > 1) goToStep(currentStep - 1);
-      };
-      document.getElementById("btn-wizard-next").onclick = () => {
-        if (!validateStep(currentStep)) return;
-        if (currentStep < 5) {
-          goToStep(currentStep + 1);
-        } else {
-          submitBooking();
-        }
-      };
+      const btnCloseWiz = document.getElementById("btn-close-wizard");
+      if (btnCloseWiz) btnCloseWiz.onclick = closeWizard;
 
-      document.getElementById("toggle-separate-pickup").onchange = (e) => {
-        handleToggleSeparatePickup(e.target.checked);
-      };
+      const btnCloseSuccess = document.getElementById("btn-close-success");
+      if (btnCloseSuccess) {
+        btnCloseSuccess.onclick = () => {
+          const mSuccess = document.getElementById("modal-success");
+          if (mSuccess) {
+            mSuccess.classList.add("hidden");
+            mSuccess.classList.remove("flex");
+          }
+          renderTrips();
+        };
+      }
 
-      document.getElementById("pay-opt-full").onclick = () => {
-        state.tipoAbono = "full";
-        document.getElementById("pay-opt-full").className = "py-2.5 px-3 rounded-xl font-bold text-xs transition bg-white text-tour-navy shadow-sm";
-        document.getElementById("pay-opt-deposit").className = "py-2.5 px-3 rounded-xl font-bold text-xs transition text-slate-600 hover:text-tour-navy";
-        renderStep4();
-      };
-      document.getElementById("pay-opt-deposit").onclick = () => {
-        state.tipoAbono = "abono";
-        document.getElementById("pay-opt-deposit").className = "py-2.5 px-3 rounded-xl font-bold text-xs transition bg-white text-tour-navy shadow-sm";
-        document.getElementById("pay-opt-full").className = "py-2.5 px-3 rounded-xl font-bold text-xs transition text-slate-600 hover:text-tour-navy";
-        renderStep4();
-      };
+      const btnWizPrev = document.getElementById("btn-wizard-prev");
+      if (btnWizPrev) {
+        btnWizPrev.onclick = () => {
+          if (currentStep > 1) goToStep(currentStep - 1);
+        };
+      }
+
+      const btnWizNext = document.getElementById("btn-wizard-next");
+      if (btnWizNext) {
+        btnWizNext.onclick = () => {
+          if (!validateStep(currentStep)) return;
+          if (currentStep < 3) {
+            goToStep(currentStep + 1);
+          } else {
+            submitBooking();
+          }
+        };
+      }
+
+      const toggleSep = document.getElementById("toggle-separate-pickup");
+      if (toggleSep) {
+        toggleSep.onchange = (e) => {
+          if (typeof handleToggleSeparatePickup === 'function') handleToggleSeparatePickup(e.target.checked);
+        };
+      }
+
+      const btnPayFull = document.getElementById("pay-opt-full");
+      if (btnPayFull) {
+        btnPayFull.onclick = () => { setRegPagoTipo('full'); };
+      }
+      const btnPayDeposit = document.getElementById("pay-opt-deposit");
+      if (btnPayDeposit) {
+        btnPayDeposit.onclick = () => { setRegPagoTipo('abono'); };
+      }
 
       document.querySelectorAll("input[name='paymentMethod']").forEach(radio => {
         radio.onchange = (e) => {
@@ -3197,127 +2762,119 @@ ${opinionsClientCode}
           const lblEf = document.getElementById("label-method-efectivo");
 
           if (state.metodoPago === "Pago Móvil") {
-            boxPm.classList.remove("hidden");
-            boxEf.classList.add("hidden");
-            lblPm.className = "relative flex flex-col p-3.5 border-2 rounded-2xl cursor-pointer transition border-tour-blue bg-blue-50/50";
-            lblEf.className = "relative flex flex-col p-3.5 border-2 rounded-2xl cursor-pointer transition border-slate-200 hover:border-slate-300";
+            if (boxPm) boxPm.classList.remove("hidden");
+            if (boxEf) boxEf.classList.add("hidden");
+            if (lblPm) lblPm.className = "relative flex flex-col p-3.5 border-2 rounded-2xl cursor-pointer transition border-tour-blue bg-blue-50/50";
+            if (lblEf) lblEf.className = "relative flex flex-col p-3.5 border-2 rounded-2xl cursor-pointer transition border-slate-200 hover:border-slate-300";
           } else {
-            boxPm.classList.add("hidden");
-            boxEf.classList.remove("hidden");
-            lblEf.className = "relative flex flex-col p-3.5 border-2 rounded-2xl cursor-pointer transition border-emerald-500 bg-emerald-50/50";
-            lblPm.className = "relative flex flex-col p-3.5 border-2 rounded-2xl cursor-pointer transition border-slate-200 hover:border-slate-300";
+            if (boxPm) boxPm.classList.add("hidden");
+            if (boxEf) boxEf.classList.remove("hidden");
+            if (lblEf) lblEf.className = "relative flex flex-col p-3.5 border-2 rounded-2xl cursor-pointer transition border-emerald-500 bg-emerald-50/50";
+            if (lblPm) lblPm.className = "relative flex flex-col p-3.5 border-2 rounded-2xl cursor-pointer transition border-slate-200 hover:border-slate-300";
           }
         };
       });
 
-      document.getElementById("btn-copy-bs").onclick = () => {
-        const text = document.getElementById("pagomovil-monto-bs").textContent.replace("Bs.", "").replace("Bs", "").trim();
-        navigator.clipboard.writeText(text);
-        document.getElementById("copy-bs-text").textContent = "¡Copiado!";
-        setTimeout(() => {
-          document.getElementById("copy-bs-text").textContent = "Copiar monto";
-        }, 2000);
-      };
-
-      document.getElementById("btn-download-ticket").onclick = () => {
-        const ticketNode = document.getElementById("ticket-card");
-        if (window.html2canvas) {
-          html2canvas(ticketNode, { scale: 2.5, backgroundColor: "#ffffff" }).then(canvas => {
-            const link = document.createElement("a");
-            link.download = \`Ticket-TourAzul-\${state.reservaFinal.idReserva}.png\`;
-            link.href = canvas.toDataURL("image/png");
-            link.click();
-          });
-        }
-      };
-
-      document.getElementById("btn-share-whatsapp").onclick = () => {
-        if (!state.reservaFinal) {
-          alert("La reserva aún no ha sido procesada.");
-          return;
-        }
-
-        const r = state.reservaFinal;
-        const idReserva = r.idReserva || "No indicado";
-        const destino = r.destino || "No indicado";
-        const fechaViaje = (state.selectedSalida && state.selectedSalida.fechaTexto) || r.fechaViaje || "No indicado";
-        const unidad = r.bus || "No indicado";
-
-        // 👥 PASAJEROS: 1 línea por pasajero
-        const listaPasajeros = [];
-        const leadSeat = (r.asientos && r.asientos[0]) ? r.asientos[0] : "No indicado";
-        const leadName = (r.titular && r.titular.nombre) ? r.titular.nombre : "No indicado";
-        const leadPickup = (r.titular && r.titular.recogida) ? r.titular.recogida : "No indicado";
-        listaPasajeros.push("1. " + leadName + " - Asiento " + leadSeat + " - Recogida: " + leadPickup);
-
-        if (Array.isArray(r.acompanantes)) {
-          r.acompanantes.forEach((comp, idx) => {
-            const compSeat = (r.asientos && r.asientos[idx + 1]) ? r.asientos[idx + 1] : "No indicado";
-            const compName = (comp && comp.nombre) ? comp.nombre : "No indicado";
-            const compPickup = (comp && comp.recogida) ? comp.recogida : leadPickup;
-            listaPasajeros.push((idx + 2) + ". " + compName + " - Asiento " + compSeat + " - Recogida: " + compPickup);
-          });
-        }
-
-        const nl = String.fromCharCode(10);
-        const pasajerosTexto = listaPasajeros.join(nl);
-
-        // 💳 PAGO: Método, montos, referencia y estado
-        const esEfectivo = (r.tipoPago === "Efectivo");
-        const metodoPago = esEfectivo ? "Efectivo en dólares" : (r.tipoPago || "No indicado");
-
-        let montoPagado = "No indicado";
-        if (typeof r.montoAbonadoEur === "number") {
-          if (!esEfectivo && r.montoPagadoBs > 0) {
-            montoPagado = r.montoAbonadoEur + " € (Bs. " + formatVzla(r.montoPagadoBs) + ")";
-          } else if (!esEfectivo && r.tasaBCV > 0) {
-            montoPagado = r.montoAbonadoEur + " € (Bs. " + formatVzla(r.montoAbonadoEur * r.tasaBCV) + ")";
-          } else {
-            montoPagado = r.montoAbonadoEur + " €";
+      const btnCopyBs = document.getElementById("btn-copy-bs");
+      if (btnCopyBs) {
+        btnCopyBs.onclick = () => {
+          const pmEl = document.getElementById("pagomovil-monto-bs");
+          const text = pmEl ? pmEl.textContent.replace("Bs.", "").replace("Bs", "").trim() : "";
+          if (navigator.clipboard && text) {
+            navigator.clipboard.writeText(text);
           }
-        }
+          const copyTextEl = document.getElementById("copy-bs-text");
+          if (copyTextEl) {
+            copyTextEl.textContent = "¡Copiado!";
+            setTimeout(() => {
+              copyTextEl.textContent = "Copiar monto";
+            }, 2000);
+          }
+        };
+      }
 
-        const saldoPendiente = (typeof r.saldoPendienteEur === "number") ? (r.saldoPendienteEur + " €") : "0 €";
+      const btnDlTicket = document.getElementById("btn-download-ticket");
+      if (btnDlTicket) {
+        btnDlTicket.onclick = () => {
+          const ticketNode = document.getElementById("ticket-card");
+          if (window.html2canvas && ticketNode) {
+            html2canvas(ticketNode, { scale: 2.5, backgroundColor: "#ffffff" }).then(canvas => {
+              const link = document.createElement("a");
+              const resId = (state.reservaFinal && state.reservaFinal.idReserva) || "reserva";
+              link.download = "Ticket-TourAzul-" + resId + ".png";
+              link.href = canvas.toDataURL("image/png");
+              link.click();
+            });
+          }
+        };
+      }
 
-        let referenciaTexto = "No indicado";
-        let estadoTexto = "Pendiente de pago";
+      const btnShareWa = document.getElementById("btn-share-whatsapp");
+      if (btnShareWa) {
+        btnShareWa.onclick = () => {
+          if (!state.reservaFinal) {
+            alert("La reserva aún no ha sido procesada.");
+            return;
+          }
+          const r = state.reservaFinal;
+          const idReserva = r.idReserva || "No indicado";
+          const destino = r.destino || "No indicado";
+          const fechaViaje = (state.selectedSalida && state.selectedSalida.fechaTexto) || r.fechaViaje || "No indicado";
+          const totalP = r.totalPersonas || 1;
+          const titular = r.titular || {};
+          const punto = titular.recogida || r.puntoPartida || "Por coordinar";
 
-        if (esEfectivo) {
-          referenciaTexto = "Sin referencia (efectivo)";
-          estadoTexto = "Pendiente de pago";
-        } else {
-          // Si es Pago Móvil, tomar solo los últimos 4 dígitos
-          const rawRef = (r.referenciaPagoMovil || "").trim();
-          referenciaTexto = rawRef.length > 0 ? rawRef.slice(-4) : "No indicado";
-          estadoTexto = (r.saldoPendienteEur === 0) ? "Pagado completo" : "Abonado";
-        }
+          const nl = String.fromCharCode(10);
+          const listaPasajeros = [];
+          listaPasajeros.push("1. " + (titular.nombre || "Titular") + " (CI: " + (titular.cedula || "--") + ") - Telf: " + (titular.telefono || "--") + " - Salida: " + punto);
+          if (Array.isArray(r.acompanantes)) {
+            r.acompanantes.forEach((a, idx) => {
+              listaPasajeros.push((idx + 2) + ". " + (a.nombre || "Acompañante") + " (CI/Edad: " + (a.cedula || a.edad || "--") + ")");
+            });
+          }
 
-        const mensajeWhatsApp = [
-          "🎫 NUEVA RESERVA - TOUR AZUL",
-          "",
-          "N° de reserva: " + idReserva,
-          "Destino: " + destino,
-          "Fecha: " + fechaViaje,
-          "Unidad: " + unidad,
-          "",
-          "👥 PASAJEROS",
-          pasajerosTexto,
-          "",
-          "💳 PAGO",
-          "Método de pago: " + metodoPago,
-          "Monto pagado: " + montoPagado,
-          "Saldo pendiente: " + saldoPendiente,
-          "Referencia (últimos 4 dígitos): " + referenciaTexto,
-          "Estado: " + estadoTexto
-        ].join(nl);
+          const esEfectivo = (r.tipoPago === "Efectivo");
+          const metodoPago = esEfectivo ? "Efectivo ($/€)" : (r.tipoPago || "Pago Móvil");
+          let montoPagado = r.montoAbonadoEur + " REF";
+          if (!esEfectivo && r.montoPagadoBs > 0) {
+            montoPagado += " (Bs. " + formatVzla(r.montoPagadoBs) + ")";
+          }
+          const saldoPendiente = (typeof r.saldoPendienteEur === "number") ? (r.saldoPendienteEur + " REF") : "0 REF";
+          const referencia = esEfectivo ? "Sin referencia (Efectivo)" : (r.referenciaPagoMovil || "No indicado");
+          const estado = (r.saldoPendienteEur === 0) ? "Pagado Completo" : "Abonado (5 REF p/p)";
 
-        const url = "https://wa.me/" + WHATSAPP_NUMERO + "?text=" + encodeURIComponent(mensajeWhatsApp);
-        window.open(url, "_blank");
-      };
+          const mensaje = [
+            "🎫 NUEVA RESERVA REGISTRADA - TOUR AZUL",
+            "",
+            "N° de reserva: " + idReserva,
+            "Destino: " + destino,
+            "Fecha: " + fechaViaje,
+            "Total pasajeros: " + totalP + " persona(s)",
+            "Punto de salida: " + punto,
+            "",
+            "👥 LISTA DE PASAJEROS",
+            listaPasajeros.join(nl),
+            "",
+            "💳 DETALLES DE PAGO",
+            "Forma de pago: " + metodoPago,
+            "Monto pagado/abonado: " + montoPagado,
+            "Saldo pendiente al abordar: " + saldoPendiente,
+            "Referencia de pago: " + referencia,
+            "Estado de reserva: " + estado,
+            "",
+            "✅ Políticas aceptadas. ¡Gracias por viajar con Tour Azul!"
+          ].join(nl);
+
+          const url = "https://wa.me/" + WHATSAPP_NUMERO + "?text=" + encodeURIComponent(mensaje);
+          window.open(url, "_blank");
+        };
+      }
 
       const floatWa = document.getElementById("btn-whatsapp-float");
-      const defaultWaMsg = "¡Hola Tour Azul! Quiero consultar sobre los viajes y excursiones disponibles.";
-      floatWa.href = \`https://wa.me/\${WHATSAPP_NUMERO}?text=\${encodeURIComponent(defaultWaMsg)}\`;
+      if (floatWa) {
+        const defaultWaMsg = "¡Hola Tour Azul! Quiero consultar sobre los viajes y excursiones disponibles.";
+        floatWa.href = "https://wa.me/" + WHATSAPP_NUMERO + "?text=" + encodeURIComponent(defaultWaMsg);
+      }
     }
   </script>
 
