@@ -2988,7 +2988,7 @@
       }
 
       // 4. Preparar payload con ID y foto comprimida en base64
-      const DEFAULT_SHEETS_WEBHOOK = "https://script.google.com/macros/s/AKfycbyHrjILLmIl0oiQ14LoqUzUv-I6PRIhk8jtffbxWYkW-Q3wyRsgumCEQim7T1QaxpCPVA/exec";
+      const DEFAULT_SHEETS_WEBHOOK = "";
       const webhookUrl = localStorage.getItem("tour_azul_sheets_webhook_url") ||
                          (window.__TOUR_AZUL_WEBHOOK_URL) ||
                          DEFAULT_SHEETS_WEBHOOK;
@@ -3481,13 +3481,33 @@
       try {
         const targetUrl = localStorage.getItem("tour_azul_sheets_webhook_url") ||
                           (window.__TOUR_AZUL_WEBHOOK_URL) ||
-                          "https://script.google.com/macros/s/AKfycbyHrjILLmIl0oiQ14LoqUzUv-I6PRIhk8jtffbxWYkW-Q3wyRsgumCEQim7T1QaxpCPVA/exec";
+                          "";
 
         let rawItems = [];
-        const sep = targetUrl.includes("?") ? "&" : "?";
-        const gResp = await fetch(targetUrl + sep + "accion=candidatos&_t=" + Date.now());
-        if (!gResp.ok) {
-          throw new Error("HTTP error " + gResp.status);
+        if (targetUrl && targetUrl.startsWith("http")) {
+          const sep = targetUrl.includes("?") ? "&" : "?";
+          const gResp = await fetch(targetUrl + sep + "accion=candidatos&_t=" + Date.now());
+          if (gResp.ok) {
+            const gText = await gResp.text();
+            let gJson = null;
+            try { gJson = JSON.parse(gText); } catch (_) {}
+            if (gJson && gJson.status === "success" && Array.isArray(gJson.data)) {
+              rawItems = gJson.data;
+            } else if (Array.isArray(gJson)) {
+              rawItems = gJson;
+            } else if (gJson && Array.isArray(gJson.candidatos)) {
+              rawItems = gJson.candidatos;
+            }
+          }
+        } else {
+          // Si no hay Google Sheets conectado, consultar directamente al servidor local
+          const sResp = await fetch("/api/candidatos?sync=false");
+          if (sResp.ok) {
+            const sJson = await sResp.json();
+            if (sJson && Array.isArray(sJson.candidatos)) {
+              rawItems = sJson.candidatos;
+            }
+          }
         }
 
         const gText = await gResp.text();
@@ -3702,9 +3722,20 @@
 
   // Fotos retro de fachada: decorativas, no interactivas
 
-    // Webhook dedicado para reservas e inventario de autobuses
-    const ACTIVE_APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyHrjILLmIl0oiQ14LoqUzUv-I6PRIhk8jtffbxWYkW-Q3wyRsgumCEQim7T1QaxpCPVA/exec";
-    let WEBHOOK_URL = ACTIVE_APPS_SCRIPT_URL;
+    // Webhook de Google Apps Script (se sincroniza con /api/config o localStorage)
+    const ACTIVE_APPS_SCRIPT_URL = "";
+    let WEBHOOK_URL = localStorage.getItem("tour_azul_sheets_webhook_url") || "";
+
+    // Sincronizar dinámicamente con la configuración del servidor
+    fetch("/api/config")
+      .then(r => r.json())
+      .then(d => {
+        if (d && d.config && d.config.webhookUrl) {
+          WEBHOOK_URL = d.config.webhookUrl;
+          try { localStorage.setItem("tour_azul_sheets_webhook_url", WEBHOOK_URL); } catch(_) {}
+        }
+      })
+      .catch(() => {});
 
     const WHATSAPP_NUMERO = "584126571155";
     const MINUTOS_BLOQUEO_ASIENTO = 10;
@@ -3917,7 +3948,12 @@
 
     // Función principal para enviar reservas a Google Sheets (Google Apps Script WebHook)
     async function enviarReservaAGoogleSheets(datosReserva) {
-      const urlWebHook = (typeof WEBHOOK_URL !== "undefined" && WEBHOOK_URL) ? WEBHOOK_URL : "https://script.google.com/macros/s/AKfycbyHrjILLmIl0oiQ14LoqUzUv-I6PRIhk8jtffbxWYkW-Q3wyRsgumCEQim7T1QaxpCPVA/exec";
+      const urlWebHook = (typeof WEBHOOK_URL !== "undefined" && WEBHOOK_URL && WEBHOOK_URL.startsWith("http")) ? WEBHOOK_URL : "";
+
+      if (!urlWebHook) {
+        console.log("Aviso: Google Sheets no está conectado aún. La reserva se guardó localmente en el servidor.");
+        return { ok: true, localOnly: true, mensaje: "Guardado local en servidor" };
+      }
 
       // Formato exacto del destino para la hoja de Google Sheets (Ej: "Cayo_Muerto_18-10")
       const destinoHoja = formatDestinoSheetName(datosReserva.destino, datosReserva.fechaViaje);
@@ -3944,9 +3980,8 @@
         abono: Number(datosReserva.abono !== undefined ? datosReserva.abono : (datosReserva.montoAbonadoEur || 0)),
         pendiente: Number(datosReserva.pendiente !== undefined ? datosReserva.pendiente : (datosReserva.saldoPendienteEur || 0)),
         acompanantes: listaAcompNombres,
-        // Campos extendidos para sincronización de inventario y resumen
         accion: datosReserva.accion || "reservar",
-        idReserva: datosReserva.idReserva || `TA-${(datosReserva.fechaViaje || "").replace(/-/g, "")}-${Math.floor(Math.random() * 900 + 100)}`,
+        idReserva: datosReserva.idReserva || ("TA-" + (datosReserva.fechaViaje || "").replace(/-/g, "") + "-" + Math.floor(Math.random() * 900 + 100)),
         bus: datosReserva.bus || "Bus 1",
         asientos: datosReserva.asientos || [],
         totalPersonas: datosReserva.totalPersonas || (1 + listaAcompNombres.length),
@@ -3968,30 +4003,19 @@
       };
 
       try {
-        const respuesta = await fetch(urlWebHook, {
+        await fetch(urlWebHook, {
           method: "POST",
-          mode: "no-cors", // Necesario para evitar bloqueos de CORS con Google Apps Script
+          mode: "no-cors",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload)
         });
 
-        console.log("Reserva enviada correctamente a Google Sheets y registrada en Base_General y Destinos.");
-        showToastNotification("¡Reserva registrada con éxito en Google Sheets!", "success");
-        try {
-          if (typeof window !== "undefined" && window.alert) {
-            window.alert("¡Reserva registrada con éxito!");
-          }
-        } catch (_) {}
+        console.log("Reserva sincronizada a Google Sheets.");
+        showToastNotification("¡Reserva sincronizada con Google Sheets!", "success");
         return { ok: true, payload };
       } catch (error) {
-        console.error("Error al enviar la reserva:", error);
-        showToastNotification("Hubo un error al registrar la reserva. Por favor, intenta de nuevo.", "error");
-        try {
-          if (typeof window !== "undefined" && window.alert) {
-            window.alert("Hubo un error al registrar la reserva. Por favor, intenta de nuevo.");
-          }
-        } catch (_) {}
-        throw error;
+        console.warn("Aviso al enviar a Google Sheets:", error);
+        return { ok: false, error };
       }
     }
     window.enviarReservaAGoogleSheets = enviarReservaAGoogleSheets;

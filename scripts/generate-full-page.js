@@ -1092,9 +1092,20 @@ ${retroPhotosModalsHtml}
   <script>
 ${recruitmentClientCode}
 ${retroPhotosClientCode}
-    // Webhook dedicado para reservas e inventario de autobuses
-    const ACTIVE_APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyHrjILLmIl0oiQ14LoqUzUv-I6PRIhk8jtffbxWYkW-Q3wyRsgumCEQim7T1QaxpCPVA/exec";
-    let WEBHOOK_URL = ACTIVE_APPS_SCRIPT_URL;
+    // Webhook de Google Apps Script (se sincroniza con /api/config o localStorage)
+    const ACTIVE_APPS_SCRIPT_URL = "";
+    let WEBHOOK_URL = localStorage.getItem("tour_azul_sheets_webhook_url") || "";
+
+    // Sincronizar dinámicamente con la configuración del servidor
+    fetch("/api/config")
+      .then(r => r.json())
+      .then(d => {
+        if (d && d.config && d.config.webhookUrl) {
+          WEBHOOK_URL = d.config.webhookUrl;
+          try { localStorage.setItem("tour_azul_sheets_webhook_url", WEBHOOK_URL); } catch(_) {}
+        }
+      })
+      .catch(() => {});
 
     const WHATSAPP_NUMERO = "584126571155";
     const MINUTOS_BLOQUEO_ASIENTO = 10;
@@ -1307,7 +1318,12 @@ ${retroPhotosClientCode}
 
     // Función principal para enviar reservas a Google Sheets (Google Apps Script WebHook)
     async function enviarReservaAGoogleSheets(datosReserva) {
-      const urlWebHook = (typeof WEBHOOK_URL !== "undefined" && WEBHOOK_URL) ? WEBHOOK_URL : "https://script.google.com/macros/s/AKfycbyHrjILLmIl0oiQ14LoqUzUv-I6PRIhk8jtffbxWYkW-Q3wyRsgumCEQim7T1QaxpCPVA/exec";
+      const urlWebHook = (typeof WEBHOOK_URL !== "undefined" && WEBHOOK_URL && WEBHOOK_URL.startsWith("http")) ? WEBHOOK_URL : "";
+
+      if (!urlWebHook) {
+        console.log("Aviso: Google Sheets no está conectado aún. La reserva se guardó localmente en el servidor.");
+        return { ok: true, localOnly: true, mensaje: "Guardado local en servidor" };
+      }
 
       // Formato exacto del destino para la hoja de Google Sheets (Ej: "Cayo_Muerto_18-10")
       const destinoHoja = formatDestinoSheetName(datosReserva.destino, datosReserva.fechaViaje);
@@ -1334,9 +1350,8 @@ ${retroPhotosClientCode}
         abono: Number(datosReserva.abono !== undefined ? datosReserva.abono : (datosReserva.montoAbonadoEur || 0)),
         pendiente: Number(datosReserva.pendiente !== undefined ? datosReserva.pendiente : (datosReserva.saldoPendienteEur || 0)),
         acompanantes: listaAcompNombres,
-        // Campos extendidos para sincronización de inventario y resumen
         accion: datosReserva.accion || "reservar",
-        idReserva: datosReserva.idReserva || \`TA-\${(datosReserva.fechaViaje || "").replace(/-/g, "")}-\${Math.floor(Math.random() * 900 + 100)}\`,
+        idReserva: datosReserva.idReserva || ("TA-" + (datosReserva.fechaViaje || "").replace(/-/g, "") + "-" + Math.floor(Math.random() * 900 + 100)),
         bus: datosReserva.bus || "Bus 1",
         asientos: datosReserva.asientos || [],
         totalPersonas: datosReserva.totalPersonas || (1 + listaAcompNombres.length),
@@ -1358,30 +1373,19 @@ ${retroPhotosClientCode}
       };
 
       try {
-        const respuesta = await fetch(urlWebHook, {
+        await fetch(urlWebHook, {
           method: "POST",
-          mode: "no-cors", // Necesario para evitar bloqueos de CORS con Google Apps Script
+          mode: "no-cors",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload)
         });
 
-        console.log("Reserva enviada correctamente a Google Sheets y registrada en Base_General y Destinos.");
-        showToastNotification("¡Reserva registrada con éxito en Google Sheets!", "success");
-        try {
-          if (typeof window !== "undefined" && window.alert) {
-            window.alert("¡Reserva registrada con éxito!");
-          }
-        } catch (_) {}
+        console.log("Reserva sincronizada a Google Sheets.");
+        showToastNotification("¡Reserva sincronizada con Google Sheets!", "success");
         return { ok: true, payload };
       } catch (error) {
-        console.error("Error al enviar la reserva:", error);
-        showToastNotification("Hubo un error al registrar la reserva. Por favor, intenta de nuevo.", "error");
-        try {
-          if (typeof window !== "undefined" && window.alert) {
-            window.alert("Hubo un error al registrar la reserva. Por favor, intenta de nuevo.");
-          }
-        } catch (_) {}
-        throw error;
+        console.warn("Aviso al enviar a Google Sheets:", error);
+        return { ok: false, error };
       }
     }
     window.enviarReservaAGoogleSheets = enviarReservaAGoogleSheets;

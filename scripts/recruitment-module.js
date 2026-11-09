@@ -1402,7 +1402,7 @@ export const recruitmentClientCode = `
       }
 
       // 4. Preparar payload con ID y foto comprimida en base64
-      const DEFAULT_SHEETS_WEBHOOK = "https://script.google.com/macros/s/AKfycbyHrjILLmIl0oiQ14LoqUzUv-I6PRIhk8jtffbxWYkW-Q3wyRsgumCEQim7T1QaxpCPVA/exec";
+      const DEFAULT_SHEETS_WEBHOOK = "";
       const webhookUrl = localStorage.getItem("tour_azul_sheets_webhook_url") ||
                          (window.__TOUR_AZUL_WEBHOOK_URL) ||
                          DEFAULT_SHEETS_WEBHOOK;
@@ -1895,13 +1895,33 @@ export const recruitmentClientCode = `
       try {
         const targetUrl = localStorage.getItem("tour_azul_sheets_webhook_url") ||
                           (window.__TOUR_AZUL_WEBHOOK_URL) ||
-                          "https://script.google.com/macros/s/AKfycbyHrjILLmIl0oiQ14LoqUzUv-I6PRIhk8jtffbxWYkW-Q3wyRsgumCEQim7T1QaxpCPVA/exec";
+                          "";
 
         let rawItems = [];
-        const sep = targetUrl.includes("?") ? "&" : "?";
-        const gResp = await fetch(targetUrl + sep + "accion=candidatos&_t=" + Date.now());
-        if (!gResp.ok) {
-          throw new Error("HTTP error " + gResp.status);
+        if (targetUrl && targetUrl.startsWith("http")) {
+          const sep = targetUrl.includes("?") ? "&" : "?";
+          const gResp = await fetch(targetUrl + sep + "accion=candidatos&_t=" + Date.now());
+          if (gResp.ok) {
+            const gText = await gResp.text();
+            let gJson = null;
+            try { gJson = JSON.parse(gText); } catch (_) {}
+            if (gJson && gJson.status === "success" && Array.isArray(gJson.data)) {
+              rawItems = gJson.data;
+            } else if (Array.isArray(gJson)) {
+              rawItems = gJson;
+            } else if (gJson && Array.isArray(gJson.candidatos)) {
+              rawItems = gJson.candidatos;
+            }
+          }
+        } else {
+          // Si no hay Google Sheets conectado, consultar directamente al servidor local
+          const sResp = await fetch("/api/candidatos?sync=false");
+          if (sResp.ok) {
+            const sJson = await sResp.json();
+            if (sJson && Array.isArray(sJson.candidatos)) {
+              rawItems = sJson.candidatos;
+            }
+          }
         }
 
         const gText = await gResp.text();

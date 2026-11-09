@@ -151,7 +151,7 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack, onLogo
   const cargarConfiguracionServidor = async () => {
     const cachedUrl = localStorage.getItem('tour_azul_sheets_webhook_url');
     const cachedSheet = localStorage.getItem('tour_azul_sheet_name');
-    const defaultUrl = 'https://script.google.com/macros/s/AKfycbyHrjILLmIl0oiQ14LoqUzUv-I6PRIhk8jtffbxWYkW-Q3wyRsgumCEQim7T1QaxpCPVA/exec';
+    const defaultUrl = '';
 
     if (cachedUrl && cachedUrl.startsWith('http')) {
       setScriptUrl(cachedUrl);
@@ -203,7 +203,7 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack, onLogo
     }
     setError(null);
 
-    const targetUrl = scriptUrl || localStorage.getItem('tour_azul_sheets_webhook_url') || 'https://script.google.com/macros/s/AKfycbyHrjILLmIl0oiQ14LoqUzUv-I6PRIhk8jtffbxWYkW-Q3wyRsgumCEQim7T1QaxpCPVA/exec';
+    const targetUrl = scriptUrl || localStorage.getItem('tour_azul_sheets_webhook_url') || '';
 
     try {
       const sep = targetUrl.includes('?') ? '&' : '?';
@@ -337,24 +337,28 @@ export const AdminCandidatos: React.FC<AdminCandidatosProps> = ({ onBack, onLogo
       });
       if (!res.ok) {
         // Enviar directamente a Google Apps Script si el endpoint backend devolvió 404
-        const targetUrl = scriptUrl || localStorage.getItem('tour_azul_sheets_webhook_url') || 'https://script.google.com/macros/s/AKfycbyHrjILLmIl0oiQ14LoqUzUv-I6PRIhk8jtffbxWYkW-Q3wyRsgumCEQim7T1QaxpCPVA/exec';
-        await fetch(targetUrl, {
-          method: 'POST',
-          mode: 'no-cors',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({ accion: 'actualizar_estado', id, estado: nuevoEstado })
-        });
+        const targetUrl = scriptUrl || localStorage.getItem('tour_azul_sheets_webhook_url') || '';
+        if (targetUrl && targetUrl.startsWith('http')) {
+          await fetch(targetUrl, {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({ accion: 'actualizar_estado', id, estado: nuevoEstado })
+          });
+        }
       }
     } catch (err) {
-      // Reintentar directamente con Google Sheets
+      // Reintentar directamente con Google Sheets si hay URL configurada
       try {
-        const targetUrl = scriptUrl || localStorage.getItem('tour_azul_sheets_webhook_url') || 'https://script.google.com/macros/s/AKfycbyHrjILLmIl0oiQ14LoqUzUv-I6PRIhk8jtffbxWYkW-Q3wyRsgumCEQim7T1QaxpCPVA/exec';
-        await fetch(targetUrl, {
-          method: 'POST',
-          mode: 'no-cors',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({ accion: 'actualizar_estado', id, estado: nuevoEstado })
-        });
+        const targetUrl = scriptUrl || localStorage.getItem('tour_azul_sheets_webhook_url') || '';
+        if (targetUrl && targetUrl.startsWith('http')) {
+          await fetch(targetUrl, {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({ accion: 'actualizar_estado', id, estado: nuevoEstado })
+          });
+        }
       } catch (_) {}
     } finally {
       setGuardandoEstadoId(null);

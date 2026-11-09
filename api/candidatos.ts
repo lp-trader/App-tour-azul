@@ -1,5 +1,4 @@
-const DEFAULT_WEBHOOK_URL = process.env.GOOGLE_SHEETS_WEBHOOK_URL ||
-  'https://script.google.com/macros/s/AKfycbyHrjILLmIl0oiQ14LoqUzUv-I6PRIhk8jtffbxWYkW-Q3wyRsgumCEQim7T1QaxpCPVA/exec';
+const DEFAULT_WEBHOOK_URL = process.env.GOOGLE_SHEETS_WEBHOOK_URL || '';
 
 function resolveWebhookUrl(req: any): string {
   const queryUrl = req.query && typeof req.query.webhookUrl === 'string' ? req.query.webhookUrl.trim() : '';

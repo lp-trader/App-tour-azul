@@ -262,9 +262,76 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onLogout, authTo
     }
   };
 
+  const [copiandoScript, setCopiandoScript] = useState<boolean>(false);
+
+  // Desconectar Google Sheets
+  const handleDesconectarSheets = async () => {
+    if (!window.confirm('¿Deseas desconectar el Google Sheet actual? El sistema quedará limpio y listo para que agregues tu nueva hoja y script.')) return;
+    try {
+      const res = await fetch('/api/admin/disconnect-sheets', {
+        method: 'POST',
+        headers: getAuthHeaders()
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setConfigSheets(data.config);
+        setInputUrl('');
+        setResultadoTest(null);
+        try { localStorage.removeItem('tour_azul_sheets_webhook_url'); } catch (_) {}
+        alert('Google Sheets desconectado con éxito. Ahora puedes conectar tu nueva hoja.');
+      }
+    } catch (e: any) {
+      alert(`Error al desconectar: ${e.message}`);
+    }
+  };
+
+  // Limpiar todos los registros locales (empezar en cero)
+  const handleResetData = async () => {
+    if (!window.confirm('¿Estás seguro de que deseas vaciar todos los registros de reservas y postulaciones locales? La base de datos quedará limpia en cero.')) return;
+    try {
+      const res = await fetch('/api/admin/reset-data', {
+        method: 'POST',
+        headers: getAuthHeaders()
+      });
+      const data = await res.json();
+      if (data.ok) {
+        await cargarViajes();
+        await cargarClientes();
+        await cargarCandidatos();
+        alert('✅ Base de datos limpiada. Registros en cero listos para nuevas reservas.');
+      }
+    } catch (e: any) {
+      alert(`Error limpiando registros: ${e.message}`);
+    }
+  };
+
+  // Copiar código Code.gs para la nueva hoja
+  const handleCopiarCodeGs = async () => {
+    setCopiandoScript(true);
+    try {
+      const res = await fetch('/api/admin/code-gs');
+      if (res.ok) {
+        const text = await res.text();
+        if (navigator.clipboard && text) {
+          await navigator.clipboard.writeText(text);
+          alert('¡Código de Code.gs copiado al portapapeles! Abre tu Google Spreadsheet > Extensiones > Apps Script y pégalo allí.');
+        } else {
+          alert('Copia el contenido del archivo Code.gs de la raíz del proyecto.');
+        }
+      } else {
+        alert('Error al descargar el script Code.gs');
+      }
+    } catch (e: any) {
+      alert(`Error: ${e.message}`);
+    } finally {
+      setCopiandoScript(false);
+    }
+  };
+
   // Guardar nueva URL de Webhook
   const handleGuardarUrl = async () => {
-    if (!inputUrl.trim().startsWith('http')) {
+    const clean = inputUrl.trim();
+    if (!clean.startsWith('http')) {
       alert('Por favor ingresa una URL válida de Google Apps Script que termine en /exec');
       return;
     }
@@ -272,13 +339,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onLogout, authTo
       const res = await fetch('/api/config', {
         method: 'POST',
         headers: getAuthHeaders(),
-        body: JSON.stringify({ webhookUrl: inputUrl.trim() })
+        body: JSON.stringify({ webhookUrl: clean })
       });
       const data = await res.json();
       if (data.ok) {
         setConfigSheets(data.config);
         setEditandoUrl(false);
-        alert('URL de Google Sheets actualizada con éxito');
+        try { localStorage.setItem('tour_azul_sheets_webhook_url', clean); } catch (_) {}
+        alert('URL de Google Sheets guardada con éxito.');
       }
     } catch (e: any) {
       alert(`Error guardando configuración: ${e.message}`);
@@ -1100,57 +1168,72 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onLogout, authTo
         {/* ============================================================== */}
         {activeTab === 'config' && (
           <div className="space-y-6">
-            <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-xs space-y-4">
-              <h2 className="font-title font-black text-lg uppercase text-slate-900">
-                Conexión con Google Sheets (Apps Script Webhook)
-              </h2>
-              <p className="text-xs text-slate-500 leading-relaxed">
-                Tour Azul sincroniza las reservas de pasajeros directamente con tu Google Spreadsheet a través de Google Apps Script.
-              </p>
+            <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-xs space-y-6">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4">
+                <div>
+                  <h2 className="font-title font-black text-lg uppercase text-slate-900">
+                    Conexión con Google Sheets
+                  </h2>
+                  <p className="text-xs text-slate-500">
+                    Configuración del Webhook para registro automático de reservas, pasajeros y candidatos en tu Google Spreadsheet.
+                  </p>
+                </div>
 
-              <div className="p-4 rounded-2xl bg-sky-50 border border-sky-200 space-y-3">
+                <div className="flex items-center gap-2">
+                  {configSheets?.webhookUrl ? (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                      Conectado
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                      <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                      Desconectado (Listo para nuevo script)
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Caja de Conexión y URL */}
+              <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className="text-xs font-bold text-tour-navy uppercase tracking-wider">
-                    URL Webhook Activa (Apps Script)
+                    URL de la Aplicación Web (Google Apps Script)
                   </span>
+                  {configSheets?.webhookUrl && (
+                    <button
+                      type="button"
+                      onClick={handleDesconectarSheets}
+                      className="text-xs font-bold text-rose-600 hover:text-rose-700 hover:underline cursor-pointer"
+                    >
+                      Desconectar esta hoja
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                  <input
+                    type="text"
+                    value={inputUrl}
+                    onChange={(e) => setInputUrl(e.target.value)}
+                    placeholder="https://script.google.com/macros/s/.../exec"
+                    className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-mono bg-white focus:ring-2 focus:ring-tour-blue focus:outline-none"
+                  />
                   <button
                     type="button"
-                    onClick={() => setEditandoUrl(!editandoUrl)}
-                    className="text-xs font-bold text-tour-blue hover:underline cursor-pointer"
+                    onClick={handleGuardarUrl}
+                    className="px-5 py-2.5 rounded-xl bg-tour-blue hover:bg-tour-blue/90 text-white font-bold text-xs transition cursor-pointer shadow-xs whitespace-nowrap"
                   >
-                    {editandoUrl ? 'Cancelar edición' : 'Cambiar URL'}
+                    Guardar y Conectar
                   </button>
                 </div>
 
-                {editandoUrl ? (
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      value={inputUrl}
-                      onChange={(e) => setInputUrl(e.target.value)}
-                      placeholder="https://script.google.com/macros/s/.../exec"
-                      className="flex-1 px-3 py-2 rounded-xl border border-slate-300 text-xs font-mono bg-white"
-                    />
-                    <button
-                      type="button"
-                      onClick={handleGuardarUrl}
-                      className="px-4 py-2 rounded-xl bg-tour-blue text-white font-bold text-xs"
-                    >
-                      Guardar
-                    </button>
-                  </div>
-                ) : (
-                  <div className="p-2.5 rounded-xl bg-white border border-slate-200 font-mono text-xs text-slate-700 break-all select-all">
-                    {configSheets?.webhookUrl || 'No configurada'}
-                  </div>
-                )}
-
-                <div className="flex flex-wrap items-center gap-2 pt-1">
+                <div className="flex flex-wrap items-center gap-2.5 pt-2 border-t border-slate-200/80">
                   <button
                     type="button"
                     onClick={handleTestSheets}
                     disabled={probandoConexion}
-                    className="py-2 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition flex items-center gap-1.5 shadow-xs cursor-pointer disabled:opacity-50"
+                    className="py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition flex items-center gap-1.5 shadow-xs cursor-pointer disabled:opacity-50"
                   >
                     <span>{probandoConexion ? '⏳' : '⚡'}</span>
                     <span>{probandoConexion ? 'Verificando...' : 'Probar Conexión'}</span>
@@ -1159,15 +1242,24 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onLogout, authTo
                   <button
                     type="button"
                     onClick={handleSincronizarReservas}
-                    disabled={sincronizandoReservas}
-                    className="py-2 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition cursor-pointer disabled:opacity-50"
+                    disabled={sincronizandoReservas || !configSheets?.webhookUrl}
+                    className="py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs transition cursor-pointer disabled:opacity-50"
                   >
-                    <span>📊 Forzar Sincronización de Reservas</span>
+                    <span>📊 Sincronizar Reservas Pendientes</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleResetData}
+                    className="py-2.5 px-4 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-xs transition cursor-pointer ml-auto"
+                    title="Vacía los registros locales para empezar totalmente en blanco"
+                  >
+                    <span>🗑️ Limpiar Registros Locales (Empezar en Cero)</span>
                   </button>
                 </div>
 
                 {resultadoTest && (
-                  <div className={`p-3 rounded-xl text-xs font-semibold mt-2 ${
+                  <div className={`p-3.5 rounded-xl text-xs font-semibold mt-2 ${
                     resultadoTest.ok ? 'bg-emerald-100 text-emerald-900 border border-emerald-300' : 'bg-rose-100 text-rose-900 border border-rose-300'
                   }`}>
                     {resultadoTest.msg}
@@ -1175,15 +1267,38 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onLogout, authTo
                 )}
               </div>
 
-              {/* Instrucciones Rápidas de Code.gs */}
-              <div className="p-4 rounded-2xl bg-amber-50/80 border border-amber-200 text-amber-950 text-xs space-y-2">
-                <span className="font-bold flex items-center gap-1 text-tour-navy">
-                  <span>📜</span>
-                  <span>Estructura de Google Sheets Soportada</span>
-                </span>
-                <p className="leading-relaxed text-slate-700">
-                  El script <code className="bg-amber-100 px-1 py-0.5 rounded font-bold font-mono">Code.gs</code> en el proyecto gestiona automáticamente las pestañas <strong>Reservas</strong>, <strong>Base_General</strong> y <strong>Postulaciones</strong>. Al registrar un pasajero, los datos se guardan tanto en el servidor como en Google Sheets para garantizar disponibilidad total.
-                </p>
+              {/* Guía Paso a Paso para el Nuevo Google Sheet */}
+              <div className="p-5 rounded-2xl bg-blue-50/70 border border-blue-200 text-tour-navy space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="font-title font-bold text-sm flex items-center gap-1.5">
+                    <span>📋</span>
+                    <span>Cómo Conectar tu Nuevo Google Sheet en 1 Minuto</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleCopiarCodeGs}
+                    disabled={copiandoScript}
+                    className="px-3.5 py-1.5 rounded-xl bg-tour-blue hover:bg-tour-blue/90 text-white font-bold text-xs transition cursor-pointer shadow-xs flex items-center gap-1.5"
+                  >
+                    <span>{copiandoScript ? '⏳' : '📋'}</span>
+                    <span>Copiar Código Code.gs</span>
+                  </button>
+                </div>
+
+                <ol className="list-decimal list-inside text-xs space-y-1.5 text-slate-700 leading-relaxed font-medium">
+                  <li>Crea una nueva hoja de cálculo en blanco en tu <strong>Google Drive</strong> (ej: <em>Tour Azul - Reservas y Pasajeros</em>).</li>
+                  <li>En el menú superior de la hoja, haz clic en: <strong>Extensiones &gt; Apps Script</strong>.</li>
+                  <li>Borra cualquier código que aparezca y pega el contenido completo de <strong>Code.gs</strong> (usa el botón superior para copiarlo).</li>
+                  <li>Haz clic en el botón azul superior <strong>Implementar &gt; Nueva implementación</strong>.</li>
+                  <li>Selecciona tipo <strong>Aplicación web</strong> y configura:
+                    <ul className="list-disc list-inside ml-4 mt-1 text-slate-600 space-y-0.5">
+                      <li><strong>Ejecutar como:</strong> Yo (tu cuenta de Google).</li>
+                      <li><strong>Quién tiene acceso:</strong> Cualquier usuario (Anyone).</li>
+                    </ul>
+                  </li>
+                  <li>Haz clic en <strong>Implementar</strong>, autoriza los permisos y copia la <strong>URL de la aplicación web</strong> (termina en <code>/exec</code>).</li>
+                  <li>Pega esa URL en el campo de arriba y haz clic en <strong>Guardar y Conectar</strong>. ¡El script creará automáticamente las pestañas <strong>Reservas</strong>, <strong>Base_General</strong> y <strong>Postulaciones</strong>!</li>
+                </ol>
               </div>
             </div>
           </div>

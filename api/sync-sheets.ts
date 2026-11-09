@@ -7,8 +7,16 @@ export default async function handler(req: any, res: any) {
 
   const data = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
   const candidatos = Array.isArray(data.candidatos) ? data.candidatos : [];
-  const webhookUrl = data.webhookUrl || process.env.GOOGLE_SHEETS_WEBHOOK_URL ||
-    'https://script.google.com/macros/s/AKfycbyHrjILLmIl0oiQ14LoqUzUv-I6PRIhk8jtffbxWYkW-Q3wyRsgumCEQim7T1QaxpCPVA/exec';
+  const webhookUrl = data.webhookUrl || process.env.GOOGLE_SHEETS_WEBHOOK_URL || '';
+  if (!webhookUrl || !webhookUrl.startsWith('http')) {
+    return res.status(200).json({
+      ok: true,
+      total: candidatos.length,
+      exitosas: 0,
+      fallidas: 0,
+      message: 'Google Sheets no configurado aún'
+    });
+  }
 
   let exitosas = 0;
   let fallidas = 0;

@@ -56,9 +56,8 @@ function requireAdminAuth(req: express.Request, res: express.Response, next: exp
   });
 }
 
-// URL predeterminada activa de Google Apps Script para sincronización de postulaciones
-const DEFAULT_WEBHOOK_URL = process.env.GOOGLE_SHEETS_WEBHOOK_URL ||
-  'https://script.google.com/macros/s/AKfycbyHrjILLmIl0oiQ14LoqUzUv-I6PRIhk8jtffbxWYkW-Q3wyRsgumCEQim7T1QaxpCPVA/exec';
+// URL predeterminada de Google Apps Script (vacía por defecto hasta que el usuario conecte su nueva hoja)
+const DEFAULT_WEBHOOK_URL = process.env.GOOGLE_SHEETS_WEBHOOK_URL || '';
 
 function ensureDataFiles() {
   const dataDir = path.resolve('data');
@@ -68,9 +67,10 @@ function ensureDataFiles() {
   if (!fs.existsSync(CONFIG_FILE)) {
     fs.writeFileSync(CONFIG_FILE, JSON.stringify({
       webhookUrl: DEFAULT_WEBHOOK_URL,
-      sheetName: "Postulaciones",
-      spreadsheetName: "Postulaciones Tour Azul",
-      updatedAt: new Date().toISOString()
+      sheetName: "Reservas",
+      spreadsheetName: "Tour Azul - Reservas y Pasajeros",
+      updatedAt: null,
+      status: "disconnected"
     }, null, 2));
   }
   if (!fs.existsSync(CANDIDATOS_FILE)) {
@@ -103,21 +103,23 @@ function getConfig() {
     ensureDataFiles();
     const raw = fs.readFileSync(CONFIG_FILE, 'utf-8');
     const parsed = JSON.parse(raw);
-    const webhookUrl = (typeof parsed.webhookUrl === 'string' && parsed.webhookUrl.trim().length > 0)
+    const webhookUrl = (typeof parsed.webhookUrl === 'string')
       ? parsed.webhookUrl.trim()
       : DEFAULT_WEBHOOK_URL;
     return {
       webhookUrl,
-      sheetName: parsed.sheetName || 'Postulaciones',
-      spreadsheetName: parsed.spreadsheetName || 'Postulaciones Tour Azul',
-      updatedAt: parsed.updatedAt || new Date().toISOString()
+      sheetName: parsed.sheetName || 'Reservas',
+      spreadsheetName: parsed.spreadsheetName || 'Tour Azul - Reservas y Pasajeros',
+      updatedAt: parsed.updatedAt || null,
+      status: parsed.status || (webhookUrl ? 'connected' : 'disconnected')
     };
   } catch (err) {
     return {
       webhookUrl: DEFAULT_WEBHOOK_URL,
-      sheetName: "Postulaciones",
-      spreadsheetName: "Postulaciones Tour Azul",
-      updatedAt: new Date().toISOString()
+      sheetName: "Reservas",
+      spreadsheetName: "Tour Azul - Reservas y Pasajeros",
+      updatedAt: null,
+      status: "disconnected"
     };
   }
 }
@@ -384,12 +386,19 @@ async function startServer() {
     res.json({ ok: true, timestamp: Date.now(), service: 'Tour Azul Backend' });
   });
 
-  // Servir el código actualizado de Postulaciones_GoogleSheet.gs
-  app.get('/api/admin/code-gs', (_req, res) => {
-    const filePath = path.resolve('Postulaciones_GoogleSheet.gs');
+  // Servir el código actualizado de Code.gs (para Google Sheets de Reservas y Clientes) o Postulaciones_GoogleSheet.gs
+  app.get('/api/admin/code-gs', (req, res) => {
+    const which = req.query.file === 'postulaciones' ? 'Postulaciones_GoogleSheet.gs' : 'Code.gs';
+    const filePath = path.resolve(which);
     if (fs.existsSync(filePath)) {
       res.setHeader('Content-Type', 'text/plain; charset=utf-8');
       return res.sendFile(filePath);
+    }
+    // Fallback a Code.gs
+    const fallbackPath = path.resolve('Code.gs');
+    if (fs.existsSync(fallbackPath)) {
+      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+      return res.sendFile(fallbackPath);
     }
     return res.status(404).send('Archivo no encontrado');
   });
@@ -423,7 +432,7 @@ async function startServer() {
     return res.status(401).json({ ok: false, valid: false, error: 'Sesión no válida o expirada' });
   });
 
-  // 3. Obtener Configuración de Conexión de Postulaciones
+  // 3. Obtener Configuración de Conexión de Google Sheets
   app.get('/api/config', (_req, res) => {
     const cfg = getConfig();
     res.json({
@@ -437,18 +446,50 @@ async function startServer() {
   app.post('/api/config', requireAdminAuth, (req, res) => {
     const { webhookUrl, sheetName, spreadsheetName } = req.body;
     const current = getConfig();
+    const cleanUrl = webhookUrl !== undefined ? String(webhookUrl).trim() : current.webhookUrl;
     const updated = {
       ...current,
-      webhookUrl: (webhookUrl !== undefined ? String(webhookUrl).trim() : current.webhookUrl),
-      sheetName: (sheetName !== undefined && String(sheetName).trim().length > 0 ? String(sheetName).trim() : 'Postulaciones'),
-      spreadsheetName: (spreadsheetName !== undefined && String(spreadsheetName).trim().length > 0 ? String(spreadsheetName).trim() : 'Postulaciones Tour Azul'),
+      webhookUrl: cleanUrl,
+      sheetName: (sheetName !== undefined && String(sheetName).trim().length > 0 ? String(sheetName).trim() : 'Reservas'),
+      spreadsheetName: (spreadsheetName !== undefined && String(spreadsheetName).trim().length > 0 ? String(spreadsheetName).trim() : 'Tour Azul - Reservas y Pasajeros'),
+      updatedAt: new Date().toISOString(),
+      status: cleanUrl.startsWith('http') ? 'connected' : 'disconnected'
+    };
+    saveConfig(updated);
+    res.json({
+      ok: true,
+      config: updated,
+      message: cleanUrl.startsWith('http')
+        ? 'Configuración de conexión actualizada con éxito'
+        : 'Conexión de Google Sheets eliminada. El sistema está listo para un nuevo script.'
+    });
+  });
+
+  // 4.1 Desconectar Google Sheets y dejar limpio para nuevo script (Requiere autenticación admin)
+  app.post('/api/admin/disconnect-sheets', requireAdminAuth, (_req, res) => {
+    const current = getConfig();
+    const updated = {
+      ...current,
+      webhookUrl: '',
+      status: 'disconnected',
       updatedAt: new Date().toISOString()
     };
     saveConfig(updated);
     res.json({
       ok: true,
       config: updated,
-      message: 'Configuración de conexión actualizada con éxito'
+      message: 'Conexión con Google Sheets eliminada. Puedes conectar tu nuevo script en cualquier momento.'
+    });
+  });
+
+  // 4.2 Limpiar registros locales (poner en cero candidatos y reservas) (Requiere autenticación admin)
+  app.post('/api/admin/reset-data', requireAdminAuth, (_req, res) => {
+    saveReservasList([]);
+    saveCandidatosList([]);
+    console.log('[Admin Reset] Se han vaciado todas las reservas y candidatos locales.');
+    res.json({
+      ok: true,
+      message: 'Registros limpiados con éxito. La base de datos está totalmente en blanco, lista para nuevas reservas.'
     });
   });
 

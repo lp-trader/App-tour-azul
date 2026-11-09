@@ -1,7 +1,7 @@
 {
-  "webhookUrl": "https://script.google.com/macros/s/AKfycbyHrjILLmIl0oiQ14LoqUzUv-I6PRIhk8jtffbxWYkW-Q3wyRsgumCEQim7T1QaxpCPVA/exec",
-  "sheetName": "Postulaciones",
-  "spreadsheetName": "Postulaciones Tour Azul",
-  "updatedAt": "2026-10-24T14:58:00Z",
-  "status": "connected"
+  "webhookUrl": "",
+  "sheetName": "Reservas",
+  "spreadsheetName": "Tour Azul - Reservas y Pasajeros",
+  "updatedAt": null,
+  "status": "disconnected"
 }
