@@ -139,19 +139,23 @@ export const featuredClientCode = `
       const diffDays = getDaysDiffFromToday(salida.fecha, todayIso);
 
       const demoOccupancyMap = {
-        "cayo-muerto_2026-10-03": 31,
-        "varadero_2026-10-03": 31,
-        "cayo-azul-360_2026-10-04": 26,  // Hoy: 26 ocupados -> 5 disponibles (<=6 últimos cupos, >=50% muy solicitado)
-        "cayo-boca-seca_2026-10-04": 28,  // Hoy: 28 ocupados -> 3 disponibles (<=6 últimos cupos, >=50% muy solicitado)
-        "cayo-sombrero_2026-10-10": 22,   // 6 días: 22 ocupados (71% muy solicitado)
-        "colonia-tovar_2026-10-10": 25,   // 6 días: 25 ocupados -> 6 disponibles (<=6 últimos cupos, >=50%)
-        "colonia-tovar_2026-10-11": 18,   // 7 días: 18 ocupados (58% muy solicitado)
-        "cayo-sal_2026-10-11": 19,        // 7 días: 19 ocupados (61% muy solicitado)
-        "cayo-azul_2026-10-12": 21,       // 8 días feriado: 21 ocupados (67% muy solicitado)
-        "isla-larga_2026-10-17": 15,      // 13 días: 15 ocupados (48%)
-        "cepe_2026-10-17": 16,            // 13 días: 16 ocupados (51.6% muy solicitado)
-        "cayo-muerto_2026-10-18": 14,     // 14 días: 14 ocupados (45%)
-        "varadero_2026-10-18": 12         // 14 días: 12 ocupados (38%)
+        "cayo-sal-7-nov_2026-11-07": 31,
+        "varadero-7-nov_2026-11-07": 31,
+        "cayo-azul-360-8-nov_2026-11-08": 31,
+        "cayo-sombrero-8-nov_2026-11-08": 31,
+        "choroni-fd-14-nov_2026-11-14": 25,          // Sáb 14 Nov: 25 ocupados -> 6 disponibles (¡Últimos cupos!)
+        "cayo-muerto-14-nov_2026-11-14": 20,         // Sáb 14 Nov: 20 ocupados -> 11 disponibles
+        "preferia-chinita-15-nov_2026-11-15": 26,    // Dom 15 Nov: 26 ocupados -> 5 disponibles (¡Últimos cupos!)
+        "cayo-boca-seca-15-nov_2026-11-15": 19,      // Dom 15 Nov: 19 ocupados -> 12 disponibles
+        "hacienda-santa-teresa-21-nov_2026-11-21": 22,// Sáb 21 Nov: 22 ocupados (Muy solicitado)
+        "viaje-belleza-21-22-nov_2026-11-21": 24,    // Sáb 21-22 Nov: 24 ocupados -> 7 disponibles
+        "colonia-tovar-22-nov_2026-11-22": 21,       // Dom 22 Nov: 21 ocupados
+        "cayo-sal-28-nov_2026-11-28": 17,            // Sáb 28 Nov: 17 ocupados
+        "adicora-medanos-28-nov_2026-11-28": 20,     // Sáb 28 Nov: 20 ocupados
+        "tour-merida-28-29-nov_2026-11-28": 25,      // Sáb 28-29 Nov: 25 ocupados (¡Últimos cupos!)
+        "choroni-estadia-28-29-nov_2026-11-28": 18,  // Sáb 28-29 Nov: 18 ocupados
+        "isla-larga-29-nov_2026-11-29": 19,          // Dom 29 Nov: 19 ocupados
+        "cayo-azul-29-nov_2026-11-29": 22            // Dom 29 Nov: 22 ocupados
       };
 
       const key = \`\${trip.id}_\${salida.fecha}\`;

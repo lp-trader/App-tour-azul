@@ -99,7 +99,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onLogout, authTo
   const [resumenViajes, setResumenViajes] = useState<ResumenViaje[]>([]);
   const [cargandoViajes, setCargandoViajes] = useState<boolean>(true);
   const [viajeSeleccionadoId, setViajeSeleccionadoId] = useState<string | null>(null);
-  const [filtroFechaViaje, setFiltroFechaViaje] = useState<string>('todos');
+  const [filtroEstadoViaje, setFiltroEstadoViaje] = useState<'pendientes' | 'todos' | 'culminados'>('pendientes');
 
   // Datos de clientes generales
   const [clientes, setClientes] = useState<ClienteGeneral[]>([]);
@@ -370,18 +370,52 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onLogout, authTo
     }
   };
 
+  const hoyIso = useMemo(() => {
+    try {
+      return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Caracas' }).format(new Date());
+    } catch {
+      return new Date().toISOString().split('T')[0];
+    }
+  }, []);
+
   // Métricas totales de noviembre
   const metricasNoviembre = useMemo(() => {
     let totalReservas = 0;
     let totalPasajeros = 0;
     let totalAbonado = 0;
+    let totalPendientes = 0;
+    let totalCulminados = 0;
     resumenViajes.forEach(v => {
       totalReservas += v.totalReservas;
       totalPasajeros += v.totalPasajeros;
       totalAbonado += v.totalAbonadoEur;
+      const fechaSalida = v.salidas[0]?.fecha || '';
+      if (fechaSalida >= hoyIso) {
+        totalPendientes++;
+      } else {
+        totalCulminados++;
+      }
     });
-    return { totalReservas, totalPasajeros, totalAbonado, totalViajes: resumenViajes.length };
-  }, [resumenViajes]);
+    return {
+      totalReservas,
+      totalPasajeros,
+      totalAbonado,
+      totalViajes: resumenViajes.length,
+      totalPendientes,
+      totalCulminados
+    };
+  }, [resumenViajes, hoyIso]);
+
+  // Viajes filtrados por estado (Pendientes / Todos / Culminados)
+  const viajesFiltrados = useMemo(() => {
+    return resumenViajes.filter(v => {
+      const fechaSalida = v.salidas[0]?.fecha || '';
+      const esPendiente = fechaSalida >= hoyIso;
+      if (filtroEstadoViaje === 'pendientes') return esPendiente;
+      if (filtroEstadoViaje === 'culminados') return !esPendiente;
+      return true;
+    });
+  }, [resumenViajes, filtroEstadoViaje, hoyIso]);
 
   // Clientes filtrados por búsqueda
   const clientesFiltrados = useMemo(() => {
@@ -557,12 +591,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onLogout, authTo
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
               <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
                 <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
-                  Viajes Noviembre
+                  Viajes de Noviembre
                 </span>
-                <div className="text-2xl font-black text-slate-800 font-title mt-1">
-                  17 Destinos
+                <div className="text-2xl font-black text-emerald-600 font-title mt-1 flex items-baseline gap-2">
+                  <span>{metricasNoviembre.totalPendientes} Pendientes</span>
                 </div>
-                <span className="text-[11px] text-emerald-600 font-medium">Temporada oficial activa</span>
+                <span className="text-[11px] text-slate-500 font-medium">
+                  {metricasNoviembre.totalViajes} programados ({metricasNoviembre.totalCulminados} culminados)
+                </span>
               </div>
 
               <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
@@ -612,11 +648,49 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onLogout, authTo
                     Monitoreo de Salidas de Noviembre
                   </h2>
                   <p className="text-xs text-slate-500">
-                    Selecciona un viaje para ver su lista detallada de pasajeros, puntos de partida y pagos.
+                    Visualiza los viajes pendientes del mes y su lista de pasajeros registrados.
                   </p>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  {/* Filtro: Pendientes / Todos / Culminados */}
+                  <div className="inline-flex p-1 bg-slate-100 rounded-2xl border border-slate-200 text-xs font-bold">
+                    <button
+                      type="button"
+                      onClick={() => setFiltroEstadoViaje('pendientes')}
+                      className={`px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 cursor-pointer ${
+                        filtroEstadoViaje === 'pendientes'
+                          ? 'bg-emerald-600 text-white shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                      <span>Pendientes ({metricasNoviembre.totalPendientes})</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFiltroEstadoViaje('todos')}
+                      className={`px-3 py-1.5 rounded-xl transition cursor-pointer ${
+                        filtroEstadoViaje === 'todos'
+                          ? 'bg-tour-blue text-white shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      <span>Todos ({metricasNoviembre.totalViajes})</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFiltroEstadoViaje('culminados')}
+                      className={`px-3 py-1.5 rounded-xl transition cursor-pointer ${
+                        filtroEstadoViaje === 'culminados'
+                          ? 'bg-slate-700 text-white shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      <span>Culminados ({metricasNoviembre.totalCulminados})</span>
+                    </button>
+                  </div>
+
                   <button
                     type="button"
                     onClick={cargarViajes}
@@ -628,18 +702,32 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onLogout, authTo
                 </div>
               </div>
 
-              {/* Grid de los 17 Viajes de Noviembre */}
+              {/* Grid de Salidas */}
               {cargandoViajes ? (
                 <div className="py-12 text-center text-slate-400">
                   <div className="w-8 h-8 border-3 border-tour-blue border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
                   <p className="text-xs font-semibold">Cargando salidas de noviembre...</p>
                 </div>
+              ) : viajesFiltrados.length === 0 ? (
+                <div className="py-12 text-center text-slate-400 bg-slate-50 rounded-2xl border border-slate-200 p-6">
+                  <span className="text-3xl mb-2 block">🗓️</span>
+                  <p className="text-sm font-bold text-slate-700">No hay viajes en esta vista</p>
+                  <button
+                    type="button"
+                    onClick={() => setFiltroEstadoViaje('todos')}
+                    className="mt-3 px-4 py-2 rounded-xl bg-tour-blue text-white text-xs font-bold"
+                  >
+                    Ver todas las salidas
+                  </button>
+                </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
-                  {resumenViajes.map((viaje) => {
+                  {viajesFiltrados.map((viaje) => {
                     const salidaPrincipal = viaje.salidas[0];
                     const isSelected = viajeSeleccionadoId === viaje.id;
                     const totalPasajeros = viaje.totalPasajeros;
+                    const fechaSalida = salidaPrincipal?.fecha || '';
+                    const esPendiente = fechaSalida >= hoyIso;
 
                     return (
                       <div
@@ -648,7 +736,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onLogout, authTo
                         className={`rounded-2xl border transition-all cursor-pointer p-4 relative overflow-hidden ${
                           isSelected
                             ? 'bg-sky-50/90 border-tour-blue shadow-md ring-2 ring-tour-blue/20'
-                            : 'bg-slate-50/60 hover:bg-white hover:border-sky-300 border-slate-200 shadow-2xs'
+                            : esPendiente
+                              ? 'bg-white hover:border-emerald-400 border-slate-200 shadow-2xs'
+                              : 'bg-slate-50/70 border-slate-200/80 opacity-75'
                         }`}
                       >
                         <div className="flex items-start gap-3">
@@ -658,9 +748,21 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onLogout, authTo
                             className="w-14 h-14 rounded-xl object-cover shrink-0 shadow-xs border border-slate-200"
                           />
                           <div className="min-w-0 flex-1">
-                            <span className="text-[10px] font-bold uppercase text-tour-blue tracking-wider block">
-                              {salidaPrincipal?.fechaTexto || 'Noviembre 2026'}
-                            </span>
+                            <div className="flex items-center justify-between gap-1 mb-0.5">
+                              <span className="text-[10px] font-bold uppercase text-tour-blue tracking-wider block truncate">
+                                {salidaPrincipal?.fechaTexto || 'Noviembre 2026'}
+                              </span>
+                              {esPendiente ? (
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[9px] font-black uppercase tracking-wider shrink-0">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                  Pendiente
+                                </span>
+                              ) : (
+                                <span className="px-1.5 py-0.5 rounded-full bg-slate-200 text-slate-600 text-[9px] font-bold uppercase tracking-wider shrink-0">
+                                  Culminado
+                                </span>
+                              )}
+                            </div>
                             <h3 className="font-title font-black text-sm text-slate-900 truncate">
                               {viaje.destino}
                             </h3>

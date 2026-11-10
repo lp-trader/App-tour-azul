@@ -824,8 +824,8 @@ export const recruitmentClientCode = `
     // CONFIGURACIÓN CENTRALIZADA DE PREAPERTURA Y MÓDULO DE POSTULACIONES
     // =========================================================================
     const APP_CONFIG = {
-      // Activa o desactiva temporalmente el modo de preapertura
-      prelaunchMode: true,
+      // Modo oficial activo: visualización y reservas de viajes de noviembre
+      prelaunchMode: false,
       
       // WhatsApp oficial para postulaciones y consultas
       whatsappNumero: "584126571155",
