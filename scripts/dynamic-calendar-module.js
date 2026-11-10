@@ -1,22 +1,19 @@
 /**
  * TOUR AZUL - MÓDULO DE CALENDARIO DINÁMICO NOVIEMBRE
  * Basado fielmente en el diseño del flyer oficial de Instagram (@eltourazul)
- * Elimina la tabla mensual tradicional de 30 días y la reemplaza por un
- * selector de días con salidas reales y tarjetas compactas estilo flyer.
+ * Solo muestra las salidas activas y vigentes del mes de Noviembre (13 salidas).
  */
 
 export const dynamicCalendarClientCode = `
     // DÍAS CON SALIDAS DE NOVIEMBRE (CALENDARIO DINÁMICO TOUR AZUL)
     const DIAS_NOVIEMBRE = [
-      { id: "todos", label: "🌟 Todos los viajes", badge: "17", desc: "Todos los 17 viajes del mes" },
-      { id: "proximos", label: "🟢 Próximos", badge: "13", desc: "Salidas vigentes y disponibles para reservar" },
+      { id: "todos", label: "🌟 Todos los viajes", badge: "13", desc: "Todos los 13 viajes activos de Noviembre" },
       { id: "2026-11-14", label: "Sáb 14 N", dayRibbon: "SÁBADO 14", fullText: "Sábado 14 de Noviembre", badge: "2", viajesNombres: "Full Day Choroní y Cayo Muerto" },
       { id: "2026-11-15", label: "Dom 15 N", dayRibbon: "DOMINGO 15", fullText: "Domingo 15 de Noviembre", badge: "2", viajesNombres: "Preferia de La Chinita y Cayo Boca Seca" },
       { id: "2026-11-21", label: "Sáb 21 N", dayRibbon: "SÁBADO 21", fullText: "Sábado 21 de Noviembre", badge: "2", viajesNombres: "Hacienda Santa Teresa y Viaje de Belleza" },
       { id: "2026-11-22", label: "Dom 22 N", dayRibbon: "DOMINGO 22", fullText: "Domingo 22 de Noviembre", badge: "1", viajesNombres: "Colonia Tovar" },
       { id: "2026-11-28", label: "Sáb 28 N", dayRibbon: "SÁBADO 28", fullText: "Sábado 28 de Noviembre", badge: "4", viajesNombres: "Cayo Sal, Adícora + Médanos, Tour Mérida y Choroní Estadía" },
-      { id: "2026-11-29", label: "Dom 29 N", dayRibbon: "DOMINGO 29", fullText: "Domingo 29 de Noviembre", badge: "2", viajesNombres: "Isla Larga y Cayo Azul" },
-      { id: "pasados", label: "⚪ Pasados (7 y 8)", badge: "4", desc: "Salidas culminadas del 7 y 8 de Noviembre" }
+      { id: "2026-11-29", label: "Dom 29 N", dayRibbon: "DOMINGO 29", fullText: "Domingo 29 de Noviembre", badge: "2", viajesNombres: "Isla Larga y Cayo Azul" }
     ];
 
     function renderDynamicDaysSelector() {
@@ -54,13 +51,7 @@ export const dynamicCalendarClientCode = `
 
       if (state.filtroDia === "todos") {
         if (statusDot) statusDot.className = "w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0";
-        statusText.innerHTML = \`Mostrando: <strong class="text-tour-blue">Todos los viajes de Noviembre (17 salidas)</strong>\`;
-      } else if (state.filtroDia === "proximos") {
-        if (statusDot) statusDot.className = "w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0 animate-pulse";
-        statusText.innerHTML = \`Mostrando: <strong class="text-emerald-700">Próximos viajes vigentes (13 salidas disponibles para reservar)</strong>\`;
-      } else if (state.filtroDia === "pasados") {
-        if (statusDot) statusDot.className = "w-2.5 h-2.5 rounded-full bg-slate-400 shrink-0";
-        statusText.innerHTML = \`Mostrando: <strong class="text-slate-600">Salidas culminadas (7 y 8 de Noviembre)</strong>\`;
+        statusText.innerHTML = \`Mostrando: <strong class="text-tour-blue">Todos los viajes activos de Noviembre (13 salidas disponibles)</strong>\`;
       } else {
         if (statusDot) statusDot.className = "w-2.5 h-2.5 rounded-full bg-[#0B2A6B] shrink-0 animate-pulse";
         statusText.innerHTML = \`Mostrando salidas de: <strong class="text-[#0B2A6B]">\${currentDay.fullText}</strong> (\${currentDay.viajesNombres || ''})\`;
@@ -107,11 +98,7 @@ export const dynamicCalendarClientCode = `
       }
 
       // Filtro dinámico de días de Noviembre
-      if (state.filtroDia === "proximos") {
-        filtered = filtered.filter(v => v.salidas.some(s => s.fecha >= todayIso));
-      } else if (state.filtroDia === "pasados") {
-        filtered = filtered.filter(v => v.salidas.every(s => s.fecha < todayIso));
-      } else if (state.filtroDia && state.filtroDia !== "todos") {
+      if (state.filtroDia && state.filtroDia !== "todos") {
         filtered = filtered.filter(v => v.salidas.some(s => s.fecha === state.filtroDia));
       }
 
@@ -151,9 +138,7 @@ export const dynamicCalendarClientCode = `
 
         // Texto del listón amarillo inferior (ej: "SÁBADO 14", "DOMINGO 15")
         let dayRibbonText = primarySalida.fechaTexto.toUpperCase();
-        if (primarySalida.fecha === "2026-11-07") dayRibbonText = "SÁBADO 7";
-        else if (primarySalida.fecha === "2026-11-08") dayRibbonText = "DOMINGO 8";
-        else if (primarySalida.fecha === "2026-11-14") dayRibbonText = "SÁBADO 14";
+        if (primarySalida.fecha === "2026-11-14") dayRibbonText = "SÁBADO 14";
         else if (primarySalida.fecha === "2026-11-15") dayRibbonText = "DOMINGO 15";
         else if (primarySalida.fecha === "2026-11-21") {
           dayRibbonText = trip.salidas.length > 1 ? "SÁB 21 Y DOM 22" : "SÁBADO 21";

@@ -170,10 +170,13 @@ export const rateClientCode = `
         if (warn) warn.remove();
       }
 
-      renderTrips();
+      if (typeof renderTrips === "function") renderTrips();
       if (typeof renderFeaturedCards === "function") renderFeaturedCards();
-      if (currentStep === 4) renderStep4();
-      if (currentStep === 5) renderStep5();
+      if (typeof currentStep !== "undefined") {
+        if (currentStep === 1 && typeof renderStep1 === "function") renderStep1();
+        if (currentStep === 2 && typeof renderStep2 === "function") renderStep2();
+        if (currentStep === 3 && typeof renderStep3 === "function") renderStep3();
+      }
     }
 
     // MANEJAR CASO SIN TASA DISPONIBLE

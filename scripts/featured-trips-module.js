@@ -139,10 +139,6 @@ export const featuredClientCode = `
       const diffDays = getDaysDiffFromToday(salida.fecha, todayIso);
 
       const demoOccupancyMap = {
-        "cayo-sal-7-nov_2026-11-07": 31,
-        "varadero-7-nov_2026-11-07": 31,
-        "cayo-azul-360-8-nov_2026-11-08": 31,
-        "cayo-sombrero-8-nov_2026-11-08": 31,
         "choroni-fd-14-nov_2026-11-14": 25,          // Sáb 14 Nov: 25 ocupados -> 6 disponibles (¡Últimos cupos!)
         "cayo-muerto-14-nov_2026-11-14": 20,         // Sáb 14 Nov: 20 ocupados -> 11 disponibles
         "preferia-chinita-15-nov_2026-11-15": 26,    // Dom 15 Nov: 26 ocupados -> 5 disponibles (¡Últimos cupos!)

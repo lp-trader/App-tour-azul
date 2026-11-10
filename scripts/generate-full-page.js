@@ -1085,8 +1085,8 @@ ${retroPhotosModalsHtml}
 ${recruitmentClientCode}
 ${retroPhotosClientCode}
     // Webhook de Google Apps Script (se sincroniza con /api/config o localStorage)
-    const ACTIVE_APPS_SCRIPT_URL = "";
-    let WEBHOOK_URL = localStorage.getItem("tour_azul_sheets_webhook_url") || "";
+    const ACTIVE_APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzmgPJwdV2MfahHi_OQ_dJaMgb25585VLgpTtCXeG0iekM5zBm4H2BFCdteyVrdcB8-/exec";
+    let WEBHOOK_URL = localStorage.getItem("tour_azul_sheets_webhook_url") || ACTIVE_APPS_SCRIPT_URL;
 
     // Sincronizar dinámicamente con la configuración del servidor
     fetch("/api/config")
@@ -1296,17 +1296,7 @@ ${retroPhotosClientCode}
       } catch (_) {}
     }
 
-    // Función auxiliar para calcular ocupación de una salida
-    function getSalidaOccupancy(trip, salida) {
-      if (!salida) return 18;
-      const bus = (salida.buses && salida.buses[0]) ? salida.buses[0] : "Bus 1";
-      const ocupados = getStoredOccupiedSeats(trip.destino, salida.fecha, bus);
-      let hash = 0;
-      const str = (trip.id || trip.destino) + salida.fecha;
-      for (let i = 0; i < str.length; i++) hash = (hash * 31 + str.charCodeAt(i)) % 7;
-      const baseOcupacion = 14 + hash;
-      return Math.min(31, Math.max(ocupados.length, baseOcupacion + ocupados.length));
-    }
+    // Nota: getSalidaOccupancy está definida e implementada en el módulo de viajes destacados (featured-trips-module.js)
 
     // Función principal para enviar reservas a Google Sheets (Google Apps Script WebHook)
     async function enviarReservaAGoogleSheets(datosReserva) {
@@ -1495,6 +1485,7 @@ ${opinionsClientCode}
 
     function renderHeroChips() {
       const container = document.getElementById("hero-chips");
+      if (!container) return;
       const popular = [...new Set(VIAJES.map(v => v.destino))].slice(0, 10);
       container.innerHTML = popular.map((dest, i) => \`
         <button onclick="scrollToDestination('\${dest}')" class="px-3.5 py-1.5 rounded-full bg-white/20 hover:bg-white text-white hover:text-tour-navy border border-white/30 text-xs font-bold transition shadow-sm backdrop-blur-md active:scale-95 cursor-pointer" style="animation: float \${3.5 + (i % 3) * 0.7}s ease-in-out infinite; animation-delay: \${(i * 0.2)}s">
@@ -1508,11 +1499,13 @@ ${opinionsClientCode}
       state.filtroFecha = null;
       renderDestinationFilters();
       renderTrips();
-      document.getElementById("viajes").scrollIntoView({ behavior: "smooth" });
+      const el = document.getElementById("viajes");
+      if (el) el.scrollIntoView({ behavior: "smooth" });
     };
 
     function renderDestinationFilters() {
       const container = document.getElementById("destination-filters");
+      if (!container) return;
       const destinations = ["todos", ...new Set(VIAJES.map(v => v.destino))];
       container.innerHTML = destinations.map(d => {
         const isSelected = state.filtroDestino === d;
@@ -2182,7 +2175,7 @@ ${dynamicCalendarClientCode}
             state.anioCalendario--;
           }
           state.filtroFecha = null;
-          renderCalendar();
+          if (typeof renderCalendar === "function") renderCalendar();
           renderTrips();
         };
       }
@@ -2197,14 +2190,16 @@ ${dynamicCalendarClientCode}
             state.anioCalendario++;
           }
           state.filtroFecha = null;
-          renderCalendar();
+          if (typeof renderCalendar === "function") renderCalendar();
           renderTrips();
         };
       }
 
       const clearBtn = document.getElementById("btn-clear-date-filter");
       if (clearBtn) {
-        clearBtn.onclick = clearDateFilter;
+        clearBtn.onclick = () => {
+          if (typeof resetFilters === "function") resetFilters();
+        };
       }
 
       const btnCloseDet = document.getElementById("btn-close-detalles");
