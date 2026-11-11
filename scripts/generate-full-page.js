@@ -7,6 +7,7 @@ import { dynamicCalendarClientCode } from './dynamic-calendar-module.js';
 import { 
   prelaunchHeaderButtonHtml, 
   prelaunchHeroNoticeHtml, 
+  bottomCtaDestinosHtml,
   recruitmentHtmlSection, 
   recruitmentModalsHtml, 
   recruitmentClientCode 
@@ -196,14 +197,6 @@ ${prelaunchHeaderButtonHtml}
         </div>
       </div>
 
-${prelaunchHeroNoticeHtml}
-
-      <!-- Floating Destination Chips -->
-      <div class="relative z-10 mt-10 max-w-4xl mx-auto flex flex-wrap justify-center gap-2.5 px-2">
-        <span class="text-xs uppercase tracking-wider font-bold text-sky-200 w-full mb-1">Destinos populares:</span>
-        <div id="hero-chips" class="flex flex-wrap justify-center gap-2"></div>
-      </div>
-
       <!-- Animated SVG Waves at Bottom -->
       <div class="absolute bottom-0 inset-x-0 leading-none pointer-events-none">
         <svg class="w-full h-16 md:h-24 text-[#F8FDFF]" viewBox="0 0 1200 120" preserveAspectRatio="none">
@@ -359,6 +352,8 @@ ${featuredSectionHtml}
       </div>
     </section>
     -->
+
+${bottomCtaDestinosHtml}
   </main>
 
 ${recruitmentHtmlSection}
