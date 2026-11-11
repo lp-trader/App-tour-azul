@@ -323,8 +323,110 @@ async function forwardReservationToGoogleSheets(reserva: any, webhookUrl: string
   }
 }
 
+/**
+ * Consulta las reservas existentes en Google Sheets y las integra con la base de datos local
+ * Garantiza que reservas hechas desde cualquier dispositivo o directamente en la hoja se sincronicen en el panel admin
+ */
+async function syncReservasWithGoogleSheets(): Promise<any[]> {
+  const localList = getReservasList();
+  const cfg = getConfig();
+  const isWebhookConfigured = Boolean(cfg.webhookUrl && cfg.webhookUrl.startsWith('http'));
+
+  if (!isWebhookConfigured) {
+    return localList;
+  }
+
+  try {
+    const sep = cfg.webhookUrl.includes('?') ? '&' : '?';
+    const remoteUrl = `${cfg.webhookUrl}${sep}accion=reservas&_t=${Date.now()}`;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 12000);
+
+    const resp = await fetch(remoteUrl, { signal: controller.signal });
+    clearTimeout(timeoutId);
+
+    if (resp.ok) {
+      const json: any = await resp.json();
+      let remotos: any[] = [];
+      if (json && json.status === 'success' && Array.isArray(json.data)) remotos = json.data;
+      else if (json && Array.isArray(json.reservas)) remotos = json.reservas;
+      else if (Array.isArray(json)) remotos = json;
+
+      const localMap = new Map<string, number>();
+      localList.forEach((r: any, idx: number) => {
+        const key = String(r.idReserva || r.id || r.codigo || '').toLowerCase().trim();
+        if (key) localMap.set(key, idx);
+      });
+
+      let huboCambios = false;
+      for (const rem of remotos) {
+        const rId = String(rem.idReserva || rem.id || rem.codigo || '').trim();
+        if (!rId) continue;
+        const key = rId.toLowerCase();
+
+        const titular = rem.titular || {
+          nombre: rem.nombre || rem.nombreTitular || '',
+          cedula: rem.cedula || '',
+          telefono: rem.telefono || '',
+          edad: rem.edad || '',
+          puntoPartida: rem.puntoPartida || rem.recogida || ''
+        };
+
+        let acomp: any[] = [];
+        if (Array.isArray(rem.acompanantes)) {
+          acomp = rem.acompanantes;
+        } else if (typeof rem.acompanantes === 'string' && rem.acompanantes.trim().length > 0) {
+          acomp = rem.acompanantes.split(/[,;\n]+/).map((s: string) => ({ nombre: s.trim() })).filter((x: any) => x.nombre);
+        }
+
+        const totalPersonas = Number(rem.totalPersonas) || (1 + acomp.length);
+        const abonoEur = Number(rem.abonoEur !== undefined ? rem.abonoEur : rem.abono) || 0;
+        const saldoPendienteEur = Number(rem.saldoPendienteEur !== undefined ? rem.saldoPendienteEur : rem.pendiente) || 0;
+
+        if (localMap.has(key)) {
+          const idx = localMap.get(key)!;
+          if (rem.estadoPago && rem.estadoPago !== localList[idx].estadoPago) {
+            localList[idx].estadoPago = rem.estadoPago;
+            localList[idx].syncedToSheets = true;
+            huboCambios = true;
+          }
+        } else {
+          localList.unshift({
+            ...rem,
+            id: rId,
+            idReserva: rId,
+            codigo: rId,
+            destino: rem.destino || '',
+            fechaViaje: rem.fechaViaje || '',
+            totalPersonas,
+            abonoEur,
+            saldoPendienteEur,
+            titular,
+            acompanantes: acomp,
+            puntoPartida: titular.puntoPartida || rem.puntoPartida || rem.recogida || '',
+            syncedToSheets: true,
+            _origen: 'sheets'
+          });
+          localMap.set(key, 0);
+          huboCambios = true;
+        }
+      }
+
+      if (huboCambios) {
+        saveReservasList(localList);
+      }
+    }
+  } catch (errSync) {
+    console.warn('Aviso sincronizando reservas con Google Sheets:', errSync);
+  }
+
+  return localList;
+}
+
 async function startServer() {
   ensureDataFiles();
+  // Sincronizar reservas con Google Sheets al iniciar en segundo plano
+  syncReservasWithGoogleSheets().catch(err => console.warn('Aviso en sync inicial con Google Sheets:', err));
 
   const app = express();
   app.use(express.json({ limit: '15mb' }));
@@ -986,69 +1088,15 @@ async function startServer() {
 
   // 12. Obtener Lista de Reservas (Consulta local y sincroniza con Google Sheets)
   app.get('/api/reservas', async (req, res) => {
-    let localList = getReservasList();
     const cfg = getConfig();
     const shouldSync = req.query.sync !== 'false';
     const isWebhookConfigured = Boolean(cfg.webhookUrl && cfg.webhookUrl.startsWith('http'));
 
     if (shouldSync && isWebhookConfigured) {
-      try {
-        const sep = cfg.webhookUrl.includes('?') ? '&' : '?';
-        const remoteUrl = `${cfg.webhookUrl}${sep}accion=reservas&_t=${Date.now()}`;
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000);
-
-        const resp = await fetch(remoteUrl, { signal: controller.signal });
-        clearTimeout(timeoutId);
-
-        if (resp.ok) {
-          const json: any = await resp.json();
-          let remotos: any[] = [];
-          if (json && json.status === 'success' && Array.isArray(json.data)) remotos = json.data;
-          else if (json && Array.isArray(json.reservas)) remotos = json.reservas;
-          else if (Array.isArray(json)) remotos = json;
-
-          const localMap = new Map<string, number>();
-          localList.forEach((r: any, idx: number) => {
-            const key = String(r.idReserva || r.id || r.codigo || '').toLowerCase().trim();
-            if (key) localMap.set(key, idx);
-          });
-
-          let huboCambios = false;
-          for (const rem of remotos) {
-            const rId = String(rem.idReserva || rem.id || '').trim();
-            if (!rId) continue;
-            const key = rId.toLowerCase();
-
-            if (localMap.has(key)) {
-              const idx = localMap.get(key)!;
-              if (rem.estadoPago && rem.estadoPago !== localList[idx].estadoPago) {
-                localList[idx].estadoPago = rem.estadoPago;
-                localList[idx].syncedToSheets = true;
-                huboCambios = true;
-              }
-            } else {
-              localList.unshift({
-                ...rem,
-                id: rId,
-                idReserva: rId,
-                syncedToSheets: true,
-                _origen: 'sheets'
-              });
-              localMap.set(key, 0);
-              huboCambios = true;
-            }
-          }
-
-          if (huboCambios) {
-            saveReservasList(localList);
-          }
-        }
-      } catch (errSync) {
-        console.warn('Aviso sincronizando reservas con Google Sheets:', errSync);
-      }
+      await syncReservasWithGoogleSheets();
     }
 
+    const localList = getReservasList();
     res.json({
       ok: true,
       reservas: localList,
@@ -1187,8 +1235,12 @@ async function startServer() {
   });
 
   // 14. Resumen por cada Viaje de Noviembre (Cómo va cada destino)
-  app.get('/api/viajes/resumen', (req, res) => {
+  app.get('/api/viajes/resumen', async (req, res) => {
     try {
+      // Sincronizar primero con Google Sheets para reflejar registros hechos desde cualquier dispositivo
+      if (req.query.sync !== 'false') {
+        await syncReservasWithGoogleSheets();
+      }
       const reservas = getReservasList();
 
       // Recorrer los 17 viajes de noviembre de TRIPS
@@ -1276,8 +1328,12 @@ async function startServer() {
   });
 
   // 15. Lista General de Todos los Clientes Registrados y que han viajado con Tour Azul
-  app.get('/api/clientes/general', (_req, res) => {
+  app.get('/api/clientes/general', async (req, res) => {
     try {
+      // Sincronizar primero con Google Sheets
+      if (req.query.sync !== 'false') {
+        await syncReservasWithGoogleSheets();
+      }
       const reservas = getReservasList();
       const clientesMap = new Map<string, any>();
 
@@ -1534,13 +1590,17 @@ async function startServer() {
     }
   });
 
-  // 20. Sincronizar Todas las Reservas Pendientes a Google Sheets
+  // 20. Sincronizar Todas las Reservas con Google Sheets (Bidireccional)
   app.post('/api/sync-reservas-sheets', requireAdminAuth, async (_req, res) => {
     const cfg = getConfig();
     if (!cfg.webhookUrl || !cfg.webhookUrl.startsWith('http')) {
       return res.status(400).json({ ok: false, message: 'No hay URL de Google Sheets Webhook configurada' });
     }
 
+    // 1. Traer primero las reservas existentes en Google Sheets
+    await syncReservasWithGoogleSheets();
+
+    // 2. Enviar a Google Sheets las reservas locales que aún no figuren sincronizadas
     const list = getReservasList();
     let exitosas = 0;
     let fallidas = 0;
@@ -1563,7 +1623,7 @@ async function startServer() {
       total: list.length,
       exitosas,
       fallidas,
-      message: `Sincronización de reservas en Google Sheets: ${exitosas} enviadas exitosamente, ${fallidas} pendientes.`
+      message: `Sincronización bidireccional completada: ${list.length} reservas consolidadas (${exitosas} enviadas a Google Sheets, ${fallidas} pendientes).`
     });
   });
 
