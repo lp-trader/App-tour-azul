@@ -306,6 +306,19 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onLogout, authTo
     cargarConfig();
   }, [cargarReservas, cargarViajes, cargarClientes, cargarCandidatos, cargarConfig]);
 
+  // Recargar datos en vivo cada vez que el usuario cambia de pestaña
+  useEffect(() => {
+    if (activeTab === 'viajes') {
+      cargarViajes();
+    } else if (activeTab === 'reservas') {
+      cargarReservas();
+    } else if (activeTab === 'clientes') {
+      cargarClientes();
+    } else if (activeTab === 'candidatos') {
+      cargarCandidatos();
+    }
+  }, [activeTab, cargarViajes, cargarReservas, cargarClientes, cargarCandidatos]);
+
   // Forzar sincronización de reservas a Google Sheets
   const handleSincronizarReservas = async () => {
     setSincronizandoReservas(true);
@@ -563,12 +576,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onLogout, authTo
     let totalReservas = 0;
     let totalPasajeros = 0;
     let totalAbonado = 0;
+    let totalPendiente = 0;
     let totalPendientes = 0;
     let totalCulminados = 0;
     resumenViajes.forEach(v => {
       totalReservas += v.totalReservas;
       totalPasajeros += v.totalPasajeros;
       totalAbonado += v.totalAbonadoEur;
+      v.salidas.forEach(s => {
+        totalPendiente += (s.totalPendienteEur || 0);
+      });
       const fechaSalida = v.salidas[0]?.fecha || '';
       if (fechaSalida >= hoyIso) {
         totalPendientes++;
@@ -580,6 +597,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onLogout, authTo
       totalReservas,
       totalPasajeros,
       totalAbonado,
+      totalPendiente,
       totalViajes: resumenViajes.length,
       totalPendientes,
       totalCulminados
@@ -1294,57 +1312,94 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onLogout, authTo
                     const totalPasajeros = viaje.totalPasajeros;
                     const fechaSalida = salidaPrincipal?.fecha || '';
                     const esPendiente = fechaSalida >= hoyIso;
+                    const listaPasajeros = viaje.salidas.flatMap(s => s.pasajeros);
 
                     return (
                       <div
                         key={viaje.id}
                         onClick={() => setViajeSeleccionadoId(isSelected ? null : viaje.id)}
-                        className={`rounded-2xl border transition-all cursor-pointer p-4 relative overflow-hidden ${
+                        className={`rounded-2xl border transition-all cursor-pointer p-4 relative overflow-hidden flex flex-col justify-between ${
                           isSelected
                             ? 'bg-sky-50/90 border-tour-blue shadow-md ring-2 ring-tour-blue/20'
-                            : esPendiente
-                              ? 'bg-white hover:border-emerald-400 border-slate-200 shadow-2xs'
-                              : 'bg-slate-50/70 border-slate-200/80 opacity-75'
+                            : totalPasajeros > 0
+                              ? 'bg-white hover:border-emerald-500 border-emerald-300 shadow-md ring-1 ring-emerald-200'
+                              : esPendiente
+                                ? 'bg-white hover:border-slate-300 border-slate-200 shadow-2xs'
+                                : 'bg-slate-50/70 border-slate-200/80 opacity-75'
                         }`}
                       >
-                        <div className="flex items-start gap-3">
-                          <img
-                            src={viaje.imagenUrl}
-                            alt={viaje.destino}
-                            className="w-14 h-14 rounded-xl object-cover shrink-0 shadow-xs border border-slate-200"
-                          />
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center justify-between gap-1 mb-0.5">
-                              <span className="text-[10px] font-bold uppercase text-tour-blue tracking-wider block truncate">
-                                {salidaPrincipal?.fechaTexto || 'Noviembre 2026'}
-                              </span>
-                              {esPendiente ? (
-                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[9px] font-black uppercase tracking-wider shrink-0">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                                  Pendiente
+                        <div>
+                          <div className="flex items-start gap-3">
+                            <img
+                              src={viaje.imagenUrl}
+                              alt={viaje.destino}
+                              className="w-14 h-14 rounded-xl object-cover shrink-0 shadow-xs border border-slate-200"
+                            />
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center justify-between gap-1 mb-0.5">
+                                <span className="text-[10px] font-bold uppercase text-tour-blue tracking-wider block truncate">
+                                  {salidaPrincipal?.fechaTexto || 'Noviembre 2026'}
                                 </span>
-                              ) : (
-                                <span className="px-1.5 py-0.5 rounded-full bg-slate-200 text-slate-600 text-[9px] font-bold uppercase tracking-wider shrink-0">
-                                  Culminado
+                                {totalPasajeros > 0 ? (
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-600 text-white text-[9px] font-black uppercase tracking-wider shrink-0 shadow-xs">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping"></span>
+                                    {totalPasajeros} {totalPasajeros === 1 ? 'PAX' : 'PAX'}
+                                  </span>
+                                ) : esPendiente ? (
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[9px] font-black uppercase tracking-wider shrink-0">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                    Pendiente
+                                  </span>
+                                ) : (
+                                  <span className="px-1.5 py-0.5 rounded-full bg-slate-200 text-slate-600 text-[9px] font-bold uppercase tracking-wider shrink-0">
+                                    Culminado
+                                  </span>
+                                )}
+                              </div>
+                              <h3 className="font-title font-black text-sm text-slate-900 truncate">
+                                {viaje.destino}
+                              </h3>
+                              <div className="flex items-center gap-2 mt-1">
+                                <span className="text-xs font-bold text-slate-700">
+                                  REF {viaje.precioRef}
                                 </span>
-                              )}
-                            </div>
-                            <h3 className="font-title font-black text-sm text-slate-900 truncate">
-                              {viaje.destino}
-                            </h3>
-                            <div className="flex items-center gap-2 mt-1">
-                              <span className="text-xs font-bold text-slate-700">
-                                REF {viaje.precioRef}
-                              </span>
-                              <span className="text-slate-300">·</span>
-                              <span className="text-xs font-extrabold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                                {totalPasajeros} {totalPasajeros === 1 ? 'pasajero' : 'pasajeros'}
-                              </span>
+                                <span className="text-slate-300">·</span>
+                                <span className={`text-xs font-extrabold px-2 py-0.5 rounded-full border ${
+                                  totalPasajeros > 0
+                                    ? 'text-emerald-800 bg-emerald-100 border-emerald-300'
+                                    : 'text-slate-600 bg-slate-100 border-slate-200'
+                                }`}>
+                                  {totalPasajeros} {totalPasajeros === 1 ? 'pasajero' : 'pasajeros'}
+                                </span>
+                              </div>
                             </div>
                           </div>
+
+                          {/* Lista rápida de pasajeros inscritos en esta tarjeta */}
+                          {totalPasajeros > 0 && (
+                            <div className="mt-3 pt-2.5 border-t border-emerald-100 bg-emerald-50/70 -mx-4 px-4 py-2 text-[11px] text-emerald-950">
+                              <div className="font-bold text-emerald-800 text-[10px] uppercase tracking-wider mb-1 flex items-center justify-between">
+                                <span>👥 Inscritos ({totalPasajeros}):</span>
+                                <span className="text-emerald-600 text-[10px] font-semibold">Clic para ver detalle</span>
+                              </div>
+                              <div className="space-y-1">
+                                {listaPasajeros.slice(0, 3).map((p, pIdx) => (
+                                  <div key={pIdx} className="flex items-center justify-between text-[11px] truncate">
+                                    <span className="truncate font-semibold text-slate-800">• {p.nombre} {p.totalPersonas > 1 ? `(${p.totalPersonas} cupos)` : ''}</span>
+                                    <span className="font-mono font-bold text-emerald-700 text-[10px] shrink-0 ml-1">{p.abonoEur} REF</span>
+                                  </div>
+                                ))}
+                                {listaPasajeros.length > 3 && (
+                                  <div className="text-[10px] text-emerald-700 italic font-semibold pt-0.5">
+                                    + {listaPasajeros.length - 3} pasajeros más...
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
                         </div>
 
-                        {/* Barra de progreso de ocupación */}
+                        {/* Barra de pie de tarjeta */}
                         <div className="mt-3 pt-2.5 border-t border-slate-200/70 flex items-center justify-between text-[11px]">
                           <span className="text-slate-500">
                             Abonado: <strong className="text-slate-800">{viaje.totalAbonadoEur} REF</strong>
@@ -1487,6 +1542,136 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onLogout, authTo
                 </div>
               );
             })()}
+
+            {/* TABLA CONSOLIDADA DE TODOS LOS PASAJEROS DE NOVIEMBRE (Si no hay un viaje seleccionado específico) */}
+            {!viajeSeleccionadoId && metricasNoviembre.totalPasajeros > 0 && (
+              <div className="bg-white rounded-3xl p-5 md:p-6 border border-emerald-200 shadow-sm space-y-4 animate-fadeIn">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="px-2.5 py-0.5 rounded-full bg-emerald-600 text-white text-xs font-black uppercase">
+                        Lista General en Noviembre
+                      </span>
+                      <h3 className="font-title font-black text-lg text-slate-900">
+                        Todos los Pasajeros Inscritos ({metricasNoviembre.totalPasajeros} personas)
+                      </h3>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Listado directo de reservas vinculadas a las salidas de Noviembre. Puedes actualizar estados de pago o hacer clic en una tarjeta arriba para aislar un destino.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto rounded-2xl border border-slate-200">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-100 text-slate-600 uppercase font-bold text-[10px] tracking-wider border-b border-slate-200">
+                      <tr>
+                        <th className="py-3 px-3">Destino & Fecha</th>
+                        <th className="py-3 px-3">Cédula</th>
+                        <th className="py-3 px-3">Pasajero Titular</th>
+                        <th className="py-3 px-3">Teléfono / WhatsApp</th>
+                        <th className="py-3 px-3">Punto de Partida</th>
+                        <th className="py-3 px-3 text-center">Cupos</th>
+                        <th className="py-3 px-3">Acompañantes</th>
+                        <th className="py-3 px-3">Abono</th>
+                        <th className="py-3 px-3">Pendiente</th>
+                        <th className="py-3 px-3">Referencia</th>
+                        <th className="py-3 px-3 text-center">Estado de Pago</th>
+                        <th className="py-3 px-3 text-center">Acción</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 font-medium">
+                      {resumenViajes.flatMap(v =>
+                        v.salidas.flatMap(s =>
+                          s.pasajeros.map((p, pIdx) => ({
+                            viajeId: v.id,
+                            destino: v.destino,
+                            fechaTexto: s.fechaTexto,
+                            pasajero: p,
+                            key: `${v.id}-${s.fecha}-${p.idReserva || pIdx}`
+                          }))
+                        )
+                      ).map(({ viajeId, destino, fechaTexto, pasajero, key }) => {
+                        const waUrl = pasajero.telefono ? `https://wa.me/${pasajero.telefono.replace(/[^0-9]/g, '')}` : '#';
+                        return (
+                          <tr key={key} className="hover:bg-sky-50/50 transition">
+                            <td className="py-3 px-3 whitespace-nowrap">
+                              <span className="font-bold text-tour-navy block">{destino}</span>
+                              <span className="text-[10px] text-slate-500 font-medium">📅 {fechaTexto}</span>
+                            </td>
+                            <td className="py-3 px-3 font-mono font-bold text-slate-700 whitespace-nowrap">
+                              {pasajero.cedula || 'Sin cédula'}
+                            </td>
+                            <td className="py-3 px-3 font-bold text-slate-900 whitespace-nowrap">
+                              {pasajero.nombre}
+                            </td>
+                            <td className="py-3 px-3 whitespace-nowrap">
+                              <a
+                                href={waUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-1 text-emerald-700 hover:text-emerald-900 font-bold bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200"
+                              >
+                                <span>💬</span>
+                                <span>{pasajero.telefono}</span>
+                              </a>
+                            </td>
+                            <td className="py-3 px-3 text-slate-700 whitespace-nowrap">
+                              {pasajero.puntoPartida || 'Barquisimeto'}
+                            </td>
+                            <td className="py-3 px-3 text-center whitespace-nowrap">
+                              <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 font-black text-[11px]">
+                                {pasajero.totalPersonas}
+                              </span>
+                            </td>
+                            <td className="py-3 px-3 text-slate-500 text-[11px] max-w-[160px]">
+                              {pasajero.acompanantes && pasajero.acompanantes.length > 0
+                                ? pasajero.acompanantes.map(a => `${a.nombre} (${a.cedula || 'Sin CI'})`).join(', ')
+                                : <span className="italic text-slate-400">Viaja solo/a</span>
+                              }
+                            </td>
+                            <td className="py-3 px-3 font-bold text-emerald-700 whitespace-nowrap">
+                              {pasajero.abonoEur} REF
+                            </td>
+                            <td className="py-3 px-3 text-slate-500 whitespace-nowrap">
+                              {pasajero.saldoPendienteEur} REF
+                            </td>
+                            <td className="py-3 px-3 font-mono text-[11px] text-slate-600 whitespace-nowrap">
+                              {pasajero.referencia || 'Efectivo'}
+                            </td>
+                            <td className="py-3 px-3 text-center whitespace-nowrap">
+                              <select
+                                value={pasajero.estadoPago || 'Abonado'}
+                                onChange={(e) => handleCambiarEstadoPago(pasajero.idReserva, e.target.value)}
+                                className={`text-[11px] font-bold px-2.5 py-1 rounded-full border cursor-pointer ${
+                                  pasajero.estadoPago === 'Pagado'
+                                    ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                                    : 'bg-amber-100 text-amber-900 border-amber-300'
+                                }`}
+                              >
+                                <option value="Abonado">Abonado</option>
+                                <option value="Pagado">Pagado Completo</option>
+                                <option value="Pendiente de pago">Pendiente de Pago</option>
+                              </select>
+                            </td>
+                            <td className="py-3 px-3 text-center whitespace-nowrap">
+                              <button
+                                type="button"
+                                onClick={() => setViajeSeleccionadoId(viajeId)}
+                                className="px-2.5 py-1 rounded-lg bg-tour-blue/10 hover:bg-tour-blue hover:text-white text-tour-blue font-bold text-[11px] transition cursor-pointer"
+                                title="Filtrar solo este viaje"
+                              >
+                                Ver Viaje ➔
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
 
           </div>
         )}

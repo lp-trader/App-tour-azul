@@ -1234,7 +1234,7 @@ async function startServer() {
     }
   });
 
-  // 14. Resumen por cada Viaje de Noviembre (Cómo va cada destino)
+  // 14. Resumen por cada Viaje de Noviembre (Cómo va cada destino y pasajeros registrados)
   app.get('/api/viajes/resumen', async (req, res) => {
     try {
       // Sincronizar primero con Google Sheets para reflejar registros hechos desde cualquier dispositivo
@@ -1243,79 +1243,188 @@ async function startServer() {
       }
       const reservas = getReservasList();
 
-      // Recorrer los 17 viajes de noviembre de TRIPS
-      const resumenViajes = TRIPS.map((trip: any) => {
-        const salidasResumen = trip.salidas.map((salida: any) => {
-          // Filtrar reservas que coinciden con este destino y fecha
-          const reservasViaje = reservas.filter((r: any) => {
-            const destNorm = String(r.destino || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-            const targetNorm = String(trip.destino || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-            const fechaNorm = String(r.fechaViaje || '').trim();
-            const targetFecha = String(salida.fecha || '').trim();
-            const targetFechaTxt = String(salida.fechaTexto || '').trim();
+      // Función auxiliar para texto legible de fecha
+      const formatFechaTexto = (isoDate: string) => {
+        if (!isoDate) return 'Fecha no especificada';
+        try {
+          const parts = isoDate.split('-');
+          if (parts.length === 3) {
+            const year = parseInt(parts[0], 10);
+            const month = parseInt(parts[1], 10) - 1;
+            const day = parseInt(parts[2], 10);
+            const d = new Date(Date.UTC(year, month, day, 12, 0, 0));
+            return d.toLocaleDateString('es-VE', { weekday: 'long', day: 'numeric', month: 'long' });
+          }
+        } catch (_) {}
+        return String(isoDate);
+      };
 
-            const destCoincide = destNorm.includes(targetNorm) || targetNorm.includes(destNorm);
-            const fechaCoincide = fechaNorm === targetFecha || fechaNorm === targetFechaTxt || (targetFecha && fechaNorm.includes(targetFecha));
-            return destCoincide && fechaCoincide;
-          });
+      // Función de coincidencia inteligente de destinos
+      const matchTripForReservation = (r: any, trips: any[]) => {
+        const dest = String(r.destino || '').toLowerCase()
+          .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+          .replace(/[^a-z0-9]/g, '');
 
-          let totalPasajeros = 0;
-          let totalAbonado = 0;
-          let totalPendiente = 0;
+        if (dest.includes('choroni')) {
+          if (dest.includes('estadia') || dest.includes('posada') || dest.includes('findesemana')) {
+            return trips.find((t: any) => t.id === 'choroni-estadia-28-29-nov') || trips.find((t: any) => t.id.includes('choroni'));
+          }
+          return trips.find((t: any) => t.id === 'choroni-fd-14-nov') || trips.find((t: any) => t.id.includes('choroni'));
+        }
+        if (dest.includes('chinita')) return trips.find((t: any) => t.id === 'preferia-chinita-15-nov');
+        if (dest.includes('bocaseca')) return trips.find((t: any) => t.id === 'cayo-boca-seca-15-nov');
+        if (dest.includes('muerto')) return trips.find((t: any) => t.id === 'cayo-muerto-14-nov');
+        if (dest.includes('sal')) return trips.find((t: any) => t.id === 'cayo-sal-28-nov');
+        if (dest.includes('azul')) return trips.find((t: any) => t.id === 'cayo-azul-29-nov');
+        if (dest.includes('santateresa') || dest.includes('teresa')) return trips.find((t: any) => t.id === 'hacienda-santa-teresa-21-nov');
+        if (dest.includes('belleza')) return trips.find((t: any) => t.id === 'viaje-belleza-21-22-nov');
+        if (dest.includes('tovar')) return trips.find((t: any) => t.id === 'colonia-tovar-22-nov');
+        if (dest.includes('adicora') || dest.includes('medanos')) return trips.find((t: any) => t.id === 'adicora-medanos-28-nov');
+        if (dest.includes('merida')) return trips.find((t: any) => t.id === 'tour-merida-28-29-nov');
+        if (dest.includes('islalarga') || dest.includes('larga')) return trips.find((t: any) => t.id === 'isla-larga-29-nov');
 
-          const pasajerosLista: any[] = [];
-          reservasViaje.forEach((r: any) => {
-            const cant = Number(r.totalPersonas) || 1;
-            totalPasajeros += cant;
-            totalAbonado += Number(r.abonoEur) || 0;
-            totalPendiente += Number(r.saldoPendienteEur) || 0;
+        for (const t of trips) {
+          const tNorm = String(t.destino || '').toLowerCase()
+            .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^a-z0-9]/g, '');
+          if (dest.includes(tNorm) || tNorm.includes(dest)) {
+            return t;
+          }
+        }
+        return null;
+      };
 
-            pasajerosLista.push({
-              idReserva: r.idReserva || r.id,
-              fechaRegistro: r.fechaRegistro || r.createdAt,
-              nombre: r.titular?.nombre || r.nombre,
-              cedula: r.titular?.cedula || r.cedula,
-              telefono: r.titular?.telefono || r.telefono,
-              puntoPartida: r.titular?.puntoPartida || r.puntoPartida,
-              totalPersonas: cant,
-              acompanantes: r.acompanantes || [],
-              tipoPago: r.tipoPago,
-              abonoEur: r.abonoEur,
-              saldoPendienteEur: r.saldoPendienteEur,
-              referencia: r.referenciaPagoMovil || r.referencia,
-              estadoPago: r.estadoPago || 'Abonado',
-              syncedToSheets: r.syncedToSheets
-            });
-          });
-
-          return {
-            fecha: salida.fecha,
-            fechaTexto: salida.fechaTexto,
-            totalReservas: reservasViaje.length,
-            totalPasajeros,
-            totalAbonadoEur: totalAbonado,
-            totalPendienteEur: totalPendiente,
-            pasajeros: pasajerosLista
-          };
-        });
-
-        // Sumar totales del viaje
-        const totalViajeReservas = salidasResumen.reduce((acc: number, s: any) => acc + s.totalReservas, 0);
-        const totalViajePasajeros = salidasResumen.reduce((acc: number, s: any) => acc + s.totalPasajeros, 0);
-        const totalViajeAbonado = salidasResumen.reduce((acc: number, s: any) => acc + s.totalAbonadoEur, 0);
-
-        return {
+      // Mapear los viajes base de TRIPS
+      const viajesMap = new Map<string, any>();
+      TRIPS.forEach((trip: any) => {
+        viajesMap.set(trip.id, {
           id: trip.id,
           destino: trip.destino,
           precioRef: trip.precio,
           tipo: trip.tipo,
           imagenUrl: trip.imagenUrl,
-          salidas: salidasResumen,
-          totalReservas: totalViajeReservas,
-          totalPasajeros: totalViajePasajeros,
-          totalAbonadoEur: totalViajeAbonado
-        };
+          salidas: trip.salidas.map((salida: any) => ({
+            fecha: salida.fecha,
+            fechaTexto: salida.fechaTexto,
+            totalReservas: 0,
+            totalPasajeros: 0,
+            totalAbonadoEur: 0,
+            totalPendienteEur: 0,
+            pasajeros: []
+          })),
+          totalReservas: 0,
+          totalPasajeros: 0,
+          totalAbonadoEur: 0,
+          totalPendienteEur: 0
+        });
       });
+
+      // Procesar cada reserva registrada
+      reservas.forEach((r: any) => {
+        const cant = Number(r.totalPersonas) || 1;
+        const abono = Number(r.abonoEur !== undefined ? r.abonoEur : (r.abono || 0));
+        const pendiente = Number(r.saldoPendienteEur !== undefined ? r.saldoPendienteEur : (r.pendiente || 0));
+        const pasajeroObj = {
+          idReserva: r.idReserva || r.id,
+          fechaRegistro: r.fechaRegistro || r.createdAt || r.fecha || 'Reciente',
+          nombre: r.titular?.nombre || r.nombre || 'Sin nombre',
+          cedula: r.titular?.cedula || r.cedula || 'Sin cédula',
+          telefono: r.titular?.telefono || r.telefono || '',
+          puntoPartida: r.titular?.puntoPartida || r.puntoPartida || r.recogida || 'Barquisimeto',
+          totalPersonas: cant,
+          acompanantes: Array.isArray(r.acompanantes)
+            ? r.acompanantes.map((a: any) => typeof a === 'string' ? { nombre: a } : a)
+            : (typeof r.acompanantes === 'string' && r.acompanantes.trim()
+                ? r.acompanantes.split(/[,;\n]+/).map((s: string) => ({ nombre: s.trim() })).filter((x: any) => x.nombre)
+                : []),
+          tipoPago: r.tipoPago || 'Pago Móvil',
+          abonoEur: abono,
+          saldoPendienteEur: pendiente,
+          referencia: r.referenciaPagoMovil || r.referencia || '',
+          estadoPago: r.estadoPago || 'Abonado',
+          syncedToSheets: Boolean(r.syncedToSheets)
+        };
+
+        const matched = matchTripForReservation(r, TRIPS);
+        if (matched && viajesMap.has(matched.id)) {
+          const v = viajesMap.get(matched.id)!;
+          const fechaR = String(r.fechaViaje || '').trim();
+          let salida = v.salidas.find((s: any) => s.fecha === fechaR || fechaR.includes(s.fecha));
+
+          if (!salida) {
+            if (v.salidas.length === 1 && !fechaR) {
+              salida = v.salidas[0];
+            } else {
+              salida = {
+                fecha: fechaR || '2026-11-30',
+                fechaTexto: formatFechaTexto(fechaR),
+                totalReservas: 0,
+                totalPasajeros: 0,
+                totalAbonadoEur: 0,
+                totalPendienteEur: 0,
+                pasajeros: []
+              };
+              v.salidas.push(salida);
+            }
+          }
+
+          salida.pasajeros.push(pasajeroObj);
+          salida.totalReservas++;
+          salida.totalPasajeros += cant;
+          salida.totalAbonadoEur += abono;
+          salida.totalPendienteEur += pendiente;
+
+          v.totalReservas++;
+          v.totalPasajeros += cant;
+          v.totalAbonadoEur += abono;
+          v.totalPendienteEur += pendiente;
+        } else {
+          // Destino no predefinido en TRIPS: crear tarjeta dinámica para no perder ningún registro
+          const destName = String(r.destino || 'Destino Adicional').trim();
+          const cleanId = `custom-${destName.toLowerCase().replace(/[^a-z0-9]/g, '-')}`;
+          if (!viajesMap.has(cleanId)) {
+            viajesMap.set(cleanId, {
+              id: cleanId,
+              destino: destName,
+              precioRef: Number(r.precioRef) || 25,
+              tipo: 'DESTINO ADICIONAL',
+              imagenUrl: '/varadero.jpg',
+              salidas: [],
+              totalReservas: 0,
+              totalPasajeros: 0,
+              totalAbonadoEur: 0,
+              totalPendienteEur: 0
+            });
+          }
+          const v = viajesMap.get(cleanId)!;
+          const fechaR = String(r.fechaViaje || '').trim();
+          let salida = v.salidas.find((s: any) => s.fecha === fechaR);
+          if (!salida) {
+            salida = {
+              fecha: fechaR || '2026-11-30',
+              fechaTexto: formatFechaTexto(fechaR),
+              totalReservas: 0,
+              totalPasajeros: 0,
+              totalAbonadoEur: 0,
+              totalPendienteEur: 0,
+              pasajeros: []
+            };
+            v.salidas.push(salida);
+          }
+          salida.pasajeros.push(pasajeroObj);
+          salida.totalReservas++;
+          salida.totalPasajeros += cant;
+          salida.totalAbonadoEur += abono;
+          salida.totalPendienteEur += pendiente;
+
+          v.totalReservas++;
+          v.totalPasajeros += cant;
+          v.totalAbonadoEur += abono;
+          v.totalPendienteEur += pendiente;
+        }
+      });
+
+      const resumenViajes = Array.from(viajesMap.values());
 
       res.json({
         ok: true,
