@@ -3935,11 +3935,13 @@
 
     // Función principal para enviar reservas a Google Sheets (Google Apps Script WebHook)
     async function enviarReservaAGoogleSheets(datosReserva) {
-      const urlWebHook = (typeof WEBHOOK_URL !== "undefined" && WEBHOOK_URL && WEBHOOK_URL.startsWith("http")) ? WEBHOOK_URL : "";
+      const urlWebHook = (typeof WEBHOOK_URL !== "undefined" && WEBHOOK_URL && WEBHOOK_URL.startsWith("http"))
+        ? WEBHOOK_URL
+        : ((typeof ACTIVE_APPS_SCRIPT_URL !== "undefined" && ACTIVE_APPS_SCRIPT_URL) ? ACTIVE_APPS_SCRIPT_URL : "");
 
       if (!urlWebHook) {
-        console.log("Aviso: Google Sheets no está conectado aún. La reserva se guardó localmente en el servidor.");
-        return { ok: true, localOnly: true, mensaje: "Guardado local en servidor" };
+        console.warn("Aviso: Configura la URL del Webhook de Google Sheets en el panel.");
+        return { ok: false, error: "No hay URL de Google Sheets" };
       }
 
       // Formato exacto del destino para la hoja de Google Sheets (Ej: "Cayo_Muerto_18-10")

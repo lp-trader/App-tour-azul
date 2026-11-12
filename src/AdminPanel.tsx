@@ -86,6 +86,43 @@ export interface Candidato {
   [key: string]: any;
 }
 
+export interface ReservaCompleta {
+  id: string;
+  idReserva: string;
+  codigo?: string;
+  fechaRegistro?: string;
+  createdAt?: string;
+  destino: string;
+  destinoHoja?: string;
+  fechaViaje: string;
+  precioRef?: number;
+  totalPersonas: number;
+  bus?: string;
+  asientos?: number[] | string[];
+  titular: {
+    nombre: string;
+    cedula: string;
+    telefono: string;
+    edad?: string | number;
+    puntoPartida?: string;
+    recogida?: string;
+  };
+  acompanantes?: Array<{ nombre: string; cedula?: string; edad?: string | number; puntoPartida?: string }>;
+  tipoPago?: string;
+  abonoEur?: number;
+  saldoPendienteEur?: number;
+  totalViajeEur?: number;
+  referenciaPagoMovil?: string;
+  referencia?: string;
+  tasaBCV?: number;
+  montoPagadoBs?: number;
+  montoPagadoUsd?: number;
+  estadoPago: string;
+  syncedToSheets?: boolean;
+  _origen?: string;
+  [key: string]: any;
+}
+
 interface AdminPanelProps {
   onBack?: () => void;
   onLogout?: () => void;
@@ -93,7 +130,15 @@ interface AdminPanelProps {
 }
 
 export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onLogout, authToken }) => {
-  const [activeTab, setActiveTab] = useState<'viajes' | 'clientes' | 'candidatos' | 'config'>('viajes');
+  const [activeTab, setActiveTab] = useState<'reservas' | 'viajes' | 'clientes' | 'candidatos' | 'config'>('reservas');
+
+  // Datos de todas las reservas registradas por clientes
+  const [reservas, setReservas] = useState<ReservaCompleta[]>([]);
+  const [cargandoReservas, setCargandoReservas] = useState<boolean>(true);
+  const [busquedaReserva, setBusquedaReserva] = useState<string>('');
+  const [filtroEstadoPago, setFiltroEstadoPago] = useState<string>('todos');
+  const [filtroDestinoReserva, setFiltroDestinoReserva] = useState<string>('todos');
+  const [reservaModalDetalle, setReservaModalDetalle] = useState<ReservaCompleta | null>(null);
 
   // Datos de viajes
   const [resumenViajes, setResumenViajes] = useState<ResumenViaje[]>([]);
@@ -137,6 +182,51 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onLogout, authTo
     if (token) headers['Authorization'] = `Bearer ${token}`;
     return headers;
   }, [getToken]);
+
+  // Cargar Todas las Reservas (sincronizando en vivo con Google Sheets)
+  const cargarReservas = useCallback(async () => {
+    setCargandoReservas(true);
+    try {
+      const res = await fetch('/api/reservas');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.ok && Array.isArray(data.reservas)) {
+          const norm: ReservaCompleta[] = data.reservas.map((r: any) => {
+            const tit = r.titular || {
+              nombre: r.nombre || r.nombreTitular || '',
+              cedula: r.cedula || '',
+              telefono: r.telefono || '',
+              edad: r.edad || '',
+              puntoPartida: r.puntoPartida || r.recogida || ''
+            };
+            let acomp: any[] = [];
+            if (Array.isArray(r.acompanantes)) {
+              acomp = r.acompanantes.map((a: any) => typeof a === 'string' ? { nombre: a } : a);
+            } else if (typeof r.acompanantes === 'string' && r.acompanantes.trim()) {
+              acomp = r.acompanantes.split(/[,;\n]+/).map((s: string) => ({ nombre: s.trim() })).filter((x: any) => x.nombre);
+            }
+            return {
+              ...r,
+              id: r.id || r.idReserva || r.codigo,
+              idReserva: r.idReserva || r.id || r.codigo,
+              titular: tit,
+              acompanantes: acomp,
+              totalPersonas: Number(r.totalPersonas) || (1 + acomp.length),
+              abonoEur: Number(r.abonoEur !== undefined ? r.abonoEur : (r.abono || 0)),
+              saldoPendienteEur: Number(r.saldoPendienteEur !== undefined ? r.saldoPendienteEur : (r.pendiente || 0)),
+              estadoPago: r.estadoPago || 'Abonado',
+              fechaRegistro: r.fechaRegistro || r.createdAt || r.fecha || 'Reciente'
+            };
+          });
+          setReservas(norm);
+        }
+      }
+    } catch (e) {
+      console.warn('Error cargando reservas desde Google Sheets:', e);
+    } finally {
+      setCargandoReservas(false);
+    }
+  }, []);
 
   // Cargar Viajes
   const cargarViajes = useCallback(async () => {
@@ -209,11 +299,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onLogout, authTo
   }, []);
 
   useEffect(() => {
+    cargarReservas();
     cargarViajes();
     cargarClientes();
     cargarCandidatos();
     cargarConfig();
-  }, [cargarViajes, cargarClientes, cargarCandidatos, cargarConfig]);
+  }, [cargarReservas, cargarViajes, cargarClientes, cargarCandidatos, cargarConfig]);
 
   // Forzar sincronización de reservas a Google Sheets
   const handleSincronizarReservas = async () => {
@@ -227,6 +318,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onLogout, authTo
       const data = await res.json();
       if (data.ok) {
         setMsgSincronizacion(`✅ ${data.message}`);
+        await cargarReservas();
         await cargarViajes();
         await cargarClientes();
       } else {
@@ -353,8 +445,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onLogout, authTo
     }
   };
 
-  // Actualizar estado de pago de una reserva
+  // Actualizar estado de pago de una reserva (en vivo en server y Google Sheets)
   const handleCambiarEstadoPago = async (idReserva: string, nuevoEstado: string) => {
+    // Actualización optimista en interfaz
+    setReservas(prev => prev.map(r => {
+      if (r.idReserva === idReserva || r.id === idReserva) {
+        return { ...r, estadoPago: nuevoEstado };
+      }
+      return r;
+    }));
+
     try {
       const res = await fetch(`/api/reservas/${encodeURIComponent(idReserva)}`, {
         method: 'PATCH',
@@ -362,6 +462,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onLogout, authTo
         body: JSON.stringify({ estadoPago: nuevoEstado })
       });
       if (res.ok) {
+        await cargarReservas();
         await cargarViajes();
         await cargarClientes();
       }
@@ -377,6 +478,85 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onLogout, authTo
       return new Date().toISOString().split('T')[0];
     }
   }, []);
+
+  // Métricas consolidadas de todas las reservas registradas
+  const metricasReservas = useMemo(() => {
+    let totalPasajeros = 0;
+    let totalAbonado = 0;
+    let totalPendiente = 0;
+    let totalPagadas = 0;
+    let totalAbonadas = 0;
+    let totalPendientesPago = 0;
+
+    reservas.forEach(r => {
+      const cant = Number(r.totalPersonas) || 1;
+      totalPasajeros += cant;
+      totalAbonado += Number(r.abonoEur) || 0;
+      totalPendiente += Number(r.saldoPendienteEur) || 0;
+
+      const st = (r.estadoPago || '').toLowerCase();
+      if (st.includes('pagad')) totalPagadas++;
+      else if (st.includes('abon')) totalAbonadas++;
+      else totalPendientesPago++;
+    });
+
+    return {
+      totalReservas: reservas.length,
+      totalPasajeros,
+      totalAbonado,
+      totalPendiente,
+      totalPagadas,
+      totalAbonadas,
+      totalPendientesPago
+    };
+  }, [reservas]);
+
+  // Lista única de destinos para el filtro
+  const destinosUnicos = useMemo(() => {
+    const setDest = new Set<string>();
+    reservas.forEach(r => {
+      if (r.destino) setDest.add(r.destino);
+    });
+    return Array.from(setDest).sort();
+  }, [reservas]);
+
+  // Reservas filtradas por buscador, estado de pago y destino
+  const reservasFiltradas = useMemo(() => {
+    let list = [...reservas];
+
+    if (filtroEstadoPago !== 'todos') {
+      list = list.filter(r => {
+        const st = (r.estadoPago || '').toLowerCase();
+        if (filtroEstadoPago === 'pagado') return st.includes('pagad');
+        if (filtroEstadoPago === 'abonado') return st.includes('abon');
+        if (filtroEstadoPago === 'pendiente') return !st.includes('pagad') && !st.includes('abon');
+        return true;
+      });
+    }
+
+    if (filtroDestinoReserva !== 'todos') {
+      list = list.filter(r => r.destino === filtroDestinoReserva);
+    }
+
+    if (busquedaReserva.trim()) {
+      const q = busquedaReserva.toLowerCase().trim();
+      list = list.filter(r => {
+        const nom = (r.titular?.nombre || '').toLowerCase();
+        const ced = (r.titular?.cedula || '').toLowerCase();
+        const tel = (r.titular?.telefono || '').toLowerCase();
+        const des = (r.destino || '').toLowerCase();
+        const cod = (r.idReserva || r.id || '').toLowerCase();
+        const ref = (r.referenciaPagoMovil || r.referencia || '').toLowerCase();
+        const acomp = (r.acompanantes || []).some((a: any) =>
+          (a.nombre || '').toLowerCase().includes(q) ||
+          (a.cedula || '').toLowerCase().includes(q)
+        );
+        return nom.includes(q) || ced.includes(q) || tel.includes(q) || des.includes(q) || cod.includes(q) || ref.includes(q) || acomp;
+      });
+    }
+
+    return list;
+  }, [reservas, filtroEstadoPago, filtroDestinoReserva, busquedaReserva]);
 
   // Métricas totales de noviembre
   const metricasNoviembre = useMemo(() => {
@@ -516,6 +696,22 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onLogout, authTo
             
             <button
               type="button"
+              onClick={() => setActiveTab('reservas')}
+              className={`py-3 px-4 font-title text-xs md:text-sm font-bold tracking-wide uppercase transition border-b-2 flex items-center gap-2 whitespace-nowrap cursor-pointer ${
+                activeTab === 'reservas'
+                  ? 'border-tour-yellow text-tour-yellow bg-white/5'
+                  : 'border-transparent text-sky-200 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <span>📋</span>
+              <span>Todas las Reservas (En Vivo)</span>
+              <span className="px-1.5 py-0.2 rounded-full bg-emerald-400/20 text-emerald-300 text-[10px]">
+                {reservas.length}
+              </span>
+            </button>
+
+            <button
+              type="button"
               onClick={() => setActiveTab('viajes')}
               className={`py-3 px-4 font-title text-xs md:text-sm font-bold tracking-wide uppercase transition border-b-2 flex items-center gap-2 whitespace-nowrap cursor-pointer ${
                 activeTab === 'viajes'
@@ -582,7 +778,377 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onLogout, authTo
       <main className="flex-grow max-w-7xl w-full mx-auto p-4 md:p-6 space-y-6">
 
         {/* ============================================================== */}
-        {/* PESTAÑA 1: VIAJES DE NOVIEMBRE (MONITOREO DE CADA VIAJE)       */}
+        {/* PESTAÑA PRINCIPAL: TODAS LAS RESERVAS REGISTRADAS (EN VIVO)   */}
+        {/* ============================================================== */}
+        {activeTab === 'reservas' && (
+          <div className="space-y-6">
+            
+            {/* Tarjetas de Métricas de Reservas */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+              <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+                  Total de Reservas
+                </span>
+                <div className="text-2xl font-black text-tour-blue font-title mt-1 flex items-baseline gap-2">
+                  <span>{metricasReservas.totalReservas}</span>
+                  <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                    En Google Sheets
+                  </span>
+                </div>
+                <span className="text-[11px] text-slate-500 font-medium">
+                  {metricasReservas.totalPagadas} pagadas · {metricasReservas.totalAbonadas} abonadas · {metricasReservas.totalPendientesPago} pendientes
+                </span>
+              </div>
+
+              <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+                  Pasajeros Totales
+                </span>
+                <div className="text-2xl font-black text-tour-navy font-title mt-1">
+                  {metricasReservas.totalPasajeros} cupos
+                </div>
+                <span className="text-[11px] text-slate-500 font-medium">
+                  Titulares + acompañantes inscritos
+                </span>
+              </div>
+
+              <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+                  Total Recaudado (Abonos)
+                </span>
+                <div className="text-2xl font-black text-emerald-600 font-title mt-1">
+                  {metricasReservas.totalAbonado} REF
+                </div>
+                <span className="text-[11px] text-slate-500 font-medium">
+                  Ingresos confirmados por reservas
+                </span>
+              </div>
+
+              <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-col justify-between">
+                <div>
+                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+                    Saldo Pendiente
+                  </span>
+                  <div className="text-2xl font-black text-amber-600 font-title mt-1">
+                    {metricasReservas.totalPendiente} REF
+                  </div>
+                  <span className="text-[11px] text-slate-500 font-medium">
+                    Por liquidar al abordar / antes del viaje
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Barra de Filtros, Búsqueda y Exportación */}
+            <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-xs space-y-4">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+                <div>
+                  <h2 className="font-title font-black text-lg uppercase text-slate-900 flex items-center gap-2">
+                    <span>Todas las Reservas de Clientes</span>
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold font-sans">
+                      {reservasFiltradas.length} de {reservas.length}
+                    </span>
+                  </h2>
+                  <p className="text-xs text-slate-500">
+                    Datos consolidados directamente desde Google Sheets. Accesible desde cualquier dispositivo.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={cargarReservas}
+                    disabled={cargandoReservas}
+                    className="py-2 px-3.5 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                    title="Actualizar datos desde Google Sheets"
+                  >
+                    <span className={cargandoReservas ? 'animate-spin' : ''}>🔄</span>
+                    <span>{cargandoReservas ? 'Consultando...' : 'Actualizar'}</span>
+                  </button>
+
+                  <a
+                    href="/api/reservas/export.csv"
+                    download="reservas_tour_azul.csv"
+                    className="py-2 px-3.5 rounded-xl bg-slate-900 hover:bg-slate-800 active:scale-95 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer"
+                  >
+                    <span>📥</span>
+                    <span>Descargar CSV</span>
+                  </a>
+                </div>
+              </div>
+
+              {/* Controles de Filtros */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {/* Buscador */}
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 text-xs">
+                    🔍
+                  </span>
+                  <input
+                    type="text"
+                    value={busquedaReserva}
+                    onChange={(e) => setBusquedaReserva(e.target.value)}
+                    placeholder="Buscar por pasajero, cédula, teléfono, ID, ref..."
+                    className="w-full pl-9 pr-8 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-tour-blue focus:bg-white transition"
+                  />
+                  {busquedaReserva && (
+                    <button
+                      type="button"
+                      onClick={() => setBusquedaReserva('')}
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 text-xs cursor-pointer"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+
+                {/* Filtro por Estado de Pago */}
+                <div className="flex items-center gap-2">
+                  <label className="text-[11px] font-bold text-slate-500 uppercase shrink-0">
+                    Estado:
+                  </label>
+                  <select
+                    value={filtroEstadoPago}
+                    onChange={(e) => setFiltroEstadoPago(e.target.value)}
+                    className="w-full py-2 px-3 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-tour-blue cursor-pointer"
+                  >
+                    <option value="todos">Todos los Estados</option>
+                    <option value="abonado">Solo Abonados</option>
+                    <option value="pagado">Solo Pagados Completos</option>
+                    <option value="pendiente">Solo Pendientes de Pago</option>
+                  </select>
+                </div>
+
+                {/* Filtro por Destino */}
+                <div className="flex items-center gap-2">
+                  <label className="text-[11px] font-bold text-slate-500 uppercase shrink-0">
+                    Destino:
+                  </label>
+                  <select
+                    value={filtroDestinoReserva}
+                    onChange={(e) => setFiltroDestinoReserva(e.target.value)}
+                    className="w-full py-2 px-3 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-tour-blue cursor-pointer"
+                  >
+                    <option value="todos">Todos los Destinos ({destinosUnicos.length})</option>
+                    {destinosUnicos.map(d => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Tabla Maestra de Reservas */}
+              {cargandoReservas ? (
+                <div className="py-16 text-center text-slate-400">
+                  <div className="w-9 h-9 border-3 border-tour-blue border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
+                  <p className="text-xs font-bold text-slate-600">Sincronizando reservas con Google Sheets...</p>
+                  <p className="text-[11px] text-slate-400 mt-1">Conectando con tu archivo de hoja de cálculo</p>
+                </div>
+              ) : reservasFiltradas.length === 0 ? (
+                <div className="py-16 text-center text-slate-400 bg-slate-50 rounded-2xl border border-dashed border-slate-200 p-6">
+                  <span className="text-4xl mb-2 block">📋</span>
+                  <p className="text-sm font-bold text-slate-700">No se encontraron reservas registradas</p>
+                  <p className="text-xs text-slate-400 mt-1">
+                    {reservas.length === 0
+                      ? 'Las reservas que hagan los clientes en la web se guardarán aquí y en Google Sheets automáticamente.'
+                      : 'No hay reservas que coincidan con los filtros aplicados.'}
+                  </p>
+                  {reservas.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => { setBusquedaReserva(''); setFiltroEstadoPago('todos'); setFiltroDestinoReserva('todos'); }}
+                      className="mt-3 px-4 py-1.5 rounded-xl bg-tour-blue text-white text-xs font-bold cursor-pointer"
+                    >
+                      Limpiar filtros
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="overflow-x-auto rounded-2xl border border-slate-200">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-100 text-slate-600 uppercase font-bold text-[10px] tracking-wider border-b border-slate-200">
+                      <tr>
+                        <th className="py-3 px-3">Código / ID</th>
+                        <th className="py-3 px-3">Destino & Fecha</th>
+                        <th className="py-3 px-3">Pasajero Titular</th>
+                        <th className="py-3 px-3">Teléfono / WhatsApp</th>
+                        <th className="py-3 px-3 text-center">Cupos</th>
+                        <th className="py-3 px-3">Acompañantes</th>
+                        <th className="py-3 px-3">Abono</th>
+                        <th className="py-3 px-3">Pendiente</th>
+                        <th className="py-3 px-3">Pago / Ref.</th>
+                        <th className="py-3 px-3 text-center">Estado de Pago</th>
+                        <th className="py-3 px-3 text-center">En Sheets</th>
+                        <th className="py-3 px-3 text-center">Ficha</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 font-medium">
+                      {reservasFiltradas.map((r, idx) => {
+                        const tel = r.titular?.telefono || '';
+                        const waUrl = tel ? `https://wa.me/${tel.replace(/[^0-9]/g, '')}` : '#';
+                        const acompCount = (r.acompanantes || []).length;
+
+                        return (
+                          <tr key={r.id || idx} className="hover:bg-sky-50/50 transition">
+                            {/* Código / ID */}
+                            <td className="py-3 px-3 whitespace-nowrap">
+                              <div className="font-mono font-bold text-slate-900 flex items-center gap-1.5">
+                                <span>{r.idReserva || r.id}</span>
+                              </div>
+                              <span className="text-[10px] text-slate-400 block mt-0.5">
+                                {r.fechaRegistro || 'Reciente'}
+                              </span>
+                            </td>
+
+                            {/* Destino & Fecha */}
+                            <td className="py-3 px-3 whitespace-nowrap">
+                              <span className="font-bold text-tour-navy block">
+                                {r.destino || 'Destino no especificado'}
+                              </span>
+                              <span className="text-[11px] text-slate-500 font-medium">
+                                📅 {r.fechaViaje || 'Sin fecha'}
+                              </span>
+                            </td>
+
+                            {/* Titular */}
+                            <td className="py-3 px-3 whitespace-nowrap">
+                              <div className="font-bold text-slate-900">
+                                {r.titular?.nombre || 'Sin nombre'}
+                              </div>
+                              <div className="text-[11px] font-mono text-slate-500">
+                                CI: {r.titular?.cedula || 'Sin cédula'}
+                              </div>
+                              {r.titular?.puntoPartida && (
+                                <div className="text-[10px] text-slate-400 truncate max-w-[150px]">
+                                  📍 {r.titular.puntoPartida}
+                                </div>
+                              )}
+                            </td>
+
+                            {/* WhatsApp */}
+                            <td className="py-3 px-3 whitespace-nowrap">
+                              {tel ? (
+                                <a
+                                  href={waUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="inline-flex items-center gap-1 text-emerald-700 hover:text-emerald-900 font-bold bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 transition"
+                                  title="Contactar al cliente por WhatsApp"
+                                >
+                                  <span>💬</span>
+                                  <span>{tel}</span>
+                                </a>
+                              ) : (
+                                <span className="text-slate-400 italic text-[11px]">Sin teléfono</span>
+                              )}
+                            </td>
+
+                            {/* Total Cupos */}
+                            <td className="py-3 px-3 text-center whitespace-nowrap">
+                              <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-900 font-black text-[11px]">
+                                {r.totalPersonas} {r.totalPersonas === 1 ? 'cupo' : 'cupos'}
+                              </span>
+                            </td>
+
+                            {/* Acompañantes */}
+                            <td className="py-3 px-3 text-[11px] text-slate-600 max-w-[180px]">
+                              {acompCount > 0 ? (
+                                <div className="space-y-0.5">
+                                  {r.acompanantes!.map((a, aIdx) => (
+                                    <div key={aIdx} className="truncate" title={`${a.nombre} ${a.cedula ? `(${a.cedula})` : ''}`}>
+                                      • {a.nombre} {a.cedula ? `(${a.cedula})` : ''}
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <span className="text-slate-400 italic">Viaja solo/a</span>
+                              )}
+                            </td>
+
+                            {/* Abono */}
+                            <td className="py-3 px-3 whitespace-nowrap">
+                              <span className="font-bold text-emerald-700 block">
+                                {r.abonoEur} REF
+                              </span>
+                              {r.montoPagadoBs ? (
+                                <span className="text-[10px] text-slate-500 font-mono">
+                                  Bs. {Number(r.montoPagadoBs).toLocaleString('es-VE')}
+                                </span>
+                              ) : null}
+                            </td>
+
+                            {/* Saldo Pendiente */}
+                            <td className="py-3 px-3 whitespace-nowrap">
+                              <span className={`font-bold ${r.saldoPendienteEur === 0 ? 'text-slate-400' : 'text-amber-700'}`}>
+                                {r.saldoPendienteEur} REF
+                              </span>
+                            </td>
+
+                            {/* Método y Ref */}
+                            <td className="py-3 px-3 whitespace-nowrap">
+                              <span className="font-semibold text-slate-800 block text-[11px]">
+                                {r.tipoPago || 'Pago Móvil'}
+                              </span>
+                              {r.referenciaPagoMovil || r.referencia ? (
+                                <span className="text-[10px] font-mono text-slate-500 block truncate max-w-[120px]">
+                                  Ref: {r.referenciaPagoMovil || r.referencia}
+                                </span>
+                              ) : (
+                                <span className="text-[10px] text-slate-400 italic">Sin ref</span>
+                              )}
+                            </td>
+
+                            {/* Selector Estado de Pago */}
+                            <td className="py-3 px-3 text-center whitespace-nowrap">
+                              <select
+                                value={r.estadoPago || 'Abonado'}
+                                onChange={(e) => handleCambiarEstadoPago(r.idReserva || r.id, e.target.value)}
+                                className={`text-[11px] font-bold px-2.5 py-1 rounded-full border cursor-pointer transition ${
+                                  (r.estadoPago || '').toLowerCase().includes('pagad')
+                                    ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                                    : (r.estadoPago || '').toLowerCase().includes('abon')
+                                      ? 'bg-amber-100 text-amber-900 border-amber-300'
+                                      : 'bg-rose-100 text-rose-800 border-rose-300'
+                                }`}
+                              >
+                                <option value="Abonado">Abonado</option>
+                                <option value="Pagado">Pagado Completo</option>
+                                <option value="Pendiente de pago">Pendiente de Pago</option>
+                              </select>
+                            </td>
+
+                            {/* En Sheets */}
+                            <td className="py-3 px-3 text-center whitespace-nowrap">
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                                <span>🟢</span>
+                                <span>En Hoja</span>
+                              </span>
+                            </td>
+
+                            {/* Botón Ver Ficha */}
+                            <td className="py-3 px-3 text-center whitespace-nowrap">
+                              <button
+                                type="button"
+                                onClick={() => setReservaModalDetalle(r)}
+                                className="px-2.5 py-1 rounded-lg bg-sky-100 hover:bg-sky-200 active:scale-95 text-sky-800 font-bold text-[11px] transition cursor-pointer"
+                                title="Ver comprobante y ficha completa de esta reserva"
+                              >
+                                👁️ Ficha
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ============================================================== */}
+        {/* PESTAÑA 2: VIAJES DE NOVIEMBRE (MONITOREO DE CADA VIAJE)       */}
         {/* ============================================================== */}
         {activeTab === 'viajes' && (
           <div className="space-y-6">
@@ -1402,6 +1968,219 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onLogout, authTo
                   <li>Pega esa URL en el campo de arriba y haz clic en <strong>Guardar y Conectar</strong>. ¡El script creará automáticamente las pestañas <strong>Reservas</strong>, <strong>Base_General</strong> y <strong>Postulaciones</strong>!</li>
                 </ol>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal Ficha Completa de Reserva / Comprobante de Pasajeros */}
+        {reservaModalDetalle && (
+          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+            <div className="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-7 shadow-2xl border border-sky-100 space-y-5 my-8 animate-fadeIn">
+              
+              {/* Encabezado del Comprobante */}
+              <div className="flex items-start justify-between border-b border-slate-100 pb-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">🎫</span>
+                    <h3 className="font-title font-black text-xl text-slate-900">
+                      Ficha de Reserva: {reservaModalDetalle.idReserva || reservaModalDetalle.id}
+                    </h3>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Registrada el: <strong>{reservaModalDetalle.fechaRegistro || 'Reciente'}</strong> · Sincronizada en Google Sheet
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setReservaModalDetalle(null)}
+                  className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center font-bold text-sm transition cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Destino y Fecha Destacados */}
+              <div className="p-4 rounded-2xl bg-sky-50 border border-sky-200 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <span className="text-[10px] font-bold text-sky-600 uppercase tracking-wider block">
+                    Destino Reservado
+                  </span>
+                  <span className="text-base font-black text-tour-navy font-title block">
+                    {reservaModalDetalle.destino}
+                  </span>
+                  <span className="text-xs font-semibold text-sky-800">
+                    📅 Fecha del Viaje: {reservaModalDetalle.fechaViaje}
+                  </span>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                    Cupos Totales
+                  </span>
+                  <span className="text-lg font-black text-tour-blue font-title">
+                    {reservaModalDetalle.totalPersonas} {reservaModalDetalle.totalPersonas === 1 ? 'persona' : 'personas'}
+                  </span>
+                  {reservaModalDetalle.bus && (
+                    <span className="text-[11px] text-slate-500 block">
+                      🚌 {reservaModalDetalle.bus}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Información del Pasajero Titular */}
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2">
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+                  Pasajero Titular (Contacto)
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                  <div>
+                    <span className="text-slate-500 block text-[11px]">Nombre Completo:</span>
+                    <strong className="text-slate-900 text-sm">{reservaModalDetalle.titular?.nombre || 'Sin nombre'}</strong>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block text-[11px]">Cédula de Identidad:</span>
+                    <strong className="text-slate-800 font-mono">{reservaModalDetalle.titular?.cedula || 'Sin cédula'}</strong>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block text-[11px]">Teléfono / WhatsApp:</span>
+                    {reservaModalDetalle.titular?.telefono ? (
+                      <a
+                        href={`https://wa.me/${reservaModalDetalle.titular.telefono.replace(/[^0-9]/g, '')}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1.5 text-emerald-700 font-bold bg-emerald-100/70 px-2.5 py-0.5 rounded-lg border border-emerald-300 hover:bg-emerald-200 transition"
+                      >
+                        <span>💬</span>
+                        <span>{reservaModalDetalle.titular.telefono}</span>
+                      </a>
+                    ) : (
+                      <span className="text-slate-400 italic">No especificado</span>
+                    )}
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block text-[11px]">Punto de Partida / Recogida:</span>
+                    <strong className="text-slate-800">
+                      📍 {reservaModalDetalle.titular?.puntoPartida || reservaModalDetalle.puntoPartida || 'Barquisimeto'}
+                    </strong>
+                  </div>
+                </div>
+              </div>
+
+              {/* Lista de Acompañantes */}
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2">
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+                  Acompañantes Registrados ({reservaModalDetalle.acompanantes ? reservaModalDetalle.acompanantes.length : 0})
+                </span>
+                {reservaModalDetalle.acompanantes && reservaModalDetalle.acompanantes.length > 0 ? (
+                  <div className="space-y-1.5">
+                    {reservaModalDetalle.acompanantes.map((acomp, aIdx) => (
+                      <div key={aIdx} className="p-2 rounded-xl bg-white border border-slate-200 text-xs flex items-center justify-between gap-2">
+                        <div className="font-semibold text-slate-800 flex items-center gap-2">
+                          <span className="w-5 h-5 rounded-full bg-sky-100 text-tour-blue font-bold flex items-center justify-center text-[10px]">
+                            {aIdx + 1}
+                          </span>
+                          <span>{acomp.nombre}</span>
+                        </div>
+                        <div className="text-slate-500 font-mono text-[11px]">
+                          {acomp.cedula ? `CI: ${acomp.cedula}` : 'Sin cédula'}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-slate-500 italic">Esta reserva no incluye acompañantes (el titular viaja solo/a).</p>
+                )}
+              </div>
+
+              {/* Desglose Financiero y de Pago */}
+              <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200 space-y-3">
+                <span className="text-[11px] font-bold text-amber-800 uppercase tracking-wider block">
+                  Desglose Financiero & Pago
+                </span>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                  <div className="bg-white p-2.5 rounded-xl border border-amber-200">
+                    <span className="text-slate-400 text-[10px] block">Monto Abonado</span>
+                    <strong className="text-emerald-700 text-sm font-black">{reservaModalDetalle.abonoEur} REF</strong>
+                  </div>
+                  <div className="bg-white p-2.5 rounded-xl border border-amber-200">
+                    <span className="text-slate-400 text-[10px] block">Saldo Pendiente</span>
+                    <strong className="text-amber-800 text-sm font-black">{reservaModalDetalle.saldoPendienteEur} REF</strong>
+                  </div>
+                  <div className="bg-white p-2.5 rounded-xl border border-amber-200">
+                    <span className="text-slate-400 text-[10px] block">Método de Pago</span>
+                    <strong className="text-slate-800 text-xs">{reservaModalDetalle.tipoPago || 'Pago Móvil'}</strong>
+                  </div>
+                  <div className="bg-white p-2.5 rounded-xl border border-amber-200">
+                    <span className="text-slate-400 text-[10px] block">Referencia</span>
+                    <strong className="text-slate-800 font-mono text-xs truncate block" title={reservaModalDetalle.referenciaPagoMovil || reservaModalDetalle.referencia || 'N/A'}>
+                      {reservaModalDetalle.referenciaPagoMovil || reservaModalDetalle.referencia || 'N/A'}
+                    </strong>
+                  </div>
+                </div>
+
+                {reservaModalDetalle.montoPagadoBs ? (
+                  <div className="text-[11px] text-slate-600 bg-white/70 p-2 rounded-xl flex items-center justify-between">
+                    <span>Monto equivalente en Bolívares pagado:</span>
+                    <strong className="font-mono text-slate-900">
+                      Bs. {Number(reservaModalDetalle.montoPagadoBs).toLocaleString('es-VE')} {reservaModalDetalle.tasaBCV ? `(Tasa BCV: ${reservaModalDetalle.tasaBCV} Bs/REF)` : ''}
+                    </strong>
+                  </div>
+                ) : null}
+
+                <div className="flex items-center justify-between pt-1">
+                  <span className="text-xs font-bold text-slate-700">Estado de Pago:</span>
+                  <select
+                    value={reservaModalDetalle.estadoPago || 'Abonado'}
+                    onChange={(e) => {
+                      const nuevo = e.target.value;
+                      handleCambiarEstadoPago(reservaModalDetalle.idReserva || reservaModalDetalle.id, nuevo);
+                      setReservaModalDetalle({ ...reservaModalDetalle, estadoPago: nuevo });
+                    }}
+                    className="text-xs font-bold px-3 py-1 rounded-xl border border-slate-300 bg-white cursor-pointer"
+                  >
+                    <option value="Abonado">Abonado</option>
+                    <option value="Pagado">Pagado Completo</option>
+                    <option value="Pendiente de pago">Pendiente de Pago</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Botones de Acción */}
+              <div className="flex flex-wrap items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                {reservaModalDetalle.titular?.telefono && (
+                  <a
+                    href={`https://wa.me/${reservaModalDetalle.titular.telefono.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(
+                      `¡Hola ${reservaModalDetalle.titular.nombre}! Te escribimos de Tour Azul para confirmar tu reserva con código *${reservaModalDetalle.idReserva || reservaModalDetalle.id}* para el viaje a *${reservaModalDetalle.destino}* (${reservaModalDetalle.fechaViaje}). Tienes ${reservaModalDetalle.totalPersonas} cupo(s) reservados. Abono registrado: ${reservaModalDetalle.abonoEur} REF. Saldo pendiente: ${reservaModalDetalle.saldoPendienteEur} REF. Punto de partida: ${reservaModalDetalle.titular.puntoPartida || 'Barquisimeto'}. ¡Nos vemos pronto!`
+                    )}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-xs flex items-center gap-1.5 transition shadow-xs"
+                  >
+                    <span>💬</span>
+                    <span>Confirmar por WhatsApp</span>
+                  </a>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const texto = `RESERVA TOUR AZUL\nCódigo: ${reservaModalDetalle.idReserva || reservaModalDetalle.id}\nDestino: ${reservaModalDetalle.destino} (${reservaModalDetalle.fechaViaje})\nTitular: ${reservaModalDetalle.titular?.nombre} (CI: ${reservaModalDetalle.titular?.cedula}, Tel: ${reservaModalDetalle.titular?.telefono})\nCupos: ${reservaModalDetalle.totalPersonas}\nAbono: ${reservaModalDetalle.abonoEur} REF\nPendiente: ${reservaModalDetalle.saldoPendienteEur} REF\nRef: ${reservaModalDetalle.referenciaPagoMovil || reservaModalDetalle.referencia || 'N/A'}`;
+                    navigator.clipboard.writeText(texto).then(() => alert('Datos de la reserva copiados al portapapeles'));
+                  }}
+                  className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition cursor-pointer"
+                >
+                  📋 Copiar Datos
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setReservaModalDetalle(null)}
+                  className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition cursor-pointer"
+                >
+                  Cerrar
+                </button>
+              </div>
+
             </div>
           </div>
         )}
