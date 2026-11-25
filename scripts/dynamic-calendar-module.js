@@ -43,18 +43,19 @@ export const dynamicCalendarClientCode = `
     window.renderDynamicDaysSelector = renderDynamicDaysSelector;
 
     function updateDynamicStatusBar() {
+      const statusBar = document.getElementById("dynamic-day-status-bar");
       const statusDot = document.getElementById("dynamic-status-dot");
       const statusText = document.getElementById("dynamic-status-text");
-      if (!statusText) return;
+      if (!statusBar || !statusText) return;
 
-      const currentDay = DIAS_NOVIEMBRE.find(d => d.id === state.filtroDia) || DIAS_NOVIEMBRE[0];
-
-      if (state.filtroDia === "todos") {
-        if (statusDot) statusDot.className = "w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0";
-        statusText.innerHTML = \`Mostrando: <strong class="text-tour-blue">Todos los viajes activos de Noviembre (13 salidas disponibles)</strong>\`;
-      } else {
+      if (state.filtroDestino && state.filtroDestino !== "todos") {
+        statusBar.classList.remove("hidden");
+        statusBar.classList.add("flex");
         if (statusDot) statusDot.className = "w-2.5 h-2.5 rounded-full bg-[#0B2A6B] shrink-0 animate-pulse";
-        statusText.innerHTML = \`Mostrando salidas de: <strong class="text-[#0B2A6B]">\${currentDay.fullText}</strong> (\${currentDay.viajesNombres || ''})\`;
+        statusText.innerHTML = \`Mostrando salidas hacia: <strong class="text-[#0B2A6B]">\${state.filtroDestino}</strong>\`;
+      } else {
+        statusBar.classList.add("hidden");
+        statusBar.classList.remove("flex");
       }
     }
 
@@ -86,6 +87,7 @@ export const dynamicCalendarClientCode = `
 
     // Render de viajes con el diseño fiel al Flyer oficial de Noviembre
     function renderTrips() {
+      updateDynamicStatusBar();
       const todayIso = (typeof getCaracasTodayStr === 'function') ? getCaracasTodayStr() : new Date().toISOString().split('T')[0];
       const container = document.getElementById("trips-grid");
       if (!container) return;

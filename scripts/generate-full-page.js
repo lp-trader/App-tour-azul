@@ -235,11 +235,6 @@ ${featuredSectionHtml}
           <p class="text-sky-100 text-xs sm:text-sm font-medium max-w-xl mx-auto leading-relaxed">
             Toca cualquier día o destino para conocer los detalles del viaje, qué incluye y asegurar tu reserva desde solo <strong>5 REF por persona</strong>.
           </p>
-
-          <!-- SELECTOR DINÁMICO DE DÍAS Y SALIDAS -->
-          <div class="pt-2">
-            <div class="flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar py-2 px-1 justify-start sm:justify-center" id="dynamic-days-selector"></div>
-          </div>
         </div>
 
         <!-- Tagline inferior del Flyer -->
@@ -254,8 +249,8 @@ ${featuredSectionHtml}
         </div>
       </div>
 
-      <!-- Barra de Estado / Resumen del Filtro Dinámico -->
-      <div id="dynamic-day-status-bar" class="mb-5 flex flex-wrap items-center justify-between gap-3 bg-white/95 backdrop-blur-md p-3.5 rounded-2xl border border-sky-100 shadow-xs">
+      <!-- Barra de Estado (solo visible cuando se filtra un destino desde Destinos Populares) -->
+      <div id="dynamic-day-status-bar" class="hidden mb-5 flex-wrap items-center justify-between gap-3 bg-white/95 backdrop-blur-md p-3.5 rounded-2xl border border-sky-100 shadow-xs">
         <div class="flex items-center gap-2">
           <span id="dynamic-status-dot" class="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0 animate-pulse"></span>
           <span id="dynamic-status-text" class="text-xs sm:text-sm font-bold text-slate-800">
@@ -263,28 +258,15 @@ ${featuredSectionHtml}
           </span>
         </div>
         <div class="flex items-center gap-3">
-          <span class="text-xs text-slate-400 font-medium hidden md:inline">Haz clic en cualquier viaje para ver información y reservar</span>
-          <button type="button" onclick="selectDynamicDay('todos')" class="text-xs font-bold text-tour-blue hover:text-blue-800 transition flex items-center gap-1 cursor-pointer">
+          <button type="button" onclick="resetFilters()" class="text-xs font-bold text-tour-blue hover:text-blue-800 transition flex items-center gap-1 cursor-pointer">
             <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
-            <span>Ver todas las salidas</span>
+            <span>Ver todos los viajes</span>
           </button>
         </div>
       </div>
 
       <!-- GRID DINÁMICO DE VIAJES (DISEÑO FLYER TOUR AZUL) -->
       <div id="trips-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4 md:gap-4"></div>
-
-      <!-- Banner de Asistencia Directa al Pie -->
-      <div class="mt-8 bg-gradient-to-r from-sky-50 via-white to-sky-50 rounded-2xl p-4 border border-sky-200/80 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
-        <div class="flex items-center gap-2.5 text-slate-700 font-medium">
-          <span class="w-7 h-7 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-sm shrink-0">✓</span>
-          <span>¿Tienes dudas sobre un destino o deseas pagar en bolívares a tasa oficial? Nuestro equipo te atiende de inmediato.</span>
-        </div>
-        <a href="https://wa.me/584126571155?text=%C2%A1Hola%20Tour%20Azul!%20Quiero%20m%C3%A1s%20informaci%C3%B3n%20sobre%20los%20viajes%20de%20noviembre" target="_blank" rel="noopener noreferrer" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition flex items-center gap-1.5 shrink-0 shadow-xs cursor-pointer">
-          <i data-lucide="message-circle" class="w-4 h-4"></i>
-          <span>Atención WhatsApp</span>
-        </a>
-      </div>
     </section>
 
     <!-- SECCIÓN EXPERIENCIAS REALES / OPINIONES (PAUSADA TEMPORALMENTE) -->
@@ -364,8 +346,8 @@ ${recruitmentHtmlSection}
     <i data-lucide="chevron-down" class="w-4 h-4 text-tour-yellow"></i>
   </div>
 
-  <!-- BOTÓN FLOTANTE WHATSAPP (OCULTO POR LOS MOMENTOS) -->
-  <a id="btn-whatsapp-float" href="https://wa.me/584126571155" target="_blank" rel="noopener noreferrer" class="hidden fixed bottom-6 right-6 z-40 items-center gap-2.5 px-4 py-3 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white shadow-2xl hover:scale-105 active:scale-95 transition-all group border-2 border-white/80" title="Contactar al WhatsApp de Tour Azul (0412-657-1155)">
+  <!-- BOTÓN FLOTANTE WHATSAPP (ESQUINA INFERIOR DERECHA) -->
+  <a id="btn-whatsapp-float" href="https://wa.me/584126571155" target="_blank" rel="noopener noreferrer" class="flex fixed bottom-5 right-4 sm:bottom-6 sm:right-6 z-40 items-center gap-2 sm:gap-2.5 px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white shadow-2xl hover:scale-105 active:scale-95 transition-all group border-2 border-white/80" title="Contactar al WhatsApp de Tour Azul (0412-657-1155)">
     <div class="relative">
       <span class="absolute -top-1 -right-1 flex h-2.5 w-2.5">
         <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
